@@ -19,6 +19,7 @@ pub mod cache;
 pub mod correct;
 pub mod coverage;
 pub mod engine;
+pub mod exports;
 pub mod forecast;
 pub mod geo;
 pub mod maps;
@@ -33,11 +34,11 @@ pub mod ssn;
 pub mod station;
 pub mod store;
 
-/// Every way a core call can fail.
+/// Every way a core call can fail (Kotlin: `CoreException`).
 #[derive(Debug, thiserror::Error)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Error))]
 #[cfg_attr(feature = "ffi", uniffi(flat_error))]
-pub enum Error {
+pub enum CoreError {
     /// The engine refused a request or failed; its own message.
     #[error("engine: {0}")]
     Engine(String),
@@ -52,9 +53,11 @@ pub enum Error {
     Offline,
 }
 
-impl From<std::io::Error> for Error {
+pub use CoreError as Error;
+
+impl From<std::io::Error> for CoreError {
     fn from(e: std::io::Error) -> Self {
-        Error::Storage(e.to_string())
+        CoreError::Storage(e.to_string())
     }
 }
 

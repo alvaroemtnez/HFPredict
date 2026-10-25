@@ -17,3 +17,4 @@
 *.keystore
 *.jks
 .idea/
+/android/dist/

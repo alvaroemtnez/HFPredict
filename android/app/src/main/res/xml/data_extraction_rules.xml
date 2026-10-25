@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings, stations and places travel with a backup or a new phone;
+     stored maps are recomputed. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="state.json" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="state.json" />
+    </device-transfer>
+</data-extraction-rules>
