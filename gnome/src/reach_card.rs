@@ -23,6 +23,25 @@ type ExpandFn = Box<dyn Fn(bool)>;
 /// and the spinner sit above it.
 const FLOAT_CLEARANCE: i32 = 128;
 
+/// A drag of logical pixels, held to the map's screen.
+fn pan(app: &App, view: MapView, dx: f64, dy: f64) -> MapView {
+    match app.screen() {
+        Some((screen, k)) => tiles::panned(view, dx * f64::from(k), dy * f64::from(k), &screen),
+        None => view,
+    }
+}
+
+/// A zoom about a point in logical pixels, which stays put.
+fn zoom_at(app: &App, view: MapView, factor: f64, x: f64, y: f64) -> MapView {
+    match app.screen() {
+        Some((screen, k)) => {
+            let k = f64::from(k);
+            tiles::zoomed(view, factor, x * k, y * k, &screen)
+        }
+        None => view,
+    }
+}
+
 /// Marks the map canvas while enlarged.
 const ENLARGED: &str = "hfp-map-enlarged";
 
@@ -318,7 +337,7 @@ impl ReachCard {
             let map = self.map.clone();
             drag.connect_drag_update(move |_, dx, dy| {
                 if let Some(app) = a.upgrade() {
-                    app.set_map_view(sv.get().panned(dx, dy, side(&map)), false);
+                    app.set_map_view(pan(&app, sv.get(), dx, dy), false);
                     map.queue_draw();
                 }
             });
@@ -330,7 +349,7 @@ impl ReachCard {
             drag.connect_drag_end(move |_, dx, dy| {
                 if let Some(app) = a.upgrade() {
                     if dx.hypot(dy) > 3.0 {
-                        app.set_map_view(sv.get().panned(dx, dy, side(&map)), true);
+                        app.set_map_view(pan(&app, sv.get(), dx, dy), true);
                     }
                     map.queue_draw();
                 }
@@ -354,9 +373,7 @@ impl ReachCard {
             let map = self.map.clone();
             zoom.connect_scale_changed(move |g, k| {
                 if let (Some(app), Some((x, y))) = (a.upgrade(), g.bounding_box_center()) {
-                    let v = sv
-                        .get()
-                        .zoomed_at(k, x - offset(&map), y - offset_y(&map), side(&map));
+                    let v = zoom_at(&app, sv.get(), k, x, y);
                     app.set_map_view(v, false);
                     map.queue_draw();
                 }
@@ -388,12 +405,8 @@ impl ReachCard {
             scroll.connect_scroll(move |_, _, dy| {
                 if let Some(app) = a.upgrade() {
                     let (x, y) = p.get();
-                    let v = app.view.borrow().map_view.zoomed_at(
-                        if dy < 0.0 { 1.25 } else { 0.8 },
-                        x - offset(&map),
-                        y - offset_y(&map),
-                        side(&map),
-                    );
+                    let v0 = app.view.borrow().map_view;
+                    let v = zoom_at(&app, v0, if dy < 0.0 { 1.25 } else { 0.8 }, x, y);
                     app.set_map_view(v, false);
                     map.queue_draw();
                 }
@@ -421,8 +434,9 @@ impl ReachCard {
             let map = self.map.clone();
             move |_: &gtk::Button| {
                 if let Some(app) = a.upgrade() {
-                    let s = side(&map);
-                    let v = app.view.borrow().map_view.zoomed_at(k, s / 2.0, s / 2.0, s);
+                    let (w, h) = (f64::from(map.width()), f64::from(map.height()));
+                    let v0 = app.view.borrow().map_view;
+                    let v = zoom_at(&app, v0, k, w / 2.0, h / 2.0);
                     app.set_map_view(v, true);
                     map.queue_draw();
                 }

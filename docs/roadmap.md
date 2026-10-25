@@ -32,12 +32,7 @@ Linux:
 
 ## Later
 
-- **Compute maps ahead** (HFcast's background job): left out on purpose (it
-  needs a foreground service and the notification permission). Revisit if map
-  computation feels slow on old devices; the cache covers browsing.
-- **Device benchmark** (HFcast's "Measure this device"): only needed with the
-  above.
-- **Chance of contact at a tapped cell**: the probe outlines the cell and
-  shows its quality band; a path forecast to that point (one engine run)
-  would give the percentage, and a "set as destination" action.
-- **Coastline smearing** near the antipode rim of the map.
+- **Prefetch more**: while the app is open it readies every hour's coarse map
+  and the current band's fine maps (Core::prefetch). Other bands, and tiles
+  for the next hours, could follow if scrubbing still waits on a slow phone.
+  A background service stays out (owner's call).

@@ -62,9 +62,14 @@ rendering, persistence and the request plumbing (`tools/rust.sh cargo test`).
    latitude strips that produce exactly the same cells (tested), one per thread.
 4. **Patch**: when zoomed in, up to 2,000 points around the view at a finer step.
 5. **Render**: per pixel, the inverse projection finds the cell; the finest grid
-   that covers a pixel wins. Night wash, coastlines, distance rings and the path
-   are drawn on top. Gestures move the previous image at once; the new one
-   follows.
+   that covers a pixel wins. Night wash, coastlines, distance rings, the path
+   and the selected cell are drawn on top.
+6. **Tiles**: the apps never show one big image. The disc's square is a
+   pyramid of 512 px tiles (`core/src/tiles.rs`); each app keeps tiles as
+   textures and moves them under the fingers, renders the ones the screen
+   lacks centre first, and draws coarser tiles wherever finer ones are not
+   ready. A change of content (hour, band, data, colours, selection) marks
+   every tile stale; stale ones stay on screen until replaced.
 
 Fine grids are kept in memory and (Preferences → Keep computed maps) on disk,
 quantised to 69 KB each, within 128 MB.

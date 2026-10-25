@@ -282,8 +282,9 @@ private fun BandTable(state: UiState, fmt: Format) {
                         fmt.int(r * 100),
                         Modifier.height(24.dp),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (qualityOf(r) == Quality.CLOSED) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        else MaterialTheme.colorScheme.onSurface,
+                        // Traffic-light numbers, green to red.
+                        color = LocalMapColors.current.semaphore(qualityOf(r)),
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }

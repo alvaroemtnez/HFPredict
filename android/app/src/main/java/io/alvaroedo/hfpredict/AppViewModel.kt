@@ -16,9 +16,16 @@ import io.alvaroedo.hfpredict.core.MapDetail
 import io.alvaroedo.hfpredict.core.MapOptions
 import io.alvaroedo.hfpredict.core.MapStatus
 import io.alvaroedo.hfpredict.core.MapView
-import io.alvaroedo.hfpredict.core.Palette
 import io.alvaroedo.hfpredict.core.Place
 import io.alvaroedo.hfpredict.core.Probe
+import io.alvaroedo.hfpredict.core.Screen
+import io.alvaroedo.hfpredict.core.Tile
+import io.alvaroedo.hfpredict.core.qualityOf
+import io.alvaroedo.hfpredict.core.semaphoreColor
+import io.alvaroedo.hfpredict.core.tileLevel
+import io.alvaroedo.hfpredict.core.tilesVisible
+import io.alvaroedo.hfpredict.core.viewZoomedIn
+import io.alvaroedo.hfpredict.ui.MapColors
 import io.alvaroedo.hfpredict.core.SavedState
 import io.alvaroedo.hfpredict.core.Settings
 import io.alvaroedo.hfpredict.core.Station
@@ -33,8 +40,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 
-/** The last map drawn, and the view it was drawn for. */
-data class RenderedMap(val image: ImageBitmap, val view: MapView)
+/**
+ * A rendered tile of the map (see the core's `tiles`): its image, the
+ * content version it shows, and when it was last drawn.
+ */
+class TileEntry(val image: ImageBitmap, val epoch: Long, var used: Long)
+
+/** Tiles kept, about 1 MB each. */
+private const val MAX_TILES = 64
 
 /** How many hours behind "now" the hour track starts. */
 const val PAST_HOURS = 6
@@ -60,7 +73,8 @@ data class UiState(
     val detail: MapDetail = MapDetail.NONE,
     val mapWorking: Boolean = false,
     val mapError: String? = null,
-    val rendered: RenderedMap? = null,
+    /** Bumped whenever a tile arrives, so the map redraws. */
+    val tiles: Int = 0,
     val probe: Probe? = null,
     val showTable: Boolean = false,
     val live: Boolean = false,
@@ -89,17 +103,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private var forecastJob: Job? = null
     private var mapJob: Job? = null
     private var mapGeneration = 0
-    private var surfacePx = 0
-    private var cardPx = 0
-    private var fullPx = 0
+    /** The map areas on screen: the card's, and the full-screen one while open. */
+    private var cardScreen: Screen? = null
+    private var fullScreen: Screen? = null
+    private var colors: MapColors? = null
+    /** Pixels per dp: line widths on the map. */
     private var density = 1f
-    private var palette: Palette? = null
-    private var rendering = false
-    private var draft = false
+    /** The held tiles, each the newest drawn; read by the map while drawing. */
+    val tileCache = HashMap<Tile, TileEntry>()
+    private var epoch = 0L
+    private var uses = 0L
+    private var tileBusy = false
     private var settleJob: Job? = null
     private var prefetchJob: Job? = null
     private var foreground = true
-    private var renderAgain = false
     private var lastReadings = 0L
 
     init {
@@ -143,7 +160,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun reload() {
         forecastJob?.cancel()
         val now = _state.value.now
-        _state.update { it.copy(reach = emptyList(), status = null, probe = null) }
+        _state.update { it.copy(reach = emptyList(), status = null) }
+        // A selected point stays; its chance is worked out again.
+        refreshProbe()
         forecastJob = viewModelScope.launch {
             val result = withContext(Dispatchers.Default) { runCatching { core.forecast(now) } }
             _state.update { s ->
@@ -161,8 +180,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         if (band != s.band) {
             viewModelScope.launch(Dispatchers.IO) { runCatching { core.setBand(band) } }
         }
-        _state.update { it.copy(band = band, hour = Math.floorMod(hour, 24), probe = null) }
+        _state.update { it.copy(band = band, hour = Math.floorMod(hour, 24)) }
         updateMap()
+        refreshProbe()
     }
 
     /** The coarse grid at once, then the fine one, then a patch if zoomed. */
@@ -171,14 +191,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         prefetchJob?.cancel()
         val generation = ++mapGeneration
         _state.update { it.copy(mapWorking = true, mapError = null) }
-        render()
+        mapChanged()
         val s = _state.value
         val hour = s.hour.toUInt()
         mapJob = viewModelScope.launch {
             val reach = withContext(Dispatchers.Default) { runCatching { core.coarseMaps(hour, s.now) } }
             if (generation != mapGeneration) return@launch
             _state.update { st -> reach.fold({ st.copy(reach = it) }, { st.copy(mapError = it.message) }) }
-            render()
+            mapChanged()
             // A fine map not yet held waits until the hour stays put: sliding
             // across the day then costs a coarse run per hour, not a fine one
             // each (a started run cannot be stopped), and the last stop wins.
@@ -196,7 +216,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _state.update { st ->
                 fine.fold({ st.copy(status = it, mapWorking = false) }, { st.copy(mapError = it.message, mapWorking = false) })
             }
-            render()
+            mapChanged()
             prefetch()
         }
     }
@@ -229,46 +249,55 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * The map's size on screen, its density and the theme's colours. The
-     * full-screen map sets its own size over the card's while it is open,
-     * and `px = 0` there hands back to the card.
+     * The map's area on screen, in pixels, and the theme's colours. The
+     * full-screen map sets its own over the card's while it is open, and
+     * `null` there hands back to the card.
      */
-    fun setMapSurface(px: Int, density: Float, palette: Palette, full: Boolean = false) {
-        if (full) fullPx = px else cardPx = px
-        val effective = if (fullPx > 0) fullPx else cardPx
-        if (effective == surfacePx && density == this.density && palette == this.palette) return
-        surfacePx = effective
-        this.density = density
-        this.palette = palette
-        render()
+    fun setMapScreen(screen: Screen?, colors: MapColors, density: Float, full: Boolean = false) {
+        if (full) fullScreen = screen else cardScreen = screen
+        if (colors != this.colors || density != this.density) {
+            this.colors = colors
+            this.density = density
+            mapChanged()
+        } else {
+            pumpTiles()
+        }
     }
 
+    /** The map area tiles are chosen for. */
+    fun activeScreen(): Screen? = fullScreen ?: cardScreen
+
     /**
-     * A pan or zoom: redraw at once (at half size while it moves), and at
-     * full size with a patch once it settles, which a short pause after the
-     * last move also counts as.
+     * A pan or zoom: the held tiles move at once and missing ones follow;
+     * once the view settles (a short pause after the last move counts),
+     * a patch is worked out for it.
      */
     fun setView(view: MapView, settled: Boolean) {
         _state.update { it.copy(view = view) }
         settleJob?.cancel()
-        draft = !settled
-        render()
+        pumpTiles()
         if (!settled) {
             settleJob = viewModelScope.launch {
                 delay(SETTLE_MS)
                 setView(_state.value.view, settled = true)
             }
+            return
         }
-        if (settled) {
-            val s = _state.value
-            val generation = mapGeneration
-            viewModelScope.launch {
-                val patched = withContext(Dispatchers.Default) {
-                    runCatching { core.patchMap(s.hour.toUInt(), s.now, view) }.getOrDefault(false)
-                }
-                if (patched && generation == mapGeneration) render()
+        val s = _state.value
+        val generation = mapGeneration
+        viewModelScope.launch {
+            val patched = withContext(Dispatchers.Default) {
+                runCatching { core.patchMap(s.hour.toUInt(), s.now, view) }.getOrDefault(false)
             }
+            // A patch for this view (new or held) changes what its tiles show.
+            if (patched && generation == mapGeneration) mapChanged()
         }
+    }
+
+    /** Zooms about the middle of the map's screen. */
+    fun zoomBy(factor: Double) {
+        val scr = activeScreen() ?: return
+        setView(viewZoomedIn(_state.value.view, factor, scr.width / 2, scr.height / 2, scr), settled = true)
     }
 
     fun fitReach() {
@@ -285,42 +314,103 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val p = withContext(Dispatchers.Default) { core.probe(s.band, s.hour.toUInt(), s.now, s.view, x, y, size) }
             // A second tap on the same cell clears it.
             _state.update { it.copy(probe = if (p != null && p.grid == it.probe?.grid) null else p) }
-            render()
+            mapChanged()
+            refreshProbe()
         }
+    }
+
+    /** The selected point's own chance of contact, for the band and hour shown. */
+    private fun refreshProbe() {
+        val s = _state.value
+        val p = s.probe ?: return
+        viewModelScope.launch {
+            val full = withContext(Dispatchers.Default) { core.probeAt(s.band, s.hour.toUInt(), s.now, p.lat, p.lon) }
+            val now = _state.value
+            if (now.probe?.grid == p.grid && now.band == s.band && now.hour == s.hour) {
+                _state.update { it.copy(probe = full) }
+                mapChanged()
+            }
+        }
+    }
+
+    /** Makes the selected point the path's destination. */
+    fun probeToDestination() {
+        val p = _state.value.probe ?: return
+        _state.update { it.copy(probe = null) }
+        setTo(core.placeAt(p.lat, p.lon))
     }
 
     fun toggleTable() = _state.update { it.copy(showTable = !it.showTable) }
 
-    /** Draws the map from what is computed; one render at a time, the rest folded. */
-    private fun render() {
-        val pal = palette ?: return
-        if (surfacePx < 32) return
-        if (rendering) {
-            renderAgain = true
-            return
-        }
-        rendering = true
+    /**
+     * What the map shows has changed (data, band, hour, colours, the
+     * selection): every tile is now stale and is redrawn, those on screen
+     * first. Stale tiles stay on screen until then.
+     */
+    private fun mapChanged() {
+        epoch++
+        pumpTiles()
+    }
+
+    /** One tick of the use clock, stamped on each tile drawn. */
+    fun nextUse(): Long = ++uses
+
+    /**
+     * Draws the next tile the screen lacks, one at a time: the one in the
+     * middle first; the whole-earth tile first when none is held at all, so
+     * zooming out never shows empty space.
+     */
+    private fun pumpTiles() {
+        if (tileBusy) return
+        val screen = activeScreen() ?: return
+        val c = colors ?: return
+        if (screen.side < 32.0) return
         val s = _state.value
-        val px = if (draft) surfacePx / 2 else surfacePx
-        val d = if (draft) density / 2 else density
+        val e = epoch
+        val world = Tile(0u, 0u, 0u)
+        val z = tileLevel(s.view, screen)
+        val wanted = buildList {
+            if (world !in tileCache) add(world)
+            tilesVisible(s.view, screen, z).forEach { add(it.tile) }
+            add(world)
+        }
+        val tile = wanted.firstOrNull { tileCache[it]?.epoch != e } ?: return
+        tileBusy = true
+        val quality = s.probe?.let { p -> p.chance?.let { qualityOf(it) } ?: p.quality }
+        val options = MapOptions(
+            showNight = true, showNvis = true, showPath = true, highlight = s.probe,
+            highlightColor = semaphoreColor(quality, c.dark, c.lowLight),
+        )
         viewModelScope.launch {
-            val image = withContext(Dispatchers.Default) {
-                val img = core.renderMap(
-                    s.band, s.hour.toUInt(), s.now, s.view, px.toUInt(), d, pal,
-                    MapOptions(showNight = true, showNvis = true, showPath = true, highlight = s.probe),
-                )
-                val size = img.size.toInt()
-                val bitmap = createBitmap(size, size, Bitmap.Config.ARGB_8888)
-                // Premultiplied RGBA bytes: exactly ARGB_8888's memory layout.
-                bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(img.pixels))
-                img.detail to bitmap.asImageBitmap()
+            val result = withContext(Dispatchers.Default) {
+                runCatching {
+                    val img = core.renderTile(s.band, s.hour.toUInt(), s.now, s.view, tile, density, c.palette, options)
+                    val size = img.size.toInt()
+                    val bitmap = createBitmap(size, size, Bitmap.Config.ARGB_8888)
+                    // Premultiplied RGBA bytes: exactly ARGB_8888's memory layout.
+                    bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(img.pixels))
+                    // Mipmaps keep a shrunken tile sharp when zoomed out.
+                    bitmap.setHasMipMap(true)
+                    img.detail to bitmap.asImageBitmap()
+                }.getOrNull()
             }
-            rendering = false
-            _state.update { it.copy(rendered = RenderedMap(image.second, s.view), detail = image.first) }
-            if (renderAgain) {
-                renderAgain = false
-                render()
+            tileBusy = false
+            if (result != null) {
+                keepTile(tile, TileEntry(result.second, e, nextUse()))
+                _state.update { it.copy(detail = result.first, tiles = it.tiles + 1) }
             }
+            pumpTiles()
+        }
+    }
+
+    private fun keepTile(tile: Tile, entry: TileEntry) {
+        // A slow tile from an older version never replaces a newer one.
+        val held = tileCache[tile]
+        if (held != null && held.epoch > entry.epoch) return
+        tileCache[tile] = entry
+        while (tileCache.size > MAX_TILES) {
+            val oldest = tileCache.entries.filter { it.key.z != 0u }.minByOrNull { it.value.used } ?: break
+            tileCache.remove(oldest.key)
         }
     }
 

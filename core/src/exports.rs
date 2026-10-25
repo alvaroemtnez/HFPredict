@@ -208,6 +208,29 @@ pub fn tiles_visible(
     crate::tiles::visible(view, &screen, z)
 }
 
+/// A drag across the map's screen area (see `tiles::panned`).
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn view_panned_in(
+    view: crate::projection::MapView,
+    dx: f64,
+    dy: f64,
+    screen: crate::tiles::Screen,
+) -> crate::projection::MapView {
+    crate::tiles::panned(view, dx, dy, &screen)
+}
+
+/// A zoom about a screen pixel (see `tiles::zoomed`).
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn view_zoomed_in(
+    view: crate::projection::MapView,
+    factor: f64,
+    x: f64,
+    y: f64,
+    screen: crate::tiles::Screen,
+) -> crate::projection::MapView {
+    crate::tiles::zoomed(view, factor, x, y, &screen)
+}
+
 /// Side of a rendered tile, pixels.
 #[cfg_attr(feature = "ffi", uniffi::export)]
 pub fn tile_px() -> u32 {

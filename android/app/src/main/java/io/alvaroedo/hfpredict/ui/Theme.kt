@@ -87,6 +87,8 @@ data class MapColors(
     /** The status chip: green when live, amber offline (dim reds in low light). */
     val live: Color,
     val offline: Color,
+    val dark: Boolean,
+    val lowLight: Boolean,
 ) {
     fun cell(q: Quality): Color = cells[when (q) {
         Quality.CLOSED -> 0
@@ -94,6 +96,9 @@ data class MapColors(
         Quality.PATCHY -> 2
         Quality.RELIABLE -> 3
     }]
+
+    /** A quality as a traffic light (green to red, grey unknown), from the core. */
+    fun semaphore(q: Quality?): Color = Color(io.alvaroedo.hfpredict.core.semaphoreColor(q, dark, lowLight).toInt())
 }
 
 private fun Color.argb(): UInt = toArgb().toUInt()
@@ -134,7 +139,7 @@ fun mapColors(scheme: ColorScheme, dark: Boolean, lowLight: Boolean): MapColors 
         dark -> Color(0xFFF5C26B)
         else -> Color(0xFF9A5B00)
     }
-    return MapColors(listOf(closed, weak, patchy, reliable), station, palette, live, offline)
+    return MapColors(listOf(closed, weak, patchy, reliable), station, palette, live, offline, dark, lowLight)
 }
 
 val LocalMapColors = staticCompositionLocalOf { mapColors(TealDark, dark = true, lowLight = false) }

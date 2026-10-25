@@ -127,16 +127,22 @@ fun MainScreen(state: UiState, vm: AppViewModel, fmt: Format, open: (Overlay) ->
                 ) {
                     val content = Modifier.widthIn(max = 1500.dp).fillMaxWidth()
                     if (wide) {
+                        // The map on one side; the bands, the sun and the
+                        // conditions share the other, so neither leaves a gap.
                         Row(content, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             ReachCard(state, vm, fmt, Modifier.weight(1f), onFullscreen = { open(Overlay.Map) }, onPoint = point)
-                            BandsCard(state, vm, fmt, Modifier.weight(1f))
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                BandsCard(state, vm, fmt)
+                                SunCard(state, fmt)
+                                BasisCard(state, fmt)
+                            }
                         }
                     } else {
                         ReachCard(state, vm, fmt, content, onFullscreen = { open(Overlay.Map) }, onPoint = point)
                         BandsCard(state, vm, fmt, content)
+                        SunCard(state, fmt, content)
+                        BasisCard(state, fmt, content)
                     }
-                    SunCard(state, fmt, content)
-                    BasisCard(state, fmt, content)
                 }
             }
         }

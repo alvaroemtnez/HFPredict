@@ -7,7 +7,7 @@
 //! A tile is the ordinary render with a view that frames it, so a tiled map
 //! is pixel for pixel the map the single-image renderer drew.
 
-use crate::projection::{MAX_SCALE, MapView};
+use crate::projection::{MAX_SCALE, MIN_SCALE, MapView};
 
 /// Side of a rendered tile, pixels.
 pub const TILE_PX: u32 = 512;
@@ -82,6 +82,54 @@ impl Tile {
             size: k / n,
         }
     }
+}
+
+/// The view kept so the screen never leaves the disc's square: the same as
+/// `MapView::contained` when the screen is the square, but a screen cut
+/// from a larger square (full screen on a phone) can pan across it even at
+/// the whole-earth view.
+pub fn contain(view: MapView, screen: &Screen) -> MapView {
+    let scale = view.scale.clamp(MIN_SCALE, MAX_SCALE);
+    let k = screen.side * scale;
+    let clamp = |c: f64, extent: f64| {
+        let half = extent / (2.0 * k);
+        if half >= 0.5 {
+            0.5
+        } else {
+            c.clamp(half, 1.0 - half)
+        }
+    };
+    MapView {
+        scale,
+        cx: clamp(view.cx, screen.width.min(screen.side)),
+        cy: clamp(view.cy, screen.height.min(screen.side)),
+    }
+}
+
+/// A drag of (`dx`, `dy`) screen pixels.
+pub fn panned(view: MapView, dx: f64, dy: f64, screen: &Screen) -> MapView {
+    let k = screen.side * view.scale;
+    contain(
+        MapView {
+            cx: view.cx - dx / k,
+            cy: view.cy - dy / k,
+            ..view
+        },
+        screen,
+    )
+}
+
+/// A zoom by `factor` about the screen pixel (`x`, `y`), which stays still.
+pub fn zoomed(view: MapView, factor: f64, x: f64, y: f64, screen: &Screen) -> MapView {
+    let scale = (view.scale * factor).clamp(MIN_SCALE, MAX_SCALE);
+    let (k0, k1) = (screen.side * view.scale, screen.side * scale);
+    // The square's point under (x, y) before and after.
+    let origin = |cx: f64, k: f64, x0: f64| cx - screen.side / (2.0 * k) - x0 / k;
+    let ux = origin(view.cx, k0, screen.x0) + x / k0;
+    let uy = origin(view.cy, k0, screen.y0) + y / k0;
+    let cx = ux - x / k1 + screen.side / (2.0 * k1) + screen.x0 / k1;
+    let cy = uy - y / k1 + screen.side / (2.0 * k1) + screen.y0 / k1;
+    contain(MapView { scale, cx, cy }, screen)
 }
 
 /// The deepest level the map uses: tiles at the closest zoom.
@@ -199,6 +247,31 @@ mod tests {
         let p = t.place(v, &s);
         assert!((p.left).abs() < 1e-9 && (p.top).abs() < 1e-9 && (p.size - 512.0).abs() < 1e-9);
         assert_eq!(t.parent(), Some(Tile { z: 1, x: 1, y: 0 }));
+    }
+
+    #[test]
+    fn a_cut_screen_pans_and_zooms_about_the_finger() {
+        let s = Screen {
+            side: 2400.0,
+            x0: -660.0,
+            y0: 0.0,
+            width: 1080.0,
+            height: 2400.0,
+        };
+        // The whole earth: across, but not up and down.
+        let v = panned(MapView::default(), -300.0, -300.0, &s);
+        assert!(v.cx > 0.5 && (v.cy - 0.5).abs() < 1e-12, "{v:?}");
+        // Never past the square's edge.
+        let far = panned(MapView::default(), -1e6, 0.0, &s);
+        assert!((far.cx - (1.0 - 1080.0 / 4800.0)).abs() < 1e-9);
+        // The point under the finger stays put.
+        let z = zoomed(MapView::default(), 2.0, 540.0, 1200.0, &s);
+        assert!((z.cx - 0.5).abs() < 1e-9 && (z.cy - 0.5).abs() < 1e-9);
+        // In a square screen it is the old arithmetic.
+        let sq = screen(800.0);
+        let a = zoomed(MapView::default(), 3.0, 200.0, 300.0, &sq);
+        let b = MapView::default().zoomed_at(3.0, 200.0, 300.0, 800.0);
+        assert!((a.cx - b.cx).abs() < 1e-9 && (a.cy - b.cy).abs() < 1e-9);
     }
 
     #[test]

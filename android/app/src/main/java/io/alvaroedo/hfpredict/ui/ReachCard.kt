@@ -44,11 +44,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -72,12 +71,15 @@ import io.alvaroedo.hfpredict.UiState
 import io.alvaroedo.hfpredict.WHOLE_GLOBE
 import io.alvaroedo.hfpredict.core.MapDetail
 import io.alvaroedo.hfpredict.core.MapView
+import io.alvaroedo.hfpredict.core.Screen
 import io.alvaroedo.hfpredict.core.bandLabel
+import io.alvaroedo.hfpredict.core.tileLevel
+import io.alvaroedo.hfpredict.core.tilesVisible
 import io.alvaroedo.hfpredict.core.greenwich
 import io.alvaroedo.hfpredict.core.localClock
 import io.alvaroedo.hfpredict.core.qualityOf
-import io.alvaroedo.hfpredict.core.viewPanned
-import io.alvaroedo.hfpredict.core.viewZoomed
+import io.alvaroedo.hfpredict.core.viewPannedIn
+import io.alvaroedo.hfpredict.core.viewZoomedIn
 import io.alvaroedo.hfpredict.label
 import io.alvaroedo.hfpredict.tr
 import kotlin.math.roundToInt
@@ -142,9 +144,6 @@ fun ReachCard(
     }
 }
 
-/** Largest square the full-screen map is rendered at; the screen scales it. */
-private const val FULL_MAX_PX = 1600
-
 /**
  * The map itself at any shape: the rendered square (the disc's frame) is
  * centred, as wide as the shorter side in the card or the longer side full
@@ -159,21 +158,17 @@ fun MapSurface(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier
     val latest by rememberUpdatedState(state)
     var area by remember { mutableStateOf(IntSize.Zero) }
     val side = if (full) maxOf(area.width, area.height) else minOf(area.width, area.height)
-    LaunchedEffect(side, colors) {
-        if (side > 0) {
-            val px = if (full) minOf(side, FULL_MAX_PX) else side
-            vm.setMapSurface(px, density * px / side, colors.palette, full)
-        }
-    }
+    // The square's corner on screen.
+    val x0 = (area.width - side) / 2f
+    val y0 = (area.height - side) / 2f
+    val screen = Screen(side.toDouble(), x0.toDouble(), y0.toDouble(), area.width.toDouble(), area.height.toDouble())
+    LaunchedEffect(area, colors, density) { if (side > 0) vm.setMapScreen(screen, colors, density, full) }
     if (full) {
-        DisposableEffect(Unit) { onDispose { vm.setMapSurface(0, density, colors.palette, full = true) } }
+        DisposableEffect(Unit) { onDispose { vm.setMapScreen(null, colors, density, full = true) } }
     }
     val fingers = if (full) 1 else 2
     val slop = LocalViewConfiguration.current.touchSlop
     val mapLabel = latestReachLabel(state, fmt)
-    // The square's corner on screen.
-    val x0 = (area.width - side) / 2f
-    val y0 = (area.height - side) / 2f
 
     Canvas(
         modifier
@@ -196,8 +191,9 @@ fun MapSurface(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier
                             val oy = (size.height - sq) / 2
                             val c = event.calculateCentroid()
                             val pan = event.calculatePan()
-                            view = viewZoomed(view, event.calculateZoom().toDouble(), c.x - ox, c.y - oy, sq)
-                            view = viewPanned(view, pan.x.toDouble(), pan.y.toDouble(), sq)
+                            val scr = Screen(sq, ox, oy, size.width.toDouble(), size.height.toDouble())
+                            view = viewZoomedIn(view, event.calculateZoom().toDouble(), c.x.toDouble(), c.y.toDouble(), scr)
+                            view = viewPannedIn(view, pan.x.toDouble(), pan.y.toDouble(), scr)
                             vm.setView(view, settled = false)
                             event.changes.forEach { it.consume() }
                             moved = true
@@ -218,23 +214,32 @@ fun MapSurface(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier
                     },
                     onDoubleTap = {
                         val (sq, ox, oy) = square()
-                        vm.setView(viewZoomed(latest.view, 2.0, it.x - ox, it.y - oy, sq), settled = true)
+                        val scr = Screen(sq, ox, oy, size.width.toDouble(), size.height.toDouble())
+                        vm.setView(viewZoomedIn(latest.view, 2.0, it.x.toDouble(), it.y.toDouble(), scr), settled = true)
                     },
                 )
             },
     ) {
-        val rendered = state.rendered ?: return@Canvas
-        if (side <= 0) return@Canvas
-        val sq = side.toFloat()
-        val at = rendered.view
-        val now = state.view
-        // Move and scale the last image from the view it was drawn for
-        // to the view on screen, so gestures follow the fingers at once.
-        val k = (now.scale / at.scale).toFloat()
-        fun t(cAt: Double, cNow: Double) = ((cAt - cNow - 0.5 / at.scale + 0.5 / now.scale) * now.scale).toFloat() * sq
-        translate(x0 + t(at.cx, now.cx), y0 + t(at.cy, now.cy)) {
-            withTransform({ scale(k, k, pivot = Offset.Zero) }) {
-                drawImage(rendered.image, dstSize = IntSize(side, side))
+        // Every level from the whole earth down to the one that matches the
+        // screen, so a coarser tile shows wherever a finer one is not drawn
+        // yet; a gesture only moves images. Reading `state.tiles` redraws
+        // this when a tile arrives.
+        if (side <= 0 || state.tiles < 0) return@Canvas
+        val view = state.view
+        for (z in 0..tileLevel(view, screen).toInt()) {
+            for (p in tilesVisible(view, screen, z.toUInt())) {
+                val e = vm.tileCache[p.tile] ?: continue
+                e.used = vm.nextUse()
+                // A pixel of overlap hides the seams.
+                val left = kotlin.math.floor(p.left).toInt()
+                val top = kotlin.math.floor(p.top).toInt()
+                val size = kotlin.math.ceil(p.size).toInt() + 1
+                drawImage(
+                    e.image,
+                    dstOffset = IntOffset(left, top),
+                    dstSize = IntSize(size, size),
+                    filterQuality = FilterQuality.High,
+                )
             }
         }
     }
@@ -244,7 +249,7 @@ fun MapSurface(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier
 @Composable
 private fun MapButtons(vm: AppViewModel, state: UiState, full: Boolean, onFullscreen: () -> Unit, modifier: Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        val zoom = { k: Double -> vm.setView(viewZoomed(state.view, k, 0.5, 0.5, 1.0), settled = true) }
+        val zoom = { k: Double -> vm.zoomBy(k) }
         MapButton(R.drawable.ic_add, tr(R.string.map_zoomIn)) { zoom(1.6) }
         MapButton(R.drawable.ic_remove, tr(R.string.map_zoomOut)) { zoom(1 / 1.6) }
         MapButton(R.drawable.ic_fit_screen, tr(R.string.map_fitReach)) { vm.fitReach() }
@@ -254,25 +259,52 @@ private fun MapButtons(vm: AppViewModel, state: UiState, full: Boolean, onFullsc
     }
 }
 
-/** What is under the finger: locator, distance, bearing, quality, and a way to point there. */
+/**
+ * What is under the finger: locator, distance, bearing and the point's own
+ * chance of contact in its traffic-light colour (the map's quality there
+ * until that is worked out), with ways to point there and to make it the
+ * destination.
+ */
 @Composable
-private fun ProbeBubble(state: UiState, fmt: Format, onPoint: ((Double, String) -> Unit)?, modifier: Modifier) {
+private fun ProbeBubble(
+    state: UiState,
+    vm: AppViewModel,
+    fmt: Format,
+    onPoint: ((Double, String) -> Unit)?,
+    modifier: Modifier,
+) {
     val p = state.probe ?: return
     val ctx = LocalResources.current
-    val text = buildString {
-        append(p.grid).append(" · ").append(fmt.distance(ctx, p.distanceKm)).append(" · ").append(fmt.degrees(p.bearingDeg)).append("°")
-        p.quality?.let { append(" · ").append(ctx.getString(it.label())) }
+    val colors = LocalMapColors.current
+    val base = p.grid + " · " + fmt.distance(ctx, p.distanceKm) + " · " + fmt.degrees(p.bearingDeg) + "°"
+    val text = androidx.compose.ui.text.buildAnnotatedString {
+        append(base)
+        val chance = p.chance
+        when {
+            chance != null -> {
+                append(" · ")
+                pushStyle(androidx.compose.ui.text.SpanStyle(color = colors.semaphore(qualityOf(chance)), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
+                append(fmt.percent(chance))
+                pop()
+            }
+            p.quality != null -> { append(" · "); append(ctx.getString(p.quality!!.label())) }
+        }
     }
     Surface(
         modifier,
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.94f),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text, Modifier.padding(horizontal = 12.dp, vertical = 7.dp), style = MaterialTheme.typography.labelMedium)
-            if (onPoint != null) {
-                IconButton(onClick = { onPoint(p.bearingDeg, p.grid) }, Modifier.size(36.dp)) {
-                    Icon(painterResource(R.drawable.ic_navigation), contentDescription = tr(R.string.compass_pointHere), Modifier.size(18.dp))
+        Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 2.dp)) {
+            Text(text, style = MaterialTheme.typography.labelMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.TextButton(onClick = { vm.probeToDestination() }, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp)) {
+                    Text(tr(R.string.map_setDestination), style = MaterialTheme.typography.labelLarge)
+                }
+                if (onPoint != null) {
+                    IconButton(onClick = { onPoint(p.bearingDeg, p.grid) }, Modifier.size(36.dp)) {
+                        Icon(painterResource(R.drawable.ic_navigation), contentDescription = tr(R.string.compass_pointHere), Modifier.size(18.dp))
+                    }
                 }
             }
         }
@@ -295,7 +327,7 @@ fun MapBox(
         if (state.mapWorking) {
             CircularProgressIndicator(Modifier.align(Alignment.BottomEnd).padding(14.dp).size(22.dp), strokeWidth = 2.5.dp)
         }
-        ProbeBubble(state, fmt, onPoint, Modifier.align(Alignment.BottomStart).padding(10.dp))
+        ProbeBubble(state, vm, fmt, onPoint, Modifier.align(Alignment.BottomStart).padding(10.dp))
     }
 }
 
@@ -443,7 +475,7 @@ fun FullScreenMap(
                             CircularProgressIndicator(Modifier.padding(10.dp).size(22.dp), strokeWidth = 2.5.dp)
                         }
                     }
-                    ProbeBubble(state, fmt, onPoint, Modifier.align(Alignment.BottomStart))
+                    ProbeBubble(state, vm, fmt, onPoint, Modifier.align(Alignment.BottomStart))
                 }
                 Surface(shape = RoundedCornerShape(28.dp), color = floating) {
                     Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { HourTrack(state, vm, fmt) }
