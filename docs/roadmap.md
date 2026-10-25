@@ -30,6 +30,24 @@ Linux:
 - **Forgejo / GitHub releases**: the Flatpak bundle and the AppImage, with the
   signed SHA256SUMS (done by the release workflow).
 
+## Windows and macOS
+
+Linux stays first; these are by-products of the same code.
+
+- **Windows**: `packaging/windows/build.sh` cross-compiles in a Fedora
+  container (MinGW GTK 4.21, libadwaita 1.7 built there) and bundles a zip.
+  It stops at the engine: hfcast-engine v2.14.0 uses
+  `std::os::unix::fs::symlink` in `src/runner.rs` (two places). The fix
+  belongs upstream (copy the files, or `std::os::windows::fs::symlink_file`,
+  under `cfg(windows)`); then move the pin (docs/decisions/0002-engine.md).
+  The location portal (ashpd) has no Windows backend: "Use my location"
+  would say it is unavailable, and typing a place still works.
+- **macOS**: the code should build as is (the engine is Unix-clean), but
+  GTK and libadwaita apps need a Mac to build and bundle (Homebrew, then an
+  .app made with gtk-mac-bundler or by hand) and, to open without warnings,
+  an Apple Developer ID to sign and notarise. A GitHub Actions macOS runner on
+  the mirror could do the build; untested.
+
 ## Later
 
 - **Prefetch more**: while the app is open it readies every hour's coarse map
