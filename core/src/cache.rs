@@ -7,7 +7,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::coverage::Grid;
@@ -82,10 +82,7 @@ impl DiskCache {
         let bytes = fs::read(&path).ok()?;
         let grid = decode(&bytes, key)?;
         // Touch it, so pruning keeps what is in use.
-        let _ = fs::File::options()
-            .append(true)
-            .open(&path)
-            .and_then(|f| f.set_modified(std::time::SystemTime::now()));
+        touch(&path);
         Some(grid)
     }
 
@@ -96,7 +93,11 @@ impl DiskCache {
         let path = self.path(key);
         let tmp = path.with_extension("tmp");
         if fs::write(&tmp, encode(grid, key)).is_ok() && fs::rename(&tmp, &path).is_ok() {
-            self.prune();
+            // Stamped by the same clock as `get`: the kernel's own write
+            // time is coarser, so a map read a moment earlier could look
+            // newer than this one.
+            touch(&path);
+            self.prune(&path);
         }
     }
 
@@ -124,7 +125,9 @@ impl DiskCache {
             .collect()
     }
 
-    fn prune(&self) {
+    /// Drops the least recently used until within budget, never `keep`
+    /// (the map just written).
+    fn prune(&self, keep: &Path) {
         let mut entries = self.entries();
         let mut total: u64 = entries.iter().map(|e| e.1).sum();
         if total <= self.budget_bytes {
@@ -135,11 +138,18 @@ impl DiskCache {
             if total <= self.budget_bytes {
                 break;
             }
-            if fs::remove_file(&path).is_ok() {
+            if path != keep && fs::remove_file(&path).is_ok() {
                 total -= len;
             }
         }
     }
+}
+
+fn touch(path: &Path) {
+    let _ = fs::File::options()
+        .append(true)
+        .open(path)
+        .and_then(|f| f.set_modified(std::time::SystemTime::now()));
 }
 
 /// Header, the key (so a hash collision reads as a miss), then one byte of
@@ -236,10 +246,16 @@ mod tests {
         assert_eq!(back.reliability[3], 0.72);
         assert!(back.takeoff_deg[0].is_nan() && back.takeoff_deg[5] == 12.5);
         assert!(cache.get("b").is_none());
-        // A tiny budget keeps only the newest.
+        // A tiny budget keeps only the newest, even straight after a read
+        // of the older one (the clocks once disagreed) and even when the
+        // newest alone is over budget.
         let small = DiskCache::new(dir.clone(), 100);
+        assert!(small.get("a").is_some());
         small.put("b", &grid);
         assert!(small.get("a").is_none() && small.get("b").is_some());
+        let tiny = DiskCache::new(dir.clone(), 1);
+        tiny.put("c", &grid);
+        assert!(tiny.get("c").is_some() && tiny.get("b").is_none());
         small.clear();
         assert_eq!(small.size(), 0);
     }
