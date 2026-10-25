@@ -16,8 +16,8 @@
     <string name="menu_open">Menú principal</string>
     <string name="status_live">En directe</string>
     <string name="status_offline">Sense connexió</string>
-    <string name="status_liveHint">Usa lectures solars de les {time} UTC.</string>
-    <string name="status_offlineHint">Sense lectures en directe: esta previsió usa condicions típiques.</string>
+    <string name="status_liveHint">Utilitza lectures solars de les {time} UTC.</string>
+    <string name="status_offlineHint">Sense lectures en directe: esta previsió utilitza condicions típiques.</string>
     <string name="status_loading">Calculant la previsió</string>
     <string name="status_errorTitle">No hi ha previsió</string>
     <string name="status_errorBody">No s\'ha pogut calcular la previsió.</string>
@@ -81,7 +81,7 @@
     <string name="spaceWeather_updated">Actualitzat a les {time} UTC</string>
     <string name="spaceWeather_asOf">Lectura de les {time} UTC</string>
     <string name="spaceWeather_stale">Última lectura. Una tempesta posterior no apareixeria ací</string>
-    <string name="spaceWeather_unavailable">Encara no hi ha lectures en directe. La previsió usa condicions típiques per a la data.</string>
+    <string name="spaceWeather_unavailable">Encara no hi ha lectures en directe. La previsió utilitza condicions típiques per a la data.</string>
     <string name="spaceWeather_networkOff">La xarxa està desactivada en Preferències, així que no hi ha lectures en directe.</string>
     <string name="spaceWeather_measuredTitle">Ionosonda més pròxima · foF2 {value}</string>
     <string name="spaceWeather_measuredSub">{station}, a {distance} · mesurat a les {time} UTC</string>
@@ -113,7 +113,7 @@
     <string name="location_title">Tria un trajecte</string>
     <string name="location_from">Des de</string>
     <string name="location_to">Fins a</string>
-    <string name="location_useDevice">Usa la meua ubicació</string>
+    <string name="location_useDevice">Utilitza la meua ubicació</string>
     <string name="location_locating">Buscant la teua ubicació…</string>
     <string name="location_searchPlaceholder">Població, coordenades o quadrícula</string>
     <string name="location_searchOnline">Busca «{query}» a internet</string>
@@ -131,7 +131,7 @@
     <string name="firstRun_kicker">La teua ubicació</string>
     <string name="firstRun_title">Des d\'on transmets?</string>
     <string name="firstRun_subtitle">Totes les previsions es calculen des d\'ací. Pots canviar-ho quan vulgues.</string>
-    <string name="firstRun_useGps">Usa la meua ubicació actual</string>
+    <string name="firstRun_useGps">Utilitza la meua ubicació actual</string>
     <string name="firstRun_orType">O escriu-ho</string>
     <string name="firstRun_formats">Lloc · coordenades · quadrícula</string>
     <string name="firstRun_formatsHint">Toca un exemple per a veure com s\'interpreta.</string>
@@ -227,7 +227,7 @@
     <string name="preferences_model_voacap">VOACAP</string>
     <string name="preferences_model_voacapHint">El model mensual clàssic, reproduït fidelment.</string>
     <string name="preferences_privacy">Xarxa</string>
-    <string name="preferences_network">Usa la xarxa</string>
+    <string name="preferences_network">Utilitza la xarxa</string>
     <string name="preferences_networkHint">Per a les lectures solars de NOAA, les mesures d\'ionosondes de GIRO i la busca de llocs d\'Open-Meteo. Les previsions no la necessiten mai.</string>
     <string name="preferences_storage">Mapes guardats</string>
     <string name="preferences_keepMaps">Guarda els mapes calculats</string>
@@ -237,11 +237,11 @@
     <string name="preferences_forgotten">S\'han esborrat els mapes guardats.</string>
     <string name="help_title">Com es fa la previsió</string>
     <string name="help_engine_heading">D\'on ixen els números</string>
-    <string name="help_engine_body" formatted="false">Cada previsió es calcula en este dispositiu amb la física de VOACAP, un model de propagació que s\'usa des de fa dècades. Res de la teua estació ni del teu trajecte ix del dispositiu.\n\nHi ha dos models, amb la mateixa física davall:\n\nVOACAP, escrit per l\'Institut de Ciències de Telecomunicació dels EUA i reproduït fidelment ací, defectes inclosos. Descriu un dia típic del mes, així que les 4 de la vesprada d\'este dimarts són iguals que les d\'este dijous.\n\nTruecast, el model per defecte, partix del que fa la ionosfera eixe dia. Comparat dia a dia amb mesures reals des de 2015, va encertar més que VOACAP el 77 % dels dies.</string>
+    <string name="help_engine_body" formatted="false">Cada previsió es calcula en este dispositiu amb la física de VOACAP, un model de propagació que s\'utilitza des de fa dècades. Res de la teua estació ni del teu trajecte ix del dispositiu.\n\nHi ha dos models, amb la mateixa física davall:\n\nVOACAP, escrit per l\'Institut de Ciències de Telecomunicació dels EUA i reproduït fidelment ací, defectes inclosos. Descriu un dia típic del mes, així que les 4 de la vesprada d\'este dimarts són iguals que les d\'este dijous.\n\nTruecast, el model per defecte, partix del que fa la ionosfera eixe dia. Comparat dia a dia amb mesures reals des de 2015, va encertar més que VOACAP el 77 % dels dies.</string>
     <string name="help_truecast_heading">Truecast</string>
-    <string name="help_truecast_body">Truecast aplica la física de VOACAP a un nombre de taques diari calculat a partir d\'ionosondes, una taula de tempestes magnètiques i una millor estimació de l\'altura on rebota el senyal.\n\nEs va construir i comprovar amb lectures d\'ionosondes d\'un cicle solar complet i després es va puntuar en huit mesos que no havia vist. Va eliminar el biaix de mes a mes de VOACAP i es va acostar més a les mesures en set d\'ells.\n\nSense xarxa usa una correcció incorporada per a l\'època de l\'any, que continua millorant la mitjana mensual. Pots canviar a VOACAP en Preferències quan vulgues.</string>
+    <string name="help_truecast_body">Truecast aplica la física de VOACAP a un nombre de taques diari calculat a partir d\'ionosondes, una taula de tempestes magnètiques i una millor estimació de l\'altura on rebota el senyal.\n\nEs va construir i comprovar amb lectures d\'ionosondes d\'un cicle solar complet i després es va puntuar en huit mesos que no havia vist. Va eliminar el biaix de mes a mes de VOACAP i es va acostar més a les mesures en set d\'ells.\n\nSense xarxa utilitza una correcció incorporada per a l\'època de l\'any, que continua millorant la mitjana mensual. Pots canviar a VOACAP en Preferències quan vulgues.</string>
     <string name="help_ssn_heading">El nombre de taques solars</string>
-    <string name="help_ssn_body">El nombre de taques solars és el que més influïx en la previsió: les bandes, les hores i els trajectes depenen d\'ell.\n\nLes xifres de cada mes de {first} a {last} hi vénen incloses, així que la previsió no necessita xarxa. Els mesos futurs usen la predicció publicada per NOAA.\n\nQuan hi ha lectures solars de menys de {hours} hores, s\'usen en el seu lloc.</string>
+    <string name="help_ssn_body">El nombre de taques solars és el que més influïx en la previsió: les bandes, les hores i els trajectes depenen d\'ell.\n\nLes xifres de cada mes de {first} a {last} hi vénen incloses, així que la previsió no necessita xarxa. Els mesos futurs utilitzen la predicció publicada per NOAA.\n\nQuan hi ha lectures solars de menys de {hours} hores, s\'utilitzen en el seu lloc.</string>
     <string name="help_colours_heading">Què volen dir els colors</string>
     <string name="help_colours_body">Un color és la probabilitat de fer el contacte, no la força amb què arribarà el senyal. Fiable vol dir unes {reliable} vegades de cada 100 o més; irregular, almenys {patchy} de cada 100, i feble, almenys {weak} de cada 100. Per davall, la banda es considera tancada.\n\nEls números es corregixen com va mesurar el projecte HFcast amb mesos d\'informes reals de WSPR: l\'oscil·lació diària de VOACAP i la seua dispersió d\'un dia a un altre són més grans que el que passa en realitat.</string>
     <string name="help_map_heading">Com es dibuixa el mapa</string>
@@ -278,7 +278,7 @@
     <string name="map_fullscreen">Mapa a pantalla completa</string>
     <string name="map_exitFullscreen">Eixir de la pantalla completa</string>
     <string name="map_clearSelection">Toca la cel·la una altra volta per a llevar-la.</string>
-    <string name="status_liveExplain">En directe: la previsió s\'ajusta al sol i a l\'activitat geomagnètica mesurats hui (NOAA). Sense connexió, usa les condicions típiques del mes.</string>
+    <string name="status_liveExplain">En directe: la previsió s\'ajusta al sol i a l\'activitat geomagnètica mesurats hui (NOAA). Sense connexió, utilitza les condicions típiques del mes.</string>
     <string name="compass_open">Orientar l\'antena amb la brúixola</string>
     <string name="compass_title">Orientar l\'antena</string>
     <string name="compass_measureTitle">Mesurar la direcció</string>
@@ -294,7 +294,7 @@
     <string name="compass_calibrate">La brúixola no és fiable ara. Mou el telèfon dibuixant un huit per a calibrar-la.</string>
     <string name="compass_declination">Els rumbs són al nord geogràfic; ací es corregixen {degrees}° de declinació magnètica.</string>
     <string name="compass_measure">Mesurar amb la brúixola</string>
-    <string name="compass_use">Usar {degrees}°</string>
+    <string name="compass_use">Utilitzar {degrees}°</string>
     <string name="compass_lobes">Lòbuls de la teua antena</string>
     <string name="compass_pointHere">Apuntar ací</string>
 </resources>

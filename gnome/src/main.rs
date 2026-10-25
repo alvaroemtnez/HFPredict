@@ -199,10 +199,7 @@ fn main() -> glib::ExitCode {
         // Every handler holds the window weakly; the window itself holds the
         // one strong reference until it is destroyed (GTK drops signal
         // handlers on dispose, which breaks the cycle).
-        let keep = RefCell::new(Some(w.clone()));
-        w.window.connect_destroy(move |_| {
-            keep.borrow_mut().take();
-        });
+        app::keep_alive(&w.window, w.clone());
         install_actions(application, &w);
         set_dynamic_css(&app);
         app.listen(|app, change| {
@@ -365,6 +362,31 @@ fn screenshot_hook(w: &Rc<Window>) {
             a.activate_action(action, None);
         }
     });
+    // `HFPREDICT_SEARCH=text` types into the first search box on screen
+    // (first run or the path dialog), as a reader would.
+    if let Ok(text) = std::env::var("HFPREDICT_SEARCH") {
+        let window = w.window.clone();
+        glib::timeout_add_local_once(Duration::from_millis(3000), move || {
+            fn find(w: &gtk::Widget) -> Option<gtk::SearchEntry> {
+                if let Some(e) = w.downcast_ref::<gtk::SearchEntry>()
+                    && e.is_mapped()
+                {
+                    return Some(e.clone());
+                }
+                let mut child = w.first_child();
+                while let Some(c) = child {
+                    if let Some(e) = find(&c) {
+                        return Some(e);
+                    }
+                    child = c.next_sibling();
+                }
+                None
+            }
+            if let Some(e) = find(window.upcast_ref()) {
+                e.set_text(&text);
+            }
+        });
+    }
     let window = w.window.clone();
     glib::timeout_add_local_once(Duration::from_secs(delay), move || {
         let window = &window;

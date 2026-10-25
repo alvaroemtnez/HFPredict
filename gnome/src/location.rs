@@ -106,6 +106,8 @@ impl Search {
             serial: Cell::new(0),
             results: RefCell::new(vec![]),
         });
+        // The entry owns the search: callers keep only its widgets.
+        app::keep_alive(&search.entry, search.clone());
         let pick = Rc::new(pick);
         {
             let s = Rc::downgrade(&search);

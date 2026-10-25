@@ -277,6 +277,7 @@ pub fn open(w: &Rc<Window>) {
         aim,
         align,
     });
+    crate::app::keep_alive(&dialog, ed.clone());
     ed.wire(&dialog, &cancel, &save, &add, &names);
     ed.fill(&names);
     dialog.present(Some(&w.window));

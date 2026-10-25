@@ -39,6 +39,18 @@ pub fn unix_now() -> i64 {
         .map_or(0, |d| d.as_secs() as i64)
 }
 
+/// Keeps `value` alive as long as `widget` lives. UI objects here hand
+/// their signal handlers weak references to themselves, so something must
+/// hold the strong one: the widget they belong to (GTK drops the handler,
+/// and with it the value, when the widget is destroyed).
+pub fn keep_alive<T: 'static>(widget: &impl gtk::prelude::IsA<gtk::Widget>, value: Rc<T>) {
+    use gtk::prelude::WidgetExt;
+    let cell = RefCell::new(Some(value));
+    widget.as_ref().connect_destroy(move |_| {
+        cell.borrow_mut().take();
+    });
+}
+
 /// Runs `work` on a worker thread and `done` with its answer on the main
 /// loop. A panic in `work` is dropped (the UI shows the previous state).
 pub fn spawn<T: Send + 'static>(
