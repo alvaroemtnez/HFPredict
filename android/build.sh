@@ -5,6 +5,7 @@
 #
 #   debug       build the debug APK -> dist/hfpredict-debug.apk
 #   release     build the release APKs, signed if HFPREDICT_KEYSTORE is set
+#   accrescent  build the signed APK set (.apks) Accrescent takes (needs HFPREDICT_KEYSTORE)
 #   install     build the debug APK and install it on the connected phone
 #   run         install, then launch the app and follow its log
 #   logcat      follow the log of the running app
@@ -52,14 +53,21 @@ ADB="$SDK_DIR/platform-tools/adb"
 ANDROID_CLI="$SDK_DIR/cmdline-tools/latest/bin/android"
 
 # Make every tool use the copies in .tools/, regardless of what the system has.
-export JAVA_HOME="$JDK_DIR"
-export ANDROID_HOME="$SDK_DIR"
-unset ANDROID_SDK_ROOT
-export GRADLE_USER_HOME="$TOOLS_DIR/gradle"
-# Instead of ~/.android: AGP's debug keystore, the Android CLI and its caches.
-# (adb ignores it and keeps its key in ~/.android/adbkey.)
-export ANDROID_USER_HOME="$TOOLS_DIR/android-user"
-export PATH="$JDK_DIR/bin:$SDK_DIR/platform-tools:$PATH"
+# HFP_EXTERNAL_SDK=1 uses the JDK, SDK and NDK the environment provides
+# instead (JAVA_HOME, ANDROID_HOME, ANDROID_NDK_HOME): F-Droid's build
+# servers bring their own and run only `build.sh rust` before Gradle.
+if [ -n "${HFP_EXTERNAL_SDK:-}" ]; then
+    SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+else
+    export JAVA_HOME="$JDK_DIR"
+    export ANDROID_HOME="$SDK_DIR"
+    unset ANDROID_SDK_ROOT
+    export GRADLE_USER_HOME="$TOOLS_DIR/gradle"
+    # Instead of ~/.android: AGP's debug keystore, the Android CLI and its caches.
+    # (adb ignores it and keeps its key in ~/.android/adbkey.)
+    export ANDROID_USER_HOME="$TOOLS_DIR/android-user"
+    export PATH="$JDK_DIR/bin:$SDK_DIR/platform-tools:$PATH"
+fi
 
 info() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31mError:\033[0m %s\n' "$*" >&2; exit 1; }
@@ -149,7 +157,9 @@ setup_sdk() {
 setup_rust() {
     eval "$("$ROOT_DIR/tools/rust.sh" env)"
     export CARGO_TARGET_DIR="$ROOT_DIR/target/android"
-    export ANDROID_NDK_HOME="$SDK_DIR/ndk/$(gradle_value ndkVersion)"
+    if [ -z "${HFP_EXTERNAL_SDK:-}" ] || [ -z "${ANDROID_NDK_HOME:-}" ]; then
+        export ANDROID_NDK_HOME="$SDK_DIR/ndk/$(gradle_value ndkVersion)"
+    fi
     if ! command -v cargo-ndk >/dev/null || [ "$(cargo ndk --version 2>/dev/null | awk '{print $2}')" != "$CARGO_NDK_VERSION" ]; then
         info "Installing cargo-ndk $CARGO_NDK_VERSION into ../.tools/cargo"
         cargo install --locked --quiet cargo-ndk --version "$CARGO_NDK_VERSION"
@@ -238,6 +248,44 @@ build_release() {
     done
     [ -z "${HFPREDICT_KEYSTORE:-}" ] && info "HFPREDICT_KEYSTORE not set: APKs left unsigned in $DIST_DIR"
     ls -la "$DIST_DIR"
+}
+
+# Accrescent takes an APK set: split APKs that bundletool cuts from the app
+# bundle, signed by us with the release key (v2+, one signer).
+BUNDLETOOL_VERSION=1.18.3
+BUNDLETOOL_SHA256=a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29
+build_accrescent() {
+    [ -n "${HFPREDICT_KEYSTORE:-}" ] || die "Accrescent never takes a debug-signed app: set HFPREDICT_KEYSTORE (docs/releasing.md)."
+    setup
+    local jar="$TOOLS_DIR/bundletool-$BUNDLETOOL_VERSION.jar"
+    if [ ! -f "$jar" ]; then
+        info "Downloading bundletool $BUNDLETOOL_VERSION"
+        fetch_verified "https://github.com/google/bundletool/releases/download/$BUNDLETOOL_VERSION/bundletool-all-$BUNDLETOOL_VERSION.jar" "$jar" "$BUNDLETOOL_SHA256"
+    fi
+    build_rust "$ALL_ABIS"
+    info "Building the app bundle"
+    gradle bundleRelease -Phfp.bundle
+    local v out pass
+    v="$(version)"
+    out="$DIST_DIR/HFPredict-$v.apks"
+    mkdir -p "$DIST_DIR"
+    rm -f "$out"
+    # bundletool reads passwords from files, never the command line.
+    pass="$(mktemp)"
+    trap 'rm -f "$pass" "$pass.key"' RETURN
+    chmod 600 "$pass"
+    local args=(build-apks --bundle "$ANDROID_DIR/app/build/outputs/bundle/release/app-release.aab"
+                --output "$out" --ks "$HFPREDICT_KEYSTORE" --ks-key-alias "${HFPREDICT_KEY_ALIAS:-hfpredict}")
+    if [ -n "${HFPREDICT_KEYSTORE_PASS:-}" ]; then
+        printf '%s' "$HFPREDICT_KEYSTORE_PASS" >"$pass"
+        args+=(--ks-pass "file:$pass")
+    fi
+    if [ -n "${HFPREDICT_KEY_PASS:-}" ]; then
+        printf '%s' "$HFPREDICT_KEY_PASS" >"$pass.key"
+        args+=(--key-pass "file:$pass.key")
+    fi
+    "$JAVA_HOME/bin/java" -jar "$jar" "${args[@]}"
+    info "APK set for the Accrescent console: $out"
 }
 
 install_debug() {
@@ -338,6 +386,7 @@ distclean() {
 case "${1:-debug}" in
     debug) build_debug ;;
     release) build_release ;;
+    accrescent) build_accrescent ;;
     install) install_debug ;;
     run) run_app ;;
     logcat) logcat ;;
@@ -345,7 +394,10 @@ case "${1:-debug}" in
     gradle) shift; setup; gradle "$@" ;;
     env) print_env ;;
     setup) setup ;;
-    rust) setup; build_rust "${HFP_ABIS:-$ALL_ABIS}" ;;
+    rust)
+        [ -n "${HFP_EXTERNAL_SDK:-}" ] || setup
+        build_rust "${HFP_ABIS:-$ALL_ABIS}"
+        ;;
     emulator) shift; emulator "$@" ;;
     shots) shift; shots "$@" ;;
     clean) clean ;;

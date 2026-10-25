@@ -18,21 +18,15 @@ Release assets on Forgejo (mirrored to GitHub) are the base everything else
 builds on.
 
 Android:
-- **Obtainium**: works today from the release APKs (per-ABI and universal);
-  keep the asset names stable.
-- **F-Droid**: metadata in fdroiddata (or our own repo first). Wants a build
-  from source with no prebuilt binaries: the Rust core through cargo-ndk in
-  their recipe, the engine's git dependency pinned by commit (it already is).
-  Reproducible builds let F-Droid ship our signature.
-- **Accrescent**: takes an APK set made by bundletool (1.11.4 or later) from a
-  signed app bundle, 128 MiB at most, never debug-signed; a reviewer checks
-  that every permission is needed. Needs `bundleRelease` plus a bundletool
-  step in `android/build.sh release`, the release key, and a developer
-  console account.
+- **Obtainium**: works today from the release APKs.
+- **F-Droid**: recipe and store text ready (docs/releasing.md, "F-Droid");
+  submit the merge request to fdroiddata once v0.1.0 is tagged.
+- **Accrescent**: `android/build.sh accrescent` builds the signed APK set;
+  register in the developer console and upload.
 
 Linux:
-- **Flathub**: flatpak-cargo-generator sources instead of the local vendor
-  step; metainfo screenshots and release notes are in place.
+- **Flathub**: the manifest must be written by hand (Flathub's AI policy;
+  docs/releasing.md, "Flathub"); the metainfo is ready.
 - **Forgejo / GitHub releases**: the Flatpak bundle and the AppImage, with the
   signed SHA256SUMS (done by the release workflow).
 

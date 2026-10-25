@@ -41,7 +41,8 @@ android {
         abi {
             // One APK per ABI (smaller downloads, what Obtainium picks from)
             // and one universal APK.
-            isEnable = true
+            // Off for the app bundle (Accrescent), which bundletool splits itself.
+            isEnable = !project.hasProperty("hfp.bundle")
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86_64")
             isUniversalApk = true

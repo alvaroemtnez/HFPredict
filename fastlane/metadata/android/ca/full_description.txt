@@ -1,0 +1,16 @@
+HFPredict et diu quines bandes de radioafició arribaran a un lloc, hora a hora, i quina probabilitat de contacte hi ha en cadascuna. Tria un lloc, una banda, descriu el teu equip i obtín una previsió calculada al teu propi mòbil. Sense compte, sense rastreig, sense anuncis i sense necessitat de xarxa.
+
+<b>Què mostra</b>
+<ul>
+<li>Un mapa d'on arriba la banda triada a cada hora, en totes les direccions, amb la zona de silenci i la cobertura d'incidència quasi vertical (NVIS). Toca un punt per a veure'n el locator, la distància, el rumb i la qualitat; obri el mapa a pantalla completa.</li>
+<li>Totes les bandes a totes les hores del dia, com a probabilitat de contacte amb un lloc o com a part de les direccions abastades.</li>
+<li>La finestra utilitzable, de la freqüència més baixa a la més alta.</li>
+<li>La teua estació: mode, potència i una antena amb altura i direcció; guarda'n diverses.</li>
+<li>Orienta l'antena amb la brúixola del mòbil: cap al destí (camí curt o llarg), cap a un punt del mapa, o mesura on apunta una antena fixa.</li>
+<li>Les lectures solars de hui i la mesura de la ionosonda més pròxima, quan hi ha connexió.</li>
+</ul>
+
+<b>Com</b>
+Les previsions ixen del motor HFcast: una traducció fidel de VOACAP, el model que l'Institut de Ciències de Telecomunicació dels EUA manté des de fa dècades, i Truecast, que ajusta la mateixa física al dia. Tots dos funcionen al dispositiu. Amb connexió, l'aplicació llig les condicions solars de NOAA i la ionosonda més pròxima de GIRO; la busca de llocs pot consultar Open-Meteo. Tot es pot desactivar en Preferències.
+
+Temes clar, fosc i de poca llum (roig tènue, per a conservar la visió nocturna) que seguixen els colors del teu fons de pantalla. En anglés, espanyol, valencià, alemany, japonés i àrab.

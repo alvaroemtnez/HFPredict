@@ -134,12 +134,56 @@ packaging/appimage/build.sh       # dist/
 (cd dist && cp ../android/dist/*.apk . && sha256sum * > SHA256SUMS && gpg --armor --detach-sign SHA256SUMS)
 ```
 
-## Later: Flathub and F-Droid
+## App stores
 
-- **Flathub** needs the manifest in a Flathub repository, with the cargo
-  sources listed through `flatpak-cargo-generator` instead of the local vendor
-  directory `packaging/flatpak/build.sh` uses. The engine's coefficient maps
-  come from the pinned git checkout, which Flathub's builder fetches the same
-  way.
-- **F-Droid** builds from source. The script-based build and the pinned
-  toolchain already fit; it needs a metadata file and the NDK version recorded.
+Everything the stores read from the repository is in place; what is left
+is accounts and submissions, which are yours to do. Each store has its own
+policy on AI-written code, and this app was written with an AI assistant:
+read the current policy before submitting and disclose it where asked.
+
+### Obtainium
+
+Nothing to do: it reads the release APKs from Forgejo or the GitHub mirror.
+Keep the asset names (`HFPredict-<version>-<abi>.apk`) stable.
+
+### F-Droid
+
+- Store text, icon, screenshots and per-version changelogs:
+  `fastlane/metadata/android/<locale>/` (en-US, es-ES, ca; the other
+  languages fall back to English). Add `changelogs/<versionCode>.txt` with
+  every release (500 characters at most).
+- Build recipe: `packaging/fdroid/io.alvaroedo.HFPredict.yml`. F-Droid
+  brings its own JDK, SDK and NDK; the recipe runs
+  `HFP_EXTERNAL_SDK=1 android/build.sh rust` with them, then Gradle.
+- Submit: fork https://gitlab.com/fdroid/fdroiddata, copy the recipe to
+  `metadata/`, check it with `fdroid lint` and `fdroid build -v -l
+  io.alvaroedo.HFPredict` (their docker image), open a merge request.
+- After the first release, reproducible builds let F-Droid ship our
+  signature instead of theirs: add `AllowedAPKSigningKeys` with the
+  certificate's SHA-256 from docs/verifying.md.
+- IzzyOnDroid, the other F-Droid repository, does not take apps written
+  with generative AI.
+
+### Accrescent
+
+- `HFPREDICT_KEYSTORE=… android/build.sh accrescent` builds
+  `android/dist/HFPredict-<version>.apks`: the app bundle split by bundletool
+  (pinned, downloaded into `android/.tools/`) and signed with the release
+  key (v2 and v3 signatures, one signer). Accrescent never takes a
+  debug-signed app.
+- Register in the developer console, then upload the `.apks`. The two
+  permissions (internet, coarse location) are both explained in the manifest
+  for the reviewer; location is one Accrescent reviews by hand.
+
+### Flathub
+
+- Flathub (October 2026) accepts AI-assisted apps with disclosure, but the
+  Flathub manifest itself must not be AI-generated or AI-assisted, and the
+  submission pull request, its description and the replies must be written
+  by a person. So the Flathub manifest is yours to write: use
+  `packaging/flatpak/io.alvaroedo.HFPredict.yml` only as a reference for what
+  the app needs (GNOME 51 runtime, Rust SDK extension, network and display
+  permissions), and list the cargo sources with `flatpak-cargo-generator`
+  instead of the local vendor step.
+- The metainfo (`gnome/data/io.alvaroedo.HFPredict.metainfo.xml`) with
+  screenshots and release notes, the desktop file and the icons are ready.

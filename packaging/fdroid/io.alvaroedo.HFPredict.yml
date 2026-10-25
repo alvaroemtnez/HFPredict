@@ -1,0 +1,43 @@
+# Draft build recipe for F-Droid's fdroiddata repository
+# (https://gitlab.com/fdroid/fdroiddata, metadata/io.alvaroedo.HFPredict.yml).
+# Copy it there in a merge request; see docs/releasing.md, "F-Droid".
+# The store text, icon and screenshots are read from fastlane/ in this repo.
+Categories:
+  - Science & Education
+License: GPL-3.0-or-later
+AuthorName: Álvaro Edo Martínez
+WebSite: https://code.alvaroedo.io/alvaroemtnez/HFPredict
+SourceCode: https://code.alvaroedo.io/alvaroemtnez/HFPredict
+IssueTracker: https://code.alvaroedo.io/alvaroemtnez/HFPredict/issues
+Changelog: https://code.alvaroedo.io/alvaroemtnez/HFPredict/src/branch/main/CHANGELOG.md
+
+AutoName: HFPredict
+
+RepoType: git
+Repo: https://code.alvaroedo.io/alvaroemtnez/HFPredict.git
+
+Builds:
+  - versionName: 0.1.0
+    # 1.2.3 -> 10203 (android/app/build.gradle.kts).
+    versionCode: 100
+    commit: v0.1.0
+    subdir: android/app
+    sudo:
+      - apt-get update
+      - apt-get install -y curl
+    # The universal APK; F-Droid serves one APK per version.
+    output: build/outputs/apk/release/app-universal-release-unsigned.apk
+    build:
+      # The Rust core and its Kotlin bindings, with F-Droid's SDK and NDK.
+      # tools/rust.sh fetches the Rust toolchain pinned in
+      # rust-toolchain.toml; cargo-ndk is built from source.
+      - cd ../..
+      - HFP_EXTERNAL_SDK=1 ANDROID_NDK_HOME=$$NDK$$ android/build.sh rust
+    gradle:
+      - yes
+    ndk: 30.0.16248370
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9.]+$
+CurrentVersion: 0.1.0
+CurrentVersionCode: 100

@@ -1,0 +1,16 @@
+HFPredict te dice qué bandas de radioaficionado llegarán a un lugar, hora a hora, y qué probabilidad de contacto hay en cada una. Elige un lugar, una banda, describe tu equipo y obtén una previsión calculada en tu propio móvil. Sin cuenta, sin rastreo, sin anuncios y sin necesidad de red.
+
+<b>Qué muestra</b>
+<ul>
+<li>Un mapa de adónde llega la banda elegida a cada hora, en todas las direcciones, con la zona de silencio y la cobertura de incidencia casi vertical (NVIS). Toca un punto para ver su locator, distancia, rumbo y calidad; abre el mapa a pantalla completa.</li>
+<li>Todas las bandas a todas las horas del día, como probabilidad de contacto con un lugar o como parte de las direcciones alcanzadas.</li>
+<li>La ventana utilizable, de la frecuencia más baja a la más alta.</li>
+<li>Tu estación: modo, potencia y una antena con altura y dirección; guarda varias estaciones.</li>
+<li>Orienta la antena con la brújula del móvil: hacia el destino (camino corto o largo), hacia un punto del mapa, o mide adónde apunta una antena fija.</li>
+<li>Las lecturas solares de hoy y la medida de la ionosonda más cercana, cuando hay conexión.</li>
+</ul>
+
+<b>Cómo</b>
+Las previsiones salen del motor HFcast: una traducción fiel de VOACAP, el modelo que el Instituto de Ciencias de Telecomunicación de EE. UU. mantiene desde hace décadas, y Truecast, que ajusta la misma física al día. Ambos funcionan en el dispositivo. Con conexión, la app lee las condiciones solares de NOAA y la ionosonda más cercana de GIRO; la búsqueda de lugares puede consultar Open-Meteo. Todo se puede desactivar en Preferencias.
+
+Temas claro, oscuro y de poca luz (rojo tenue, para conservar la visión nocturna) que siguen los colores de tu fondo de pantalla. En inglés, español, valenciano, alemán, japonés y árabe.

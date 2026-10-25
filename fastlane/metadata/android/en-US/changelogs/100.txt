@@ -1,0 +1,1 @@
+First release: forecasts on your device with Truecast or VOACAP, a coverage map hour by hour, every band at every hour, your station and antenna, antenna pointing with the compass, legal local time, live solar readings when online, light, dark and low-light themes, six languages.

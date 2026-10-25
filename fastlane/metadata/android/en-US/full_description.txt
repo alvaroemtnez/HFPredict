@@ -1,0 +1,16 @@
+HFPredict tells you which amateur radio bands will reach a place, hour by hour, and how likely a contact is on each. Pick a place, pick a band, describe your radio, and get a forecast worked out on your own phone. No account, no tracking, no ads, and no network needed.
+
+<b>What it shows</b>
+<ul>
+<li>A map of where the selected band reaches at each hour, in every direction, with the dead zone and near-vertical (NVIS) coverage marked. Tap a spot for its locator, distance, bearing and quality; open the map full screen.</li>
+<li>Every band at every hour of the day, as a chance of contact to one place or as the share of directions reached.</li>
+<li>The usable window, from the lowest to the highest usable frequency.</li>
+<li>Your station: mode, power, and an antenna with height and direction; keep several stations.</li>
+<li>Point your antenna with the phone's compass: at the destination (short or long path), at a spot on the map, or measure where a fixed antenna points.</li>
+<li>Today's solar readings and the nearest ionosonde measurement, when online.</li>
+</ul>
+
+<b>How</b>
+Forecasts come from the HFcast engine: a faithful translation of VOACAP, the model the US Institute for Telecommunication Sciences has maintained for decades, and Truecast, which tunes the same physics to the day. Both run on the device. Online, the app reads current solar conditions from NOAA and the nearest ionosonde from GIRO; place search can ask Open-Meteo. All of it can be switched off in Preferences.
+
+Light, dark and low-light (dim red, for your night vision) themes follow your wallpaper's colours. English, Spanish, Valencian, German, Japanese and Arabic.

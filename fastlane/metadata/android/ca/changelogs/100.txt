@@ -1,0 +1,1 @@
+Primera versió: previsions al teu dispositiu amb Truecast o VOACAP, mapa de cobertura hora a hora, totes les bandes a totes les hores, la teua estació i antena, orientació de l'antena amb la brúixola, hora local legal, lectures solars en directe amb connexió, temes clar, fosc i de poca llum, sis llengües.
