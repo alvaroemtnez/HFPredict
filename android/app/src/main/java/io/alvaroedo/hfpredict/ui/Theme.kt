@@ -97,7 +97,7 @@ private fun Color.argb(): UInt = toArgb().toUInt()
 fun mapColors(scheme: ColorScheme, dark: Boolean, lowLight: Boolean): MapColors {
     // Three steps of the primary tone, strongest where the band is surest.
     val reliable = if (dark) scheme.primary else lerp(scheme.primary, Color.Black, 0.15f)
-    val weak = if (dark) lerp(scheme.primaryContainer, scheme.surface, 0.15f) else scheme.primaryContainer
+    val weak = if (dark) lerp(scheme.primaryContainer, scheme.primary, 0.3f) else scheme.primaryContainer
     val patchy = lerp(weak, reliable, if (dark) 0.5f else 0.55f)
     val closed = scheme.onSurface.copy(alpha = 0.07f)
     val disc = if (dark) scheme.surfaceContainerLowest else scheme.surfaceContainerHigh
@@ -119,6 +119,14 @@ fun mapColors(scheme: ColorScheme, dark: Boolean, lowLight: Boolean): MapColors 
 }
 
 val LocalMapColors = staticCompositionLocalOf { mapColors(TealDark, dark = true, lowLight = false) }
+
+/** Whether the app draws dark, which the system bars must follow. */
+@Composable
+fun isAppDark(theme: Theme): Boolean = when (theme) {
+    Theme.SYSTEM -> isSystemInDarkTheme()
+    Theme.LIGHT -> false
+    Theme.DARK, Theme.LOW_LIGHT -> true
+}
 
 @Composable
 fun HfpTheme(theme: Theme, content: @Composable () -> Unit) {

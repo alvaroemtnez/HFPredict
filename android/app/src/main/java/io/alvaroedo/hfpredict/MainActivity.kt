@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.LocaleList
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -32,6 +33,7 @@ import io.alvaroedo.hfpredict.ui.AboutScreen
 import io.alvaroedo.hfpredict.ui.FirstRunScreen
 import io.alvaroedo.hfpredict.ui.HelpScreen
 import io.alvaroedo.hfpredict.ui.HfpTheme
+import io.alvaroedo.hfpredict.ui.isAppDark
 import io.alvaroedo.hfpredict.ui.MainScreen
 import io.alvaroedo.hfpredict.ui.Overlay
 import io.alvaroedo.hfpredict.ui.PathScreen
@@ -105,6 +107,15 @@ class MainActivity : ComponentActivity() {
                         delay(60_000)
                     }
                 }
+            }
+            // The system bars follow the app's theme, not the system's.
+            val dark = isAppDark(state.saved.settings.theme)
+            LaunchedEffect(dark) {
+                val transparent = android.graphics.Color.TRANSPARENT
+                enableEdgeToEdge(
+                    statusBarStyle = if (dark) SystemBarStyle.dark(transparent) else SystemBarStyle.light(transparent, transparent),
+                    navigationBarStyle = if (dark) SystemBarStyle.dark(transparent) else SystemBarStyle.light(transparent, transparent),
+                )
             }
             HfpTheme(state.saved.settings.theme) {
                 val locale = resources.configuration.locales[0]

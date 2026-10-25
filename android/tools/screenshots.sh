@@ -49,9 +49,8 @@ tap_menu() { # opens a dialog through the overflow menu: $1 item index (0-based)
 phone() { adb shell wm size reset; adb shell wm density reset; }
 tablet() { adb shell wm size 2560x1600; adb shell wm density 320; }
 
-want() { [ $# -eq 0 ] || [[ " $* " == *" $1 "* ]]; }
-ALL=("$@")
-run() { want "$1" ${ALL[@]+"${ALL[@]}"}; }
+ONLY=" $* "
+run() { [ "$ONLY" = "  " ] || [[ "$ONLY" == *" $1 "* ]]; }
 
 phone
 if run phone_dark; then adb shell cmd uimode night yes; prepare system "$TOKYO"; shot phone_dark 10; fi
