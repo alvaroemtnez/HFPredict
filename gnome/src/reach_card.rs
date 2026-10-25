@@ -283,12 +283,13 @@ impl ReachCard {
                             continue;
                         };
                         e.used.set(app.next_use());
-                        // Half a pixel of overlap hides the seams.
+                        // A pixel of overlap each side hides the seams
+                        // (filtering softens a tile's last row).
                         let r = canvas::rect(
-                            (p.left / k) as f32 - 0.25,
-                            (p.top / k) as f32 - 0.25,
-                            (p.size / k) as f32 + 0.5,
-                            (p.size / k) as f32 + 0.5,
+                            (p.left / k) as f32 - 1.0,
+                            (p.top / k) as f32 - 1.0,
+                            (p.size / k) as f32 + 2.0,
+                            (p.size / k) as f32 + 2.0,
                         );
                         s.append_scaled_texture(&e.texture, gtk::gsk::ScalingFilter::Trilinear, &r);
                     }

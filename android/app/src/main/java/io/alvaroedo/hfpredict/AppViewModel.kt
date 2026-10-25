@@ -23,6 +23,7 @@ import io.alvaroedo.hfpredict.core.Tile
 import io.alvaroedo.hfpredict.core.qualityOf
 import io.alvaroedo.hfpredict.core.semaphoreColor
 import io.alvaroedo.hfpredict.core.tileLevel
+import io.alvaroedo.hfpredict.core.tileLineScale
 import io.alvaroedo.hfpredict.core.tilesVisible
 import io.alvaroedo.hfpredict.core.viewZoomedIn
 import io.alvaroedo.hfpredict.ui.MapColors
@@ -381,10 +382,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             showNight = true, showNvis = true, showPath = true, highlight = s.probe,
             highlightColor = semaphoreColor(quality, c.dark, c.lowLight),
         )
+        // Lines thicker by as much as the tile will be shrunk.
+        val lines = density * tileLineScale(s.view, screen, tile.z).toFloat()
         viewModelScope.launch {
             val result = withContext(Dispatchers.Default) {
                 runCatching {
-                    val img = core.renderTile(s.band, s.hour.toUInt(), s.now, s.view, tile, density, c.palette, options)
+                    val img = core.renderTile(s.band, s.hour.toUInt(), s.now, s.view, tile, lines, c.palette, options)
                     val size = img.size.toInt()
                     val bitmap = createBitmap(size, size, Bitmap.Config.ARGB_8888)
                     // Premultiplied RGBA bytes: exactly ARGB_8888's memory layout.

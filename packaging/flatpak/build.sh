@@ -10,9 +10,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-# At most six cores (HFP_CPUS to change): a laptop running a long build
+# At most four cores (HFP_CPUS to change): a laptop running a long build
 # on every core can overheat.
-CPUS="${HFP_CPUS:-$(( $(nproc) < 6 ? $(nproc) : 6 ))}"
+CPUS="${HFP_CPUS:-$(( $(nproc) < 4 ? $(nproc) : 4 ))}"
 IMAGE=ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
 APP=io.alvaroedo.HFPredict
 VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -n1)

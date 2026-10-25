@@ -546,8 +546,10 @@ impl App {
         self.tile_busy.set(true);
         let core = self.core.clone();
         let me = self.rc();
+        // Lines thicker by as much as the tile will be shrunk.
+        let lines = scale * tiles::line_scale(view, &screen, tile.z) as f32;
         spawn(
-            move || core.render_tile(band, hour, now, view, tile, scale, palette, options),
+            move || core.render_tile(band, hour, now, view, tile, lines, palette, options),
             move |image| {
                 me.tile_busy.set(false);
                 let changed = me.view.borrow().map_detail != image.detail;

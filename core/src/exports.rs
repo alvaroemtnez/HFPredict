@@ -231,6 +231,17 @@ pub fn view_zoomed_in(
     crate::tiles::zoomed(view, factor, x, y, &screen)
 }
 
+/// How much thicker a tile of level `z` draws its lines for the view
+/// (tiles are shown shrunk; see `tiles::line_scale`).
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn tile_line_scale(
+    view: crate::projection::MapView,
+    screen: crate::tiles::Screen,
+    z: u32,
+) -> f64 {
+    crate::tiles::line_scale(view, &screen, z)
+}
+
 /// Side of a rendered tile, pixels.
 #[cfg_attr(feature = "ffi", uniffi::export)]
 pub fn tile_px() -> u32 {

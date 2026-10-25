@@ -3,7 +3,8 @@
 #
 # Usage: ./build.sh [command]   (default: debug)
 #
-#   debug       build the debug APK -> dist/hfpredict-debug.apk
+#   debug       build the debug APK -> dist/hfpredict-debug.apk (all ABIs; with
+#               HFP_ABIS, dist/hfpredict-debug-<abis>.apk instead)
 #   release     build the release APKs, signed if HFPREDICT_KEYSTORE is set
 #   accrescent  build the signed APK set (.apks) Accrescent takes (needs HFPREDICT_KEYSTORE)
 #   install     build the debug APK and install it on the connected phone
@@ -205,12 +206,22 @@ debug_app_id() {
 
 build_debug() {
     setup
-    build_rust "${HFP_ABIS:-$ALL_ABIS}"
+    local abis="${HFP_ABIS:-$ALL_ABIS}" out="$DIST_DIR/hfpredict-debug.apk"
+    build_rust "$abis"
     info "Building debug APK"
     gradle assembleDebug
+    local apk="$ANDROID_DIR/app/build/outputs/apk/debug/app-universal-debug.apk"
+    # Every ABI asked for must carry the core, or the app dies on start.
+    for abi in $abis; do
+        unzip -l "$apk" "lib/$abi/libhfpredict_ffi.so" >/dev/null || die "The APK lacks the core for $abi."
+    done
+    # Only a build for every ABI is the APK to hand to a phone; a limited
+    # one (HFP_ABIS, for the emulator) says what it holds in its name.
+    [ "$abis" = "$ALL_ABIS" ] || out="$DIST_DIR/hfpredict-debug-${abis// /-}.apk"
     mkdir -p "$DIST_DIR"
-    cp "$ANDROID_DIR/app/build/outputs/apk/debug/app-universal-debug.apk" "$DIST_DIR/hfpredict-debug.apk"
-    info "Done: $DIST_DIR/hfpredict-debug.apk"
+    cp "$apk" "$out"
+    DEBUG_APK="$out"
+    info "Done: $out"
 }
 
 version() {
@@ -292,7 +303,7 @@ install_debug() {
     build_debug
     info "Installing on connected device"
     local out
-    if ! out="$("$ADB" install -r "$DIST_DIR/hfpredict-debug.apk" 2>&1)"; then
+    if ! out="$("$ADB" install -r "$DEBUG_APK" 2>&1)"; then
         echo "$out" >&2
         # After distclean the debug key is new, and Android refuses the update.
         # Uninstalling wipes the app's data, so leave that to the user.

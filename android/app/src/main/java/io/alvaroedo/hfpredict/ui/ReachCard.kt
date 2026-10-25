@@ -230,10 +230,11 @@ fun MapSurface(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier
             for (p in tilesVisible(view, screen, z.toUInt())) {
                 val e = vm.tileCache[p.tile] ?: continue
                 e.used = vm.nextUse()
-                // A pixel of overlap hides the seams.
-                val left = kotlin.math.floor(p.left).toInt()
-                val top = kotlin.math.floor(p.top).toInt()
-                val size = kotlin.math.ceil(p.size).toInt() + 1
+                // A pixel of overlap each side hides the seams (filtering
+                // softens a tile's last row).
+                val left = kotlin.math.floor(p.left).toInt() - 1
+                val top = kotlin.math.floor(p.top).toInt() - 1
+                val size = kotlin.math.ceil(p.size).toInt() + 3
                 drawImage(
                     e.image,
                     dstOffset = IntOffset(left, top),

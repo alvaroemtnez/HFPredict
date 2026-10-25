@@ -254,9 +254,13 @@ fn main_page(app: &Rc<App>, w: &Rc<Window>) -> gtk::Widget {
     {
         let (all, sun) = (all.root.clone(), sun.root.clone());
         let strip = strip_scroll.clone();
+        // The whole second column goes, or the map keeps only half the
+        // width of the (homogeneous) row.
+        let side = side.clone();
         *reach.on_expand.borrow_mut() = Some(Box::new(move |on| {
             all.set_visible(!on);
             sun.set_visible(!on);
+            side.set_visible(!on);
             strip.set_visible(!on);
         }));
     }

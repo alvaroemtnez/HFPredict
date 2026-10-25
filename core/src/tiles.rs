@@ -144,11 +144,19 @@ pub fn max_level(screen: &Screen) -> u32 {
     )
 }
 
-/// The level whose tiles match the screen: drawn between about 0.7 and 1.4
-/// times their own size, so they stay sharp without wasting pixels.
+/// The level whose tiles are at least as sharp as the screen: a tile is
+/// only ever drawn shrunk (at most to half), never stretched, which blurs.
+/// A twentieth of slack keeps a tile drawn a hair over its size.
 pub fn level_for(view: MapView, screen: &Screen) -> u32 {
     let shown = screen.side * view.scale / f64::from(TILE_PX);
-    shown.max(1.0).log2().round().clamp(0.0, 12.0) as u32
+    (shown.max(1.0).log2() - 0.05).ceil().clamp(0.0, 12.0) as u32
+}
+
+/// How much thicker lines must be drawn in a tile of level `z` for the
+/// view: tiles are drawn shrunk (up to half), and the lines with them.
+pub fn line_scale(view: MapView, screen: &Screen, z: u32) -> f64 {
+    let shown = screen.side * view.scale / f64::from(1u32 << z);
+    (f64::from(TILE_PX) / shown.max(1.0)).clamp(1.0, 2.5)
 }
 
 /// Every tile of level `z` that shows in the view, nearest the middle of
@@ -236,6 +244,25 @@ mod tests {
         // The first is the one under the middle.
         let m = tiles[0];
         assert!(m.left <= 500.0 && m.left + m.size > 500.0);
+    }
+
+    #[test]
+    fn tiles_are_never_stretched() {
+        // A 620 px map at the whole-earth view: one 512 px tile would be
+        // stretched 1.2 times, so the next level, shrunk, is used.
+        let s = screen(620.0);
+        let v = MapView::default();
+        let z = level_for(v, &s);
+        assert_eq!(z, 1);
+        assert!(
+            visible(v, &s, z)
+                .iter()
+                .all(|t| t.size <= f64::from(TILE_PX) * 1.05)
+        );
+        // Exactly the tile's size stays at its level.
+        assert_eq!(level_for(v, &screen(512.0)), 0);
+        // Shrunk 620/1024, so lines are drawn 1.65 times as thick.
+        assert!((line_scale(v, &s, 1) - 1024.0 / 620.0).abs() < 1e-9);
     }
 
     #[test]
