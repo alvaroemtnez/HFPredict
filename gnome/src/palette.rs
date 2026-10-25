@@ -96,6 +96,7 @@ pub fn colors(accent: gdk::RGBA, dark: bool, low_light: bool) -> Colors {
                 coastline: 0xCC9A2A1E,
                 grid_lines: 0x664A120C,
                 path: 0xFFFF6A50,
+                path_halo: 0xFF000000,
                 station: 0xFFFF8A65,
                 halo: 0xFF000000,
                 nvis: 0xFFFF8A65,
@@ -106,6 +107,7 @@ pub fn colors(accent: gdk::RGBA, dark: bool, low_light: bool) -> Colors {
             now: rgba(1.0, 0.45, 0.3, 1.0),
         };
     }
+    let highlight = hfpredict_core::render::highlight(argb(&accent), dark, false);
     let (h, s) = hue_sat(&accent);
     // A grey accent still needs three readable steps.
     let s = s.clamp(0.35, 0.85);
@@ -125,7 +127,8 @@ pub fn colors(accent: gdk::RGBA, dark: bool, low_light: bool) -> Colors {
                 night: 0x5C000000,
                 coastline: 0xC8E8E8EE,
                 grid_lines: 0x50FFFFFF,
-                path: 0xFFF6D32D,
+                path: highlight.line,
+                path_halo: highlight.halo,
                 station: 0xFFF6D32D,
                 halo: 0xFF18181B,
                 nvis: 0xFFFFFFFF,
@@ -151,7 +154,8 @@ pub fn colors(accent: gdk::RGBA, dark: bool, low_light: bool) -> Colors {
                 night: 0x24000020,
                 coastline: 0xB0303038,
                 grid_lines: 0x50000010,
-                path: 0xFFE66100,
+                path: highlight.line,
+                path_halo: highlight.halo,
                 station: 0xFFE66100,
                 halo: 0xFFFFFFFF,
                 nvis: 0xFF000000,

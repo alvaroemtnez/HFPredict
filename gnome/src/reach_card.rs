@@ -16,6 +16,8 @@ use crate::format;
 use crate::i18n::{tr, trf};
 use crate::palette;
 
+type ExpandFn = Box<dyn Fn(bool)>;
+
 /// Largest the map is drawn, logical pixels.
 const MAP_MAX: i32 = 720;
 
@@ -31,6 +33,12 @@ pub struct ReachCard {
     legend: gtk::Box,
     scale: gtk::Scale,
     local_label: gtk::Label,
+    /// The map's frame: square, as large as the room it is given.
+    frame: gtk::AspectFrame,
+    fullscreen: gtk::Button,
+    expanded: Cell<bool>,
+    /// Told when the map goes full screen or comes back.
+    pub on_expand: RefCell<Option<ExpandFn>>,
     /// Set while the code moves the slider, so its signal is not read as
     /// the reader's.
     syncing: Cell<bool>,
@@ -93,7 +101,8 @@ impl ReachCard {
         let zoom_out = osd_button("zoom-out-symbolic", &tr("map.zoomOut"));
         let fit = osd_button("zoom-fit-best-symbolic", &tr("map.fitReach"));
         let globe = osd_button("zoom-original-symbolic", &tr("map.wholeGlobe"));
-        for b in [&zoom_in, &zoom_out, &fit, &globe] {
+        let fullscreen = osd_button("view-fullscreen-symbolic", &tr("map.fullscreen"));
+        for b in [&zoom_in, &zoom_out, &fit, &globe, &fullscreen] {
             controls.append(b);
         }
         overlay.add_overlay(&controls);
@@ -116,9 +125,8 @@ impl ReachCard {
         spinner.set_size_request(24, 24);
         overlay.add_overlay(&spinner);
 
-        let frame = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        frame.set_halign(gtk::Align::Fill);
-        frame.append(&overlay);
+        let frame = gtk::AspectFrame::new(0.5, 0.0, 1.0, false);
+        frame.set_child(Some(&overlay));
         root.append(&frame);
 
         let detail = label(&["dim-label", "caption"]);
@@ -154,6 +162,10 @@ impl ReachCard {
             legend,
             scale,
             local_label,
+            frame,
+            fullscreen,
+            expanded: Cell::new(false),
+            on_expand: RefCell::new(None),
             syncing: Cell::new(false),
             texture: RefCell::new(None),
         });
@@ -359,6 +371,30 @@ impl ReachCard {
             });
         }
         {
+            let me = Rc::downgrade(self);
+            self.fullscreen.connect_clicked(move |_| {
+                if let Some(me) = me.upgrade() {
+                    me.set_expanded(!me.expanded.get());
+                }
+            });
+        }
+        // Escape leaves full screen.
+        let keys = gtk::EventControllerKey::new();
+        {
+            let me = Rc::downgrade(self);
+            keys.connect_key_pressed(move |_, key, _, _| {
+                if let Some(me) = me.upgrade()
+                    && key == gdk::Key::Escape
+                    && me.expanded.get()
+                {
+                    me.set_expanded(false);
+                    return glib::Propagation::Stop;
+                }
+                glib::Propagation::Proceed
+            });
+        }
+        self.root.add_controller(keys);
+        {
             let a = Rc::downgrade(app);
             let map = self.map.clone();
             globe.connect_clicked(move |_| {
@@ -485,7 +521,8 @@ impl ReachCard {
             (None, _) => String::new(),
         };
         self.reach_line.set_text(&line);
-        self.reach_line.set_visible(!line.is_empty());
+        self.reach_line
+            .set_visible(!line.is_empty() && !self.expanded.get());
         if let Some(r) = reach {
             self.map
                 .update_property(&[gtk::accessible::Property::Description(&trf(
@@ -555,6 +592,47 @@ impl ReachCard {
         }
         drop(v);
         self.map.queue_draw();
+    }
+
+    /// Full screen: the map takes all the room the window has (the other
+    /// cards hide, the window goes full screen); the headline, the probe
+    /// and the hour slider stay.
+    pub fn is_expanded(&self) -> bool {
+        self.expanded.get()
+    }
+
+    pub fn set_expanded(&self, on: bool) {
+        self.expanded.set(on);
+        if on {
+            self.map.set_widths(120, 120);
+            self.map.set_height_for_width(|_| 120);
+        } else {
+            self.map.set_widths(200, MAP_MAX);
+            self.map.set_height_for_width(|w| w.min(MAP_MAX));
+        }
+        self.frame.set_vexpand(on);
+        self.root.set_vexpand(on);
+        for w in [
+            self.detail.upcast_ref::<gtk::Widget>(),
+            self.legend.upcast_ref(),
+        ] {
+            w.set_visible(!on);
+        }
+        self.reach_line
+            .set_visible(!on && !self.reach_line.text().is_empty());
+        let (icon, tip) = if on {
+            ("view-restore-symbolic", tr("map.exitFullscreen"))
+        } else {
+            ("view-fullscreen-symbolic", tr("map.fullscreen"))
+        };
+        self.fullscreen.set_icon_name(icon);
+        self.fullscreen.set_tooltip_text(Some(&tip));
+        self.fullscreen
+            .update_property(&[gtk::accessible::Property::Label(&tip)]);
+        if let Some(f) = self.on_expand.borrow().as_ref() {
+            f(on);
+        }
+        self.map.grab_focus();
     }
 
     fn fill_legend(&self, colors: &palette::Colors, nvis: bool) {

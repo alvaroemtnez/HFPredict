@@ -256,6 +256,7 @@ fn install_actions(application: &adw::Application, w: &Rc<Window>) {
     application.set_accels_for_action("app.station", &["<Control>e"]);
     application.set_accels_for_action("app.path", &["<Control>l"]);
     application.set_accels_for_action("win.refresh", &["<Control>r", "F5"]);
+    application.set_accels_for_action("win.map-fullscreen", &["F11"]);
     application.set_accels_for_action("window.close", &["<Control>w"]);
 }
 
@@ -283,8 +284,9 @@ fn start_timers(app: &Rc<App>) {
 /// For UI tests: `HFPREDICT_SCREENSHOT=out.png` saves the window after
 /// `HFPREDICT_SCREENSHOT_DELAY` seconds (default 8) and quits.
 /// `HFPREDICT_SIZE=WxH` sizes the window, `HFPREDICT_OPEN=station|path|
-/// preferences|help|about` opens a dialog first and `HFPREDICT_BAND`,
-/// `HFPREDICT_HOUR`, `HFPREDICT_ZOOM` set the view.
+/// preferences|help|about|fullscreen` opens a dialog (or the full-screen
+/// map) first, `HFPREDICT_BAND`, `HFPREDICT_HOUR`, `HFPREDICT_ZOOM` set
+/// the view and `HFPREDICT_PROBE=x,y` (fractions of the map) taps it.
 fn screenshot_hook(w: &Rc<Window>) {
     let Ok(path) = std::env::var("HFPREDICT_SCREENSHOT") else {
         return;
@@ -330,12 +332,27 @@ fn screenshot_hook(w: &Rc<Window>) {
     // Dialogs open through the same actions the menu and the buttons use,
     // and the hook holds the window weakly, so a screenshot shows what a
     // reader would get.
+    if let Some((x, y)) = std::env::var("HFPREDICT_PROBE").ok().and_then(|s| {
+        let (a, b) = s.split_once(',')?;
+        Some((a.parse::<f64>().ok()?, b.parse::<f64>().ok()?))
+    }) {
+        let app = w.app.clone();
+        glib::timeout_add_local_once(Duration::from_secs(delay.saturating_sub(2)), move || {
+            app.probe(x * 600.0, y * 600.0, 600.0);
+        });
+    }
     let open = std::env::var("HFPREDICT_OPEN").unwrap_or_default();
     let application = w.window.application();
     let weak = Rc::downgrade(w);
     glib::timeout_add_local_once(Duration::from_millis(1500), move || {
         let action = match open.as_str() {
             "station" | "preferences" | "help" | "about" => open.as_str(),
+            "fullscreen" => {
+                if let Some(w) = weak.upgrade() {
+                    let _ = WidgetExt::activate_action(&w.window, "win.map-fullscreen", None);
+                }
+                return;
+            }
             "path" => {
                 if let Some(w) = weak.upgrade() {
                     location::open(&w, location::End::To);

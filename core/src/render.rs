@@ -36,8 +36,11 @@ pub struct Palette {
     pub coastline: u32,
     /// Distance rings and the disc's rim.
     pub grid_lines: u32,
-    /// The great circle to the destination, and its end.
+    /// The great circle to the destination, its end and the selected cell.
     pub path: u32,
+    /// The outline that keeps the path and the selected cell readable on
+    /// any shade underneath.
+    pub path_halo: u32,
     /// The station's own dot.
     pub station: u32,
     /// The ring round the dots, so they stand off any colour.
@@ -58,6 +61,52 @@ pub struct Scene<'a> {
     pub layers: Vec<&'a Grid>,
     pub show_night: bool,
     pub show_nvis: bool,
+    /// The point the reader tapped: its cell is outlined.
+    pub highlight: Option<LatLon>,
+}
+
+/// The highlight colours ([`Palette::path`] and [`Palette::path_halo`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Record))]
+pub struct Highlight {
+    pub line: u32,
+    pub halo: u32,
+}
+
+/// The path and the selected cell are yellow, outlined in black: a colour
+/// no platform accent's reach shades share. Under a yellow or orange
+/// accent the reach itself is yellow, so they turn magenta; in low light
+/// they stay in the dim reds.
+pub fn highlight(accent: u32, dark: bool, low_light: bool) -> Highlight {
+    if low_light {
+        return Highlight {
+            line: 0xFFFF6A50,
+            halo: 0xFF000000,
+        };
+    }
+    let [r, g, b, _] = argb(accent).map(|c| f32::from(c) / 255.0);
+    let (max, min) = (r.max(g).max(b), r.min(g).min(b));
+    let hue = if max - min < 1e-6 {
+        None
+    } else if max == r {
+        Some(60.0 * ((g - b) / (max - min)).rem_euclid(6.0))
+    } else if max == g {
+        Some(60.0 * ((b - r) / (max - min) + 2.0))
+    } else {
+        Some(60.0 * ((r - g) / (max - min) + 4.0))
+    };
+    let saturated = max - min > 0.15;
+    let yellowish = saturated && hue.is_some_and(|h| (22.0..=80.0).contains(&h));
+    let line = match (yellowish, dark) {
+        (false, true) => 0xFFF6D32D,
+        (false, false) => 0xFFF5C211,
+        (true, true) => 0xFFF279F2,
+        (true, false) => 0xFFC01CC0,
+    };
+    Highlight {
+        line,
+        halo: if dark { 0xE0000000 } else { 0xC0202020 },
+    }
 }
 
 /// Distance rings every 5,000 km.
@@ -196,14 +245,83 @@ pub fn render(
         );
     }
 
+    // The selected cell, outlined: the finest grid's cell under the point,
+    // or a ring where only the smoothed preview is drawn.
+    if let Some(h) = scene.highlight {
+        let mut pb = PathBuilder::new();
+        let grid = scene
+            .layers
+            .iter()
+            .rev()
+            .find_map(|g| g.index_of(h.lat, h.lon).map(|i| (g, i)));
+        match grid {
+            Some((g, i)) if !g.is_coarse() => {
+                let b = g.cell_bounds(i);
+                let n = 16;
+                let along = |a: f64, z: f64, k: usize| a + (z - a) * k as f64 / n as f64;
+                let outline = (0..n)
+                    .map(|k| (b.lat_min, along(b.lon_min, b.lon_max, k)))
+                    .chain((0..n).map(|k| (along(b.lat_min, b.lat_max, k), b.lon_max)))
+                    .chain((0..n).map(|k| (b.lat_max, along(b.lon_max, b.lon_min, k))))
+                    .chain((0..=n).map(|k| (along(b.lat_max, b.lat_min, k), b.lon_min)))
+                    .map(|(lat, lon)| LatLon { lat, lon });
+                add_polyline(&mut pb, &projection, view, s, outline);
+                // A cell a few pixels wide at this zoom gets a ring round
+                // it too, so the eye finds it.
+                let corners: Vec<(f64, f64)> = [
+                    (b.lat_min, b.lon_min),
+                    (b.lat_max, b.lon_max),
+                    (b.lat_min, b.lon_max),
+                    (b.lat_max, b.lon_min),
+                ]
+                .iter()
+                .filter_map(|&(lat, lon)| projection.project(LatLon { lat, lon }))
+                .map(|(x, y)| view.to_pixel(x, y, s))
+                .collect();
+                let extent = corners
+                    .iter()
+                    .flat_map(|a| corners.iter().map(move |b| (a.0 - b.0).hypot(a.1 - b.1)))
+                    .fold(0.0, f64::max) as f32;
+                if extent < 16.0 * line
+                    && let Some((x, y)) = projection.project(h)
+                {
+                    let (px, py) = view.to_pixel(x, y, s);
+                    pb.push_circle(px as f32, py as f32, 11.0 * line);
+                }
+            }
+            _ => {
+                if let Some((x, y)) = projection.project(h) {
+                    let (px, py) = view.to_pixel(x, y, s);
+                    pb.push_circle(px as f32, py as f32, 7.0 * line);
+                }
+            }
+        }
+        if let Some(path) = pb.finish() {
+            pixmap.stroke_path(
+                &path,
+                &paint(palette.path_halo),
+                &stroke(4.5),
+                Transform::identity(),
+                None,
+            );
+            pixmap.stroke_path(
+                &path,
+                &paint(palette.path),
+                &stroke(2.5),
+                Transform::identity(),
+                None,
+            );
+        }
+    }
+
     // The path to the destination and its end.
-    let dot = |pixmap: &mut Pixmap, p: LatLon, fill: u32, r: f32| {
+    let dot = |pixmap: &mut Pixmap, p: LatLon, fill: u32, halo: u32, r: f32| {
         if let Some((x, y)) = projection.project(p) {
             let (px, py) = view.to_pixel(x, y, s);
             if let Some(c) = PathBuilder::from_circle(px as f32, py as f32, (r + 1.5) * line) {
                 pixmap.fill_path(
                     &c,
-                    &paint(palette.halo),
+                    &paint(halo),
                     FillRule::Winding,
                     Transform::identity(),
                     None,
@@ -232,22 +350,28 @@ pub fn render(
         if let Some(path) = pb.finish() {
             pixmap.stroke_path(
                 &path,
-                &paint(palette.halo),
-                &stroke(4.0),
+                &paint(palette.path_halo),
+                &stroke(4.5),
                 Transform::identity(),
                 None,
             );
             pixmap.stroke_path(
                 &path,
                 &paint(palette.path),
-                &stroke(2.0),
+                &stroke(2.5),
                 Transform::identity(),
                 None,
             );
         }
-        dot(&mut pixmap, to, palette.path, 4.5);
+        dot(&mut pixmap, to, palette.path, palette.path_halo, 4.5);
     }
-    dot(&mut pixmap, scene.centre, palette.station, 5.5);
+    dot(
+        &mut pixmap,
+        scene.centre,
+        palette.station,
+        palette.halo,
+        5.5,
+    );
 
     pixmap.take()
 }
@@ -303,7 +427,7 @@ fn raster_cells(
                     let mut steep = false;
                     for grid in &scene.layers {
                         if let Some(i) = grid.index_of(p.lat, p.lon) {
-                            let r = f64::from(grid.reliability[i]);
+                            let r = f64::from(grid.reliability_at(p.lat, p.lon).unwrap_or(0.0));
                             let q = Quality::of(r);
                             colour = colours[q as usize];
                             let angle = grid.takeoff_deg[i];
@@ -473,6 +597,7 @@ mod tests {
             coastline: 0xCCFFFFFF,
             grid_lines: 0x55FFFFFF,
             path: 0xFF00DDFF,
+            path_halo: 0xFF000000,
             station: 0xFFFFC107,
             halo: 0xFF000000,
             nvis: 0xFFFFFFFF,
@@ -508,6 +633,7 @@ mod tests {
             layers: vec![&grid],
             show_night: false,
             show_nvis: false,
+            highlight: None,
         };
         let size = 200;
         let px = render(&scene, MapView::default(), size, 1.0, &palette(), 4);
@@ -518,6 +644,54 @@ mod tests {
         // reliable colour.
         let at = |x: usize, y: usize| &px[(y * size as usize + x) * 4..][..4];
         assert_eq!(at(150, 60), &[0xD0, 0xBC, 0xFF, 0xFF]);
+    }
+
+    #[test]
+    fn highlight_avoids_a_yellow_accent() {
+        let blue = highlight(0xFF3584E4, true, false);
+        let yellow = highlight(0xFFC88800, true, false);
+        let orange = highlight(0xFFED5B00, false, false);
+        assert_eq!(blue.line, 0xFFF6D32D);
+        assert_ne!(yellow.line, blue.line);
+        assert_ne!(orange.line, highlight(0xFF3584E4, false, false).line);
+        // A grey accent has no hue to clash with.
+        assert_eq!(highlight(0xFF6F8396, true, false).line, 0xFFF6D32D);
+        assert_eq!(highlight(0xFF3584E4, true, true).line, 0xFFFF6A50);
+    }
+
+    #[test]
+    fn outlines_the_selected_cell() {
+        let mut grid = world(0.0);
+        grid.lat_step = 7.5;
+        grid.lon_step = 11.25;
+        grid.lat_min = -86.25;
+        grid.lon_min = -174.375;
+        grid.nx = 32;
+        grid.ny = 24;
+        grid.reliability = vec![0.0; 32 * 24];
+        grid.takeoff_deg = vec![f32::NAN; 32 * 24];
+        let centre = LatLon { lat: 0.0, lon: 0.0 };
+        let mut scene = Scene {
+            centre,
+            destination: None,
+            unix_secs: 1_793_000_000,
+            layers: vec![&grid],
+            show_night: false,
+            show_nvis: false,
+            highlight: None,
+        };
+        let plain = render(&scene, MapView::default(), 600, 1.0, &palette(), 2);
+        scene.highlight = Some(LatLon {
+            lat: 30.0,
+            lon: 30.0,
+        });
+        let marked = render(&scene, MapView::default(), 600, 1.0, &palette(), 2);
+        let cyan = marked
+            .chunks(4)
+            .zip(plain.chunks(4))
+            .filter(|(m, p)| m != p && m[1] > 0xC0 && m[2] > 0xC0 && m[0] < 0x40)
+            .count();
+        assert!(cyan > 40, "{cyan} highlight pixels");
     }
 
     #[test]

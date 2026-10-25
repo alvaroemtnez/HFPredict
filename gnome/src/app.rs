@@ -23,6 +23,9 @@ use crate::palette::{self, Colors};
 /// How many hours behind "now" the hour track starts.
 pub const PAST_HOURS: u32 = 6;
 
+/// How long the hour must stay put before a fine map is worked out.
+const FINE_DELAY_MS: u64 = 280;
+
 /// `HFPREDICT_DEBUG=1` prints how long each step takes.
 pub fn debug(what: &str, started: std::time::Instant) {
     if std::env::var_os("HFPREDICT_DEBUG").is_some() {
@@ -276,11 +279,11 @@ impl App {
     pub fn update_map(&self) {
         let generation = self.map_gen.get() + 1;
         self.map_gen.set(generation);
-        let (band, hour, now, view) = {
+        let (band, hour, now) = {
             let mut v = self.view.borrow_mut();
             v.map_working = true;
             v.map_error = None;
-            (v.band, v.hour, v.now, v.map_view)
+            (v.band, v.hour, v.now)
         };
         self.emit(Change::Map);
         self.render_map();
@@ -288,8 +291,11 @@ impl App {
         let me = self.rc();
         let t0 = std::time::Instant::now();
         spawn(
-            move || core.coarse_maps(hour, now),
-            move |result| {
+            move || {
+                let reach = core.coarse_maps(hour, now);
+                (reach, core.has_fine_map(band, hour, now))
+            },
+            move |(result, held)| {
                 debug("coarse maps", t0);
                 if me.map_gen.get() != generation {
                     return;
@@ -300,35 +306,52 @@ impl App {
                 }
                 me.emit(Change::Map);
                 me.render_map();
-                let core = me.core.clone();
-                let me2 = me.clone();
-                spawn(
-                    move || {
-                        let fine = core.fine_map(band, hour, now);
-                        let patch =
-                            fine.is_ok() && core.patch_map(hour, now, view).unwrap_or(false);
-                        (fine, patch)
-                    },
-                    move |(fine, _)| {
-                        debug("fine map", t0);
-                        if me2.map_gen.get() != generation {
-                            return;
+                // A fine map not yet held waits until the reader stops on
+                // an hour: sliding across the day then costs a coarse run
+                // per hour, not a fine one each, and the last stop wins.
+                let delay = if held { 0 } else { FINE_DELAY_MS };
+                glib::timeout_add_local_once(std::time::Duration::from_millis(delay), move || {
+                    me.fine_map(generation, band, hour, now, t0)
+                });
+            },
+        );
+    }
+
+    /// The fine whole-world map, then a patch if zoomed in, unless a newer
+    /// request has come in since.
+    fn fine_map(&self, generation: u64, band: Band, hour: u32, now: i64, t0: std::time::Instant) {
+        if self.map_gen.get() != generation {
+            return;
+        }
+        let core = self.core.clone();
+        let view = self.view.borrow().map_view;
+        let me = self.rc();
+        spawn(
+            move || {
+                let fine = core.fine_map(band, hour, now);
+                if fine.is_ok() {
+                    let _ = core.patch_map(hour, now, view);
+                }
+                fine
+            },
+            move |fine| {
+                debug("fine map", t0);
+                if me.map_gen.get() != generation {
+                    return;
+                }
+                {
+                    let mut v = me.view.borrow_mut();
+                    v.map_working = false;
+                    match fine {
+                        Ok(status) => v.status = Some(status),
+                        Err(e) => {
+                            eprintln!("hfpredict: fine map: {e}");
+                            v.map_error = Some(e.to_string());
                         }
-                        {
-                            let mut v = me2.view.borrow_mut();
-                            v.map_working = false;
-                            match fine {
-                                Ok(status) => v.status = Some(status),
-                                Err(e) => {
-                                    eprintln!("hfpredict: fine map: {e}");
-                                    v.map_error = Some(e.to_string());
-                                }
-                            }
-                        }
-                        me2.emit(Change::Map);
-                        me2.render_map();
-                    },
-                );
+                    }
+                }
+                me.emit(Change::Map);
+                me.render_map();
             },
         );
     }
@@ -379,9 +402,16 @@ impl App {
             return;
         }
         self.rendering.set(true);
-        let (band, hour, now, view, palette) = {
+        let (band, hour, now, view, palette, highlight) = {
             let v = self.view.borrow();
-            (v.band, v.hour, v.now, v.map_view, v.colors.map)
+            (
+                v.band,
+                v.hour,
+                v.now,
+                v.map_view,
+                v.colors.map,
+                v.probe.clone(),
+            )
         };
         let density = self.density.get();
         let core = self.core.clone();
@@ -390,6 +420,7 @@ impl App {
             show_night: true,
             show_nvis: true,
             show_path: true,
+            highlight,
         };
         spawn(
             move || core.render_map(band, hour, now, view, px, density, palette, options),
@@ -434,8 +465,14 @@ impl App {
             (v.band, v.hour, v.now, v.map_view)
         };
         let probe = self.core.probe(band, hour, now, view, x, y, size);
-        self.view.borrow_mut().probe = probe;
+        // A second click on the same cell clears it.
+        let same = {
+            let v = self.view.borrow();
+            matches!((&v.probe, &probe), (Some(a), Some(b)) if a.grid == b.grid)
+        };
+        self.view.borrow_mut().probe = if same { None } else { probe };
         self.emit(Change::Map);
+        self.render_map();
     }
 
     // ---- Online readings -----------------------------------------------

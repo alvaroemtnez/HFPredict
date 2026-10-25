@@ -157,3 +157,10 @@ pub fn view_panned(
 pub fn greenwich() -> crate::places::Place {
     crate::places::Place::greenwich()
 }
+
+/// The colours of the path and the selected cell for a platform accent
+/// (0xAARRGGBB): yellow unless the accent is yellow or orange.
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn highlight_colors(accent: u32, dark: bool, low_light: bool) -> crate::render::Highlight {
+    crate::render::highlight(accent, dark, low_light)
+}

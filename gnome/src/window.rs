@@ -243,6 +243,41 @@ fn main_page(app: &Rc<App>, w: &Rc<Window>) -> gtk::Widget {
         .build();
     view.set_content(Some(&scroll));
 
+    // The map's full-screen mode hides everything else on the page.
+    {
+        let (all, sun, window) = (all.root.clone(), sun.root.clone(), w.window.clone());
+        let strip = strip_scroll.clone();
+        *reach.on_expand.borrow_mut() = Some(Box::new(move |on| {
+            all.set_visible(!on);
+            sun.set_visible(!on);
+            strip.set_visible(!on);
+            if on {
+                window.fullscreen();
+            } else {
+                window.unfullscreen();
+            }
+        }));
+    }
+    let toggle = gio::SimpleAction::new("map-fullscreen", None);
+    {
+        let r = Rc::downgrade(&reach);
+        toggle.connect_activate(move |_, _| {
+            if let Some(r) = r.upgrade() {
+                r.set_expanded(!r.is_expanded());
+            }
+        });
+    }
+    w.window.add_action(&toggle);
+    let r = Rc::downgrade(&reach);
+    w.window.connect_fullscreened_notify(move |win| {
+        if let Some(r) = r.upgrade()
+            && !win.is_fullscreen()
+            && r.is_expanded()
+        {
+            r.set_expanded(false);
+        }
+    });
+
     let breakpoint =
         adw::Breakpoint::new(adw::BreakpointCondition::parse(WIDE).expect("valid condition"));
     breakpoint.add_setter(

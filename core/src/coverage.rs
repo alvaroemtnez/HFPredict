@@ -101,6 +101,42 @@ impl Grid {
         Some(row as usize * self.nx + column as usize)
     }
 
+    /// The coarse whole-world preview, drawn smoothed rather than as cells.
+    pub fn is_coarse(&self) -> bool {
+        self.lat_step >= LAT_STEP - 1e-9 && self.is_whole_world()
+    }
+
+    /// The reliability shown at a point. The coarse preview blends its four
+    /// nearest centres (bilinear, wrapping in longitude), so it reads as a
+    /// soft first guess instead of 15-degree blocks; every finer grid gives
+    /// its cell's own value.
+    pub fn reliability_at(&self, lat: f64, lon: f64) -> Option<f32> {
+        if !self.is_coarse() || self.nx < 2 || self.ny < 2 {
+            return self.index_of(lat, lon).map(|i| self.reliability[i]);
+        }
+        let fy = ((lat - self.lat_min) / self.lat_step).clamp(0.0, (self.ny - 1) as f64);
+        let r0 = (fy.floor() as usize).min(self.ny - 2);
+        let ty = (fy - r0 as f64) as f32;
+        let fx = ((lon - self.lon_min) / self.lon_step).rem_euclid(self.nx as f64);
+        let c0 = (fx.floor() as usize) % self.nx;
+        let c1 = (c0 + 1) % self.nx;
+        let tx = (fx - fx.floor()) as f32;
+        let v = |r: usize, c: usize| self.reliability[r * self.nx + c];
+        let row = |r: usize| v(r, c0) * (1.0 - tx) + v(r, c1) * tx;
+        Some(row(r0) * (1.0 - ty) + row(r0 + 1) * ty)
+    }
+
+    /// The rectangle a cell covers.
+    pub fn cell_bounds(&self, i: usize) -> Bounds {
+        let (lat, lon) = (self.lat_at(i / self.nx), self.lon_at(i % self.nx));
+        Bounds {
+            lat_min: (lat - self.lat_step / 2.0).max(-90.0),
+            lat_max: (lat + self.lat_step / 2.0).min(90.0),
+            lon_min: lon - self.lon_step / 2.0,
+            lon_max: lon + self.lon_step / 2.0,
+        }
+    }
+
     /// The share of the sphere this grid reaches, weighted by area (cosine of
     /// latitude), so polar slivers do not count as much as the tropics.
     pub fn reach(&self) -> f64 {
@@ -282,6 +318,52 @@ pub fn patch_grid(lat: f64, lon: f64, half_lat_deg: f64) -> Option<PatchGrid> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn coarse_world() -> Grid {
+        Grid {
+            lat_min: -82.5,
+            lon_min: -168.75,
+            lat_step: LAT_STEP,
+            lon_step: LON_STEP,
+            nx: 16,
+            ny: 12,
+            reliability: (0..192).map(|i| (i % 16) as f32 / 15.0).collect(),
+            takeoff_deg: vec![f32::NAN; 192],
+        }
+    }
+
+    #[test]
+    fn coarse_preview_is_smooth_and_exact_at_centres() {
+        let g = coarse_world();
+        assert!(g.is_coarse());
+        // At a centre: the centre's value.
+        let i = g.index_of(7.5, 11.25).unwrap();
+        assert_eq!(g.reliability_at(7.5, 11.25), Some(g.reliability[i]));
+        // Half-way between two centres: their mean.
+        let a = g.reliability_at(7.5, 0.0).unwrap();
+        let (l, r) = (
+            g.reliability[g.index_of(7.5, -11.25).unwrap()],
+            g.reliability[g.index_of(7.5, 11.25).unwrap()],
+        );
+        assert!((a - (l + r) / 2.0).abs() < 1e-6);
+        // Across the antimeridian it wraps rather than jumping.
+        let east = g.reliability_at(7.5, 179.9).unwrap();
+        let west = g.reliability_at(7.5, -179.9).unwrap();
+        assert!((east - west).abs() < 0.01, "{east} {west}");
+        // Past the last row it holds the edge.
+        assert!(g.reliability_at(89.9, 0.0).is_some());
+    }
+
+    #[test]
+    fn finer_grids_keep_their_cells() {
+        let mut g = coarse_world();
+        g.lat_step = FINE_LAT_STEP;
+        assert!(!g.is_coarse());
+        let i = g.index_of(-80.0, 0.0).unwrap();
+        assert_eq!(g.reliability_at(-80.0, 0.0), Some(g.reliability[i]));
+        let b = g.cell_bounds(i);
+        assert!((b.lat_max - b.lat_min - FINE_LAT_STEP).abs() < 1e-9);
+    }
 
     #[test]
     fn strips_cover_every_row_once() {

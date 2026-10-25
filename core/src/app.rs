@@ -72,12 +72,14 @@ pub struct MapImage {
 }
 
 /// Toggles for the map layers.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Record))]
 pub struct MapOptions {
     pub show_night: bool,
     pub show_nvis: bool,
     pub show_path: bool,
+    /// The probed point, whose cell is outlined.
+    pub highlight: Option<Probe>,
 }
 
 type BandGrids = Vec<(Band, Grid)>;
@@ -527,6 +529,10 @@ impl Core {
             layers: layers.iter().map(|g| g.as_ref()).collect(),
             show_night: options.show_night,
             show_nvis: options.show_nvis,
+            highlight: options.highlight.map(|p| LatLon {
+                lat: p.lat,
+                lon: p.lon,
+            }),
         };
         MapImage {
             size,
@@ -561,10 +567,10 @@ impl Core {
         let (dx, dy) = view.to_disc(x, y, size);
         let point = projection.invert(dx, dy)?;
         let (layers, _) = self.layers(&ctx, &from, band, hour, view);
-        let reliability = layers.iter().rev().find_map(|g| {
-            g.index_of(point.lat, point.lon)
-                .map(|i| f64::from(g.reliability[i]))
-        });
+        let reliability = layers
+            .iter()
+            .rev()
+            .find_map(|g| g.reliability_at(point.lat, point.lon).map(f64::from));
         Some(Probe {
             lat: point.lat,
             lon: point.lon,
@@ -730,6 +736,7 @@ mod tests {
             coastline: 0xFFFFFFFF,
             grid_lines: 0x55FFFFFF,
             path: 0xFF00FFFF,
+            path_halo: 0xFF000000,
             station: 0xFFFFFF00,
             halo: 0xFF000000,
             nvis: 0xFFFFFFFF,
@@ -738,6 +745,7 @@ mod tests {
             show_night: true,
             show_nvis: true,
             show_path: true,
+            highlight: None,
         };
         let img = c.render_map(
             Band::M20,
@@ -747,7 +755,7 @@ mod tests {
             64,
             1.0,
             palette,
-            opts,
+            opts.clone(),
         );
         assert_eq!(img.detail, MapDetail::Fine);
         assert_eq!(img.pixels.len(), 64 * 64 * 4);
@@ -760,7 +768,7 @@ mod tests {
         };
         assert!(c.patch_map(12, NOW, view).unwrap());
         assert_eq!(
-            c.render_map(Band::M20, 12, NOW, view, 64, 1.0, palette, opts)
+            c.render_map(Band::M20, 12, NOW, view, 64, 1.0, palette, opts.clone())
                 .detail,
             MapDetail::Patch
         );

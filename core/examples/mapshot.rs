@@ -71,6 +71,7 @@ fn main() {
         coastline: 0xDDE6E1E5,
         grid_lines: 0x66E6E1E5,
         path: 0xFF4DD0E1,
+        path_halo: 0xE0000000,
         station: 0xFFFFC107,
         halo: 0xFF1B1D24,
         nvis: 0xFFFFFFFF,
@@ -86,6 +87,7 @@ fn main() {
         layers: vec![&coarse_grid, &grid],
         show_night: true,
         show_nvis: true,
+        highlight: None,
     };
     let size = 900;
     let t = Instant::now();
