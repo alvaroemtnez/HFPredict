@@ -42,7 +42,16 @@ pub fn preferences(w: &Rc<Window>) {
                 .unwrap_or(0) as u32,
         )
         .build();
-    theme.set_subtitle(&tr("preferences.theme.lowLightHint"));
+    // The hint explains low light, so it shows only with low light picked.
+    let hint = |row: &adw::ComboRow| {
+        row.set_subtitle(&if row.selected() == 3 {
+            tr("preferences.theme.lowLightHint")
+        } else {
+            String::new()
+        });
+    };
+    hint(&theme);
+    theme.connect_selected_notify(hint);
     g.add(&theme);
 
     let mut langs: Vec<String> = vec![tr("preferences.language.system")];

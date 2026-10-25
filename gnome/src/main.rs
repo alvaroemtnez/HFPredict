@@ -196,6 +196,13 @@ fn main() -> glib::ExitCode {
         });
         let app = App::new(core.clone());
         let w = window::build(application, &app);
+        // Every handler holds the window weakly; the window itself holds the
+        // one strong reference until it is destroyed (GTK drops signal
+        // handlers on dispose, which breaks the cycle).
+        let keep = RefCell::new(Some(w.clone()));
+        w.window.connect_destroy(move |_| {
+            keep.borrow_mut().take();
+        });
         install_actions(application, &w);
         set_dynamic_css(&app);
         app.listen(|app, change| {
@@ -216,6 +223,7 @@ fn main() -> glib::ExitCode {
             );
         }
         screenshot_hook(&w);
+        drop(w);
     });
     application.run()
 }
@@ -319,19 +327,30 @@ fn screenshot_hook(w: &Rc<Window>) {
             true,
         );
     }
+    // Dialogs open through the same actions the menu and the buttons use,
+    // and the hook holds the window weakly, so a screenshot shows what a
+    // reader would get.
     let open = std::env::var("HFPREDICT_OPEN").unwrap_or_default();
-    let w2 = w.clone();
-    glib::timeout_add_local_once(Duration::from_millis(1500), move || match open.as_str() {
-        "station" => station::open(&w2),
-        "path" => location::open(&w2, location::End::To),
-        "preferences" => dialogs::preferences(&w2),
-        "help" => dialogs::help(&w2),
-        "about" => dialogs::about(&w2),
-        _ => {}
+    let application = w.window.application();
+    let weak = Rc::downgrade(w);
+    glib::timeout_add_local_once(Duration::from_millis(1500), move || {
+        let action = match open.as_str() {
+            "station" | "preferences" | "help" | "about" => open.as_str(),
+            "path" => {
+                if let Some(w) = weak.upgrade() {
+                    location::open(&w, location::End::To);
+                }
+                return;
+            }
+            _ => return,
+        };
+        if let Some(a) = application {
+            a.activate_action(action, None);
+        }
     });
-    let w = w.clone();
+    let window = w.window.clone();
     glib::timeout_add_local_once(Duration::from_secs(delay), move || {
-        let window = &w.window;
+        let window = &window;
         let (width, height) = (window.width(), window.height());
         let paintable = gtk::WidgetPaintable::new(Some(window));
         let snapshot = gtk::Snapshot::new();
