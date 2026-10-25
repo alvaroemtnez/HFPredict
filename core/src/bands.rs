@@ -103,7 +103,9 @@ impl Band {
     /// The band whose centre frequency this is, within the engine's echo
     /// precision.
     pub fn from_mhz(mhz: f64) -> Option<Band> {
-        Band::BY_FREQ.into_iter().find(|b| (b.mhz() - mhz).abs() < 1e-4)
+        Band::BY_FREQ
+            .into_iter()
+            .find(|b| (b.mhz() - mhz).abs() < 1e-4)
     }
 
     pub fn all_mhz() -> Vec<f64> {

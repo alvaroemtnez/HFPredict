@@ -28,7 +28,11 @@ pub struct Projection {
 impl Projection {
     pub fn new(centre: LatLon) -> Projection {
         let lat0 = centre.lat * DEG;
-        Projection { centre, sin_lat0: lat0.sin(), cos_lat0: lat0.cos() }
+        Projection {
+            centre,
+            sin_lat0: lat0.sin(),
+            cos_lat0: lat0.cos(),
+        }
     }
 
     /// Unit-disc position of a point, `None` near the antipode.
@@ -59,9 +63,15 @@ impl Projection {
             return Some(self.centre);
         }
         let (sin_c, cos_c) = c.sin_cos();
-        let phi = (cos_c * self.sin_lat0 + dy * sin_c * self.cos_lat0 / c).clamp(-1.0, 1.0).asin();
-        let lambda = self.centre.lon * DEG + (dx * sin_c).atan2(c * self.cos_lat0 * cos_c - dy * self.sin_lat0 * sin_c);
-        Some(LatLon { lat: phi / DEG, lon: normalise_lon(lambda / DEG) })
+        let phi = (cos_c * self.sin_lat0 + dy * sin_c * self.cos_lat0 / c)
+            .clamp(-1.0, 1.0)
+            .asin();
+        let lambda = self.centre.lon * DEG
+            + (dx * sin_c).atan2(c * self.cos_lat0 * cos_c - dy * self.sin_lat0 * sin_c);
+        Some(LatLon {
+            lat: phi / DEG,
+            lon: normalise_lon(lambda / DEG),
+        })
     }
 
     /// Unit-disc radius of a distance from the centre.
@@ -91,7 +101,11 @@ pub const MAX_SCALE: f64 = 24.0;
 
 impl Default for MapView {
     fn default() -> Self {
-        MapView { scale: 1.0, cx: 0.5, cy: 0.5 }
+        MapView {
+            scale: 1.0,
+            cx: 0.5,
+            cy: 0.5,
+        }
     }
 }
 
@@ -101,7 +115,11 @@ impl MapView {
     pub fn contained(self) -> MapView {
         let scale = self.scale.clamp(MIN_SCALE, MAX_SCALE);
         let half = 1.0 / (2.0 * scale);
-        MapView { scale, cx: self.cx.clamp(half, 1.0 - half), cy: self.cy.clamp(half, 1.0 - half) }
+        MapView {
+            scale,
+            cx: self.cx.clamp(half, 1.0 - half),
+            cy: self.cy.clamp(half, 1.0 - half),
+        }
     }
 
     /// Unit-disc position of a pixel in a square of `size` pixels.
@@ -117,7 +135,10 @@ impl MapView {
         let window = 1.0 / self.scale;
         let fx = (x + 1.0) / 2.0;
         let fy = (y + 1.0) / 2.0;
-        ((fx - (self.cx - window / 2.0)) / window * size, (fy - (self.cy - window / 2.0)) / window * size)
+        (
+            (fx - (self.cx - window / 2.0)) / window * size,
+            (fy - (self.cy - window / 2.0)) / window * size,
+        )
     }
 
     /// Zooms by `factor` keeping the pixel at `(px, py)` still, as a pinch
@@ -125,13 +146,26 @@ impl MapView {
     pub fn zoomed_at(&self, factor: f64, px: f64, py: f64, size: f64) -> MapView {
         let scale = (self.scale * factor).clamp(MIN_SCALE, MAX_SCALE);
         let (fx, fy) = (px / size, py / size);
-        let before = (self.cx - 0.5 / self.scale + fx / self.scale, self.cy - 0.5 / self.scale + fy / self.scale);
-        MapView { scale, cx: before.0 + 0.5 / scale - fx / scale, cy: before.1 + 0.5 / scale - fy / scale }.contained()
+        let before = (
+            self.cx - 0.5 / self.scale + fx / self.scale,
+            self.cy - 0.5 / self.scale + fy / self.scale,
+        );
+        MapView {
+            scale,
+            cx: before.0 + 0.5 / scale - fx / scale,
+            cy: before.1 + 0.5 / scale - fy / scale,
+        }
+        .contained()
     }
 
     /// Moves the content by a pixel drag.
     pub fn panned(&self, dx: f64, dy: f64, size: f64) -> MapView {
-        MapView { cx: self.cx - dx / size / self.scale, cy: self.cy - dy / size / self.scale, ..*self }.contained()
+        MapView {
+            cx: self.cx - dx / size / self.scale,
+            cy: self.cy - dy / size / self.scale,
+            ..*self
+        }
+        .contained()
     }
 
     /// Centre of the view and half its height in degrees of latitude: what a
@@ -152,19 +186,44 @@ mod tests {
 
     #[test]
     fn round_trips() {
-        let p = Projection::new(LatLon { lat: 39.47, lon: -0.38 });
-        for (lat, lon) in [(51.5, -0.1), (-33.9, 151.2), (35.7, 139.7), (39.47, -0.38), (-80.0, 100.0)] {
+        let p = Projection::new(LatLon {
+            lat: 39.47,
+            lon: -0.38,
+        });
+        for (lat, lon) in [
+            (51.5, -0.1),
+            (-33.9, 151.2),
+            (35.7, 139.7),
+            (39.47, -0.38),
+            (-80.0, 100.0),
+        ] {
             let (x, y) = p.project(LatLon { lat, lon }).unwrap();
             let back = p.invert(x, y).unwrap();
-            assert!((back.lat - lat).abs() < 1e-9 && (back.lon - lon).abs() < 1e-9, "{lat},{lon} -> {back:?}");
+            assert!(
+                (back.lat - lat).abs() < 1e-9 && (back.lon - lon).abs() < 1e-9,
+                "{lat},{lon} -> {back:?}"
+            );
         }
         // North is up, east is right.
-        let (x, y) = p.project(LatLon { lat: 50.0, lon: -0.38 }).unwrap();
+        let (x, y) = p
+            .project(LatLon {
+                lat: 50.0,
+                lon: -0.38,
+            })
+            .unwrap();
         assert!(x.abs() < 1e-12 && y < 0.0);
-        let (x, _) = p.project(LatLon { lat: 39.47, lon: 10.0 }).unwrap();
+        let (x, _) = p
+            .project(LatLon {
+                lat: 39.47,
+                lon: 10.0,
+            })
+            .unwrap();
         assert!(x > 0.0);
         // Radius is distance.
-        let london = LatLon { lat: 51.5, lon: -0.1 };
+        let london = LatLon {
+            lat: 51.5,
+            lon: -0.1,
+        };
         let (x, y) = p.project(london).unwrap();
         let km = Projection::km_of_radius(x.hypot(y));
         assert!((km - crate::geo::distance_km(p.centre, london)).abs() < 1e-6);
@@ -181,6 +240,14 @@ mod tests {
         assert!((before.0 - after.0).abs() < 1e-12 && (before.1 - after.1).abs() < 1e-12);
         let (px, py) = z.to_pixel(after.0, after.1, 100.0);
         assert!((px - 75.0).abs() < 1e-9 && (py - 50.0).abs() < 1e-9);
-        assert_eq!(MapView { scale: 1.0, cx: 0.9, cy: 0.1 }.contained(), MapView::default());
+        assert_eq!(
+            MapView {
+                scale: 1.0,
+                cx: 0.9,
+                cy: 0.1
+            }
+            .contained(),
+            MapView::default()
+        );
     }
 }

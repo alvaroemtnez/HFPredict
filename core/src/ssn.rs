@@ -39,7 +39,11 @@ pub fn for_month(year: i32, month: u32) -> (f64, Basis) {
     let t = table();
     let tag = format!("{year:04}-{month:02}");
     if let Some((ssn, kind)) = t.months.get(&tag) {
-        let basis = if kind == "c" { Basis::Climatology } else { Basis::Forecast };
+        let basis = if kind == "c" {
+            Basis::Climatology
+        } else {
+            Basis::Forecast
+        };
         return (*ssn, basis);
     }
     let nearest = if Some(&tag) < t.months.keys().next() {

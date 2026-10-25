@@ -13,8 +13,8 @@
 use std::sync::OnceLock;
 
 use tiny_skia::{
-    Color, FillRule, LineCap, LineJoin, Paint, PathBuilder, Pixmap, PremultipliedColorU8, Stroke, StrokeDash,
-    Transform,
+    Color, FillRule, LineCap, LineJoin, Paint, PathBuilder, Pixmap, PremultipliedColorU8, Stroke,
+    StrokeDash, Transform,
 };
 
 use crate::coverage::Grid;
@@ -69,13 +69,23 @@ fn argb(c: u32) -> [u8; 4] {
 
 fn premultiply([r, g, b, a]: [u8; 4]) -> [f32; 4] {
     let af = f32::from(a) / 255.0;
-    [f32::from(r) * af, f32::from(g) * af, f32::from(b) * af, f32::from(a)]
+    [
+        f32::from(r) * af,
+        f32::from(g) * af,
+        f32::from(b) * af,
+        f32::from(a),
+    ]
 }
 
 /// `top` over `under`, both premultiplied, 0..255.
 fn over(top: [f32; 4], under: [f32; 4]) -> [f32; 4] {
     let k = 1.0 - top[3] / 255.0;
-    [top[0] + under[0] * k, top[1] + under[1] * k, top[2] + under[2] * k, top[3] + under[3] * k]
+    [
+        top[0] + under[0] * k,
+        top[1] + under[1] * k,
+        top[2] + under[2] * k,
+        top[3] + under[3] * k,
+    ]
 }
 
 fn paint(c: u32) -> Paint<'static> {
@@ -89,7 +99,14 @@ fn paint(c: u32) -> Paint<'static> {
 /// Draws the map into a `size` by `size` square of premultiplied RGBA, the
 /// byte order Android's `ARGB_8888` and GDK's `R8g8b8a8Premultiplied` take.
 /// `density` scales line widths (device pixels per dp / logical pixel).
-pub fn render(scene: &Scene, view: MapView, size: u32, density: f32, palette: &Palette, threads: usize) -> Vec<u8> {
+pub fn render(
+    scene: &Scene,
+    view: MapView,
+    size: u32,
+    density: f32,
+    palette: &Palette,
+    threads: usize,
+) -> Vec<u8> {
     let size = size.max(16);
     let Some(mut pixmap) = Pixmap::new(size, size) else {
         return vec![];
@@ -101,13 +118,32 @@ pub fn render(scene: &Scene, view: MapView, size: u32, density: f32, palette: &P
 
     // The disc, antialiased at its rim.
     if let Some(circle) = PathBuilder::from_circle(ox as f32, oy as f32, radius) {
-        pixmap.fill_path(&circle, &paint(palette.disc), FillRule::Winding, Transform::identity(), None);
+        pixmap.fill_path(
+            &circle,
+            &paint(palette.disc),
+            FillRule::Winding,
+            Transform::identity(),
+            None,
+        );
     }
 
-    raster_cells(&mut pixmap, scene, &projection, view, palette, threads, radius);
+    raster_cells(
+        &mut pixmap,
+        scene,
+        &projection,
+        view,
+        palette,
+        threads,
+        radius,
+    );
 
     let line = density.max(0.5);
-    let stroke = |width: f32| Stroke { width: width * line, line_cap: LineCap::Round, line_join: LineJoin::Round, ..Stroke::default() };
+    let stroke = |width: f32| Stroke {
+        width: width * line,
+        line_cap: LineCap::Round,
+        line_join: LineJoin::Round,
+        ..Stroke::default()
+    };
 
     // Distance rings, dashed, and the rim.
     let mut ring_km = RING_KM;
@@ -116,21 +152,48 @@ pub fn render(scene: &Scene, view: MapView, size: u32, density: f32, palette: &P
         if let Some(c) = PathBuilder::from_circle(ox as f32, oy as f32, r) {
             let mut st = stroke(1.0);
             st.dash = StrokeDash::new(vec![4.0 * line, 4.0 * line], 0.0);
-            pixmap.stroke_path(&c, &paint(palette.grid_lines), &st, Transform::identity(), None);
+            pixmap.stroke_path(
+                &c,
+                &paint(palette.grid_lines),
+                &st,
+                Transform::identity(),
+                None,
+            );
         }
         ring_km += RING_KM;
     }
     if let Some(c) = PathBuilder::from_circle(ox as f32, oy as f32, radius) {
-        pixmap.stroke_path(&c, &paint(palette.grid_lines), &stroke(1.0), Transform::identity(), None);
+        pixmap.stroke_path(
+            &c,
+            &paint(palette.grid_lines),
+            &stroke(1.0),
+            Transform::identity(),
+            None,
+        );
     }
 
     // Coastlines.
     let mut coast = PathBuilder::new();
     for ring in land() {
-        add_polyline(&mut coast, &projection, view, s, ring.iter().map(|&(lon, lat)| LatLon { lat: f64::from(lat), lon: f64::from(lon) }));
+        add_polyline(
+            &mut coast,
+            &projection,
+            view,
+            s,
+            ring.iter().map(|&(lon, lat)| LatLon {
+                lat: f64::from(lat),
+                lon: f64::from(lon),
+            }),
+        );
     }
     if let Some(path) = coast.finish() {
-        pixmap.stroke_path(&path, &paint(palette.coastline), &stroke(0.9), Transform::identity(), None);
+        pixmap.stroke_path(
+            &path,
+            &paint(palette.coastline),
+            &stroke(0.9),
+            Transform::identity(),
+            None,
+        );
     }
 
     // The path to the destination and its end.
@@ -138,19 +201,49 @@ pub fn render(scene: &Scene, view: MapView, size: u32, density: f32, palette: &P
         if let Some((x, y)) = projection.project(p) {
             let (px, py) = view.to_pixel(x, y, s);
             if let Some(c) = PathBuilder::from_circle(px as f32, py as f32, (r + 1.5) * line) {
-                pixmap.fill_path(&c, &paint(palette.halo), FillRule::Winding, Transform::identity(), None);
+                pixmap.fill_path(
+                    &c,
+                    &paint(palette.halo),
+                    FillRule::Winding,
+                    Transform::identity(),
+                    None,
+                );
             }
             if let Some(c) = PathBuilder::from_circle(px as f32, py as f32, r * line) {
-                pixmap.fill_path(&c, &paint(fill), FillRule::Winding, Transform::identity(), None);
+                pixmap.fill_path(
+                    &c,
+                    &paint(fill),
+                    FillRule::Winding,
+                    Transform::identity(),
+                    None,
+                );
             }
         }
     };
     if let Some(to) = scene.destination {
         let mut pb = PathBuilder::new();
-        add_polyline(&mut pb, &projection, view, s, geo::great_circle(scene.centre, to, 128).into_iter());
+        add_polyline(
+            &mut pb,
+            &projection,
+            view,
+            s,
+            geo::great_circle(scene.centre, to, 128).into_iter(),
+        );
         if let Some(path) = pb.finish() {
-            pixmap.stroke_path(&path, &paint(palette.halo), &stroke(4.0), Transform::identity(), None);
-            pixmap.stroke_path(&path, &paint(palette.path), &stroke(2.0), Transform::identity(), None);
+            pixmap.stroke_path(
+                &path,
+                &paint(palette.halo),
+                &stroke(4.0),
+                Transform::identity(),
+                None,
+            );
+            pixmap.stroke_path(
+                &path,
+                &paint(palette.path),
+                &stroke(2.0),
+                Transform::identity(),
+                None,
+            );
         }
         dot(&mut pixmap, to, palette.path, 4.5);
     }
@@ -160,7 +253,15 @@ pub fn render(scene: &Scene, view: MapView, size: u32, density: f32, palette: &P
 }
 
 /// Coverage cells and the night wash, pixel by pixel inside the disc.
-fn raster_cells(pixmap: &mut Pixmap, scene: &Scene, projection: &Projection, view: MapView, palette: &Palette, threads: usize, radius: f32) {
+fn raster_cells(
+    pixmap: &mut Pixmap,
+    scene: &Scene,
+    projection: &Projection,
+    view: MapView,
+    palette: &Palette,
+    threads: usize,
+    radius: f32,
+) {
     let size = pixmap.width() as usize;
     let s = size as f64;
     let colours = [
@@ -178,7 +279,9 @@ fn raster_cells(pixmap: &mut Pixmap, scene: &Scene, projection: &Projection, vie
     let pitch = (6.0 * (radius / 300.0).clamp(0.6, 1.6)).round().max(4.0) as usize;
 
     let rows: Vec<usize> = (0..size).collect();
-    let chunks: Vec<&[usize]> = rows.chunks(size.div_ceil(threads.max(1) * 4).max(1)).collect();
+    let chunks: Vec<&[usize]> = rows
+        .chunks(size.div_ceil(threads.max(1) * 4).max(1))
+        .collect();
     let bands: Vec<Vec<(usize, Vec<[f32; 4]>)>> = crate::parallel::map(&chunks, threads, |chunk| {
         chunk
             .iter()
@@ -193,7 +296,9 @@ fn raster_cells(pixmap: &mut Pixmap, scene: &Scene, projection: &Projection, vie
                         continue;
                     }
                     let (x, y) = view.to_disc(px as f64 + 0.5, py as f64 + 0.5, s);
-                    let Some(p) = projection.invert(x, y) else { continue };
+                    let Some(p) = projection.invert(x, y) else {
+                        continue;
+                    };
                     let mut colour = [0.0f32; 4];
                     let mut steep = false;
                     for grid in &scene.layers {
@@ -202,10 +307,16 @@ fn raster_cells(pixmap: &mut Pixmap, scene: &Scene, projection: &Projection, vie
                             let q = Quality::of(r);
                             colour = colours[q as usize];
                             let angle = grid.takeoff_deg[i];
-                            steep = q != Quality::Closed && !angle.is_nan() && f64::from(angle) >= NVIS_MIN_ANGLE_DEG;
+                            steep = q != Quality::Closed
+                                && !angle.is_nan()
+                                && f64::from(angle) >= NVIS_MIN_ANGLE_DEG;
                         }
                     }
-                    if scene.show_nvis && steep && px % pitch == pitch / 2 && py % pitch == pitch / 2 {
+                    if scene.show_nvis
+                        && steep
+                        && px % pitch == pitch / 2
+                        && py % pitch == pitch / 2
+                    {
                         colour = over(nvis, colour);
                     }
                     if scene.show_night {
@@ -232,7 +343,12 @@ fn raster_cells(pixmap: &mut Pixmap, scene: &Scene, projection: &Projection, vie
                 continue;
             }
             let under = pixels[py * width + px];
-            let u = [f32::from(under.red()), f32::from(under.green()), f32::from(under.blue()), f32::from(under.alpha())];
+            let u = [
+                f32::from(under.red()),
+                f32::from(under.green()),
+                f32::from(under.blue()),
+                f32::from(under.alpha()),
+            ];
             let [r, g, b, a] = over(c, u);
             let a8 = a.round().clamp(0.0, 255.0) as u8;
             let ch = |v: f32| (v.round().clamp(0.0, 255.0) as u8).min(a8);
@@ -254,7 +370,13 @@ fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
 
 /// Adds a projected polyline, broken wherever it leaves the drawable disc
 /// or jumps across it (a line wrapping round the antipode).
-fn add_polyline(pb: &mut PathBuilder, projection: &Projection, view: MapView, size: f64, points: impl Iterator<Item = LatLon>) {
+fn add_polyline(
+    pb: &mut PathBuilder,
+    projection: &Projection,
+    view: MapView,
+    size: f64,
+    points: impl Iterator<Item = LatLon>,
+) {
     let mut last: Option<(f64, f64)> = None;
     for p in points {
         match projection.project(p) {
@@ -276,7 +398,9 @@ fn add_polyline(pb: &mut PathBuilder, projection: &Projection, view: MapView, si
 /// Natural Earth's 1:110m land outlines, as rings of (lon, lat).
 pub fn land() -> &'static [Vec<(f32, f32)>] {
     static LAND: OnceLock<Vec<Vec<(f32, f32)>>> = OnceLock::new();
-    LAND.get_or_init(|| serde_json::from_str(include_str!("../data/land.json")).expect("data/land.json is valid"))
+    LAND.get_or_init(|| {
+        serde_json::from_str(include_str!("../data/land.json")).expect("data/land.json is valid")
+    })
 }
 
 /// The view that frames everywhere a grid reaches (at least `Patchy`),
@@ -287,7 +411,10 @@ pub fn fit_reach(centre: LatLon, grid: &Grid) -> MapView {
     for row in 0..grid.ny {
         for column in 0..grid.nx {
             if Quality::of(f64::from(grid.reliability[row * grid.nx + column])) >= Quality::Patchy {
-                let p = LatLon { lat: grid.lat_at(row), lon: grid.lon_at(column) };
+                let p = LatLon {
+                    lat: grid.lat_at(row),
+                    lon: grid.lon_at(column),
+                };
                 // The far corner of the cell, so the whole cell is in frame.
                 let half = (grid.lat_step.max(grid.lon_step * p.lat.to_radians().cos())) / 2.0;
                 let r = match projection.project(p) {
@@ -301,7 +428,12 @@ pub fn fit_reach(centre: LatLon, grid: &Grid) -> MapView {
     if extent <= 0.0 || extent >= 0.9 {
         return MapView::default();
     }
-    MapView { scale: 1.0 / (extent * 1.12).max(0.05), cx: 0.5, cy: 0.5 }.contained()
+    MapView {
+        scale: 1.0 / (extent * 1.12).max(0.05),
+        cx: 0.5,
+        cy: 0.5,
+    }
+    .contained()
 }
 
 /// The furthest point still working by near-vertical incidence, km.
@@ -313,7 +445,13 @@ pub fn nvis_reach_km(centre: LatLon, grid: &Grid) -> Option<f64> {
             let angle = grid.takeoff_deg[i];
             let angle = (!angle.is_nan()).then_some(f64::from(angle));
             if crate::quality::is_nvis(angle, f64::from(grid.reliability[i])) {
-                let km = geo::distance_km(centre, LatLon { lat: grid.lat_at(row), lon: grid.lon_at(column) });
+                let km = geo::distance_km(
+                    centre,
+                    LatLon {
+                        lat: grid.lat_at(row),
+                        lon: grid.lon_at(column),
+                    },
+                );
                 furthest = Some(furthest.map_or(km, |f: f64| f.max(km)));
             }
         }
@@ -358,8 +496,14 @@ mod tests {
     fn draws_a_disc_with_cells() {
         let grid = world(0.9);
         let scene = Scene {
-            centre: LatLon { lat: 39.47, lon: -0.38 },
-            destination: Some(LatLon { lat: 35.7, lon: 139.7 }),
+            centre: LatLon {
+                lat: 39.47,
+                lon: -0.38,
+            },
+            destination: Some(LatLon {
+                lat: 35.7,
+                lon: 139.7,
+            }),
             unix_secs: 1_793_000_000,
             layers: vec![&grid],
             show_night: false,
@@ -379,11 +523,20 @@ mod tests {
     #[test]
     fn fits_reach() {
         let mut grid = world(0.0);
-        assert_eq!(fit_reach(LatLon { lat: 0.0, lon: 0.0 }, &grid), MapView::default());
+        assert_eq!(
+            fit_reach(LatLon { lat: 0.0, lon: 0.0 }, &grid),
+            MapView::default()
+        );
         // Only the cell under the station reaches: zoom right in.
         let i = grid.index_of(0.0, 0.0).unwrap();
         grid.reliability[i] = 0.9;
-        let v = fit_reach(LatLon { lat: 7.5, lon: 11.25 }, &grid);
+        let v = fit_reach(
+            LatLon {
+                lat: 7.5,
+                lon: 11.25,
+            },
+            &grid,
+        );
         assert!(v.scale > 2.0, "{v:?}");
     }
 }

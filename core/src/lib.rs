@@ -13,7 +13,9 @@
 uniffi::setup_scaffolding!();
 
 pub mod antenna;
+pub mod app;
 pub mod bands;
+pub mod cache;
 pub mod correct;
 pub mod coverage;
 pub mod engine;
@@ -21,6 +23,7 @@ pub mod forecast;
 pub mod geo;
 pub mod maps;
 pub mod modes;
+pub mod online;
 pub mod parallel;
 pub mod places;
 pub mod projection;
@@ -28,6 +31,7 @@ pub mod quality;
 pub mod render;
 pub mod ssn;
 pub mod station;
+pub mod store;
 
 /// Every way a core call can fail.
 #[derive(Debug, thiserror::Error)]
@@ -53,3 +57,5 @@ impl From<std::io::Error> for Error {
         Error::Storage(e.to_string())
     }
 }
+
+pub use app::Core;

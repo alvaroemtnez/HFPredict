@@ -28,7 +28,11 @@ pub fn map<T: Sync, R: Send>(items: &[T], threads: usize, f: impl Fn(&T) -> R + 
             });
         }
     });
-    out.into_inner().unwrap_or_else(|e| e.into_inner()).into_iter().map(|r| r.expect("every item ran")).collect()
+    out.into_inner()
+        .unwrap_or_else(|e| e.into_inner())
+        .into_iter()
+        .map(|r| r.expect("every item ran"))
+        .collect()
 }
 
 #[cfg(test)]
@@ -36,7 +40,10 @@ mod tests {
     #[test]
     fn keeps_order() {
         let items: Vec<u32> = (0..100).collect();
-        assert_eq!(super::map(&items, 8, |x| x * 2), items.iter().map(|x| x * 2).collect::<Vec<_>>());
+        assert_eq!(
+            super::map(&items, 8, |x| x * 2),
+            items.iter().map(|x| x * 2).collect::<Vec<_>>()
+        );
         assert!(super::map(&Vec::<u32>::new(), 8, |x| *x).is_empty());
     }
 }

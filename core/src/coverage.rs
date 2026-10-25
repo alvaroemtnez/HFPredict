@@ -25,11 +25,19 @@ pub const FINE_CENTRE_LON_STEP: f64 = 7.5;
 
 /// The cell sizes a patch may use, coarsest first. Every rung divides the
 /// world and a coarse cell evenly.
-pub const PATCH_STEPS: [(f64, f64); 6] =
-    [(15.0, 22.5), (7.5, 11.25), (5.0, 7.5), (2.5, 3.75), (1.25, 1.5), (0.625, 0.75)];
+pub const PATCH_STEPS: [(f64, f64); 6] = [
+    (15.0, 22.5),
+    (7.5, 11.25),
+    (5.0, 7.5),
+    (2.5, 3.75),
+    (1.25, 1.5),
+    (0.625, 0.75),
+];
 /// The whole cost control of a patch: hold the count and the run costs the
-/// same wherever the reader looks.
-pub const MAX_PATCH_POINTS: usize = 700;
+/// same wherever the reader looks. HFcast used 700 for JavaScript on slow
+/// phones; natively 2,000 (about 0.15 s on a desktop) makes a patch finer
+/// than the whole-world fine grid from a moderate zoom on.
+pub const MAX_PATCH_POINTS: usize = 2000;
 /// About 1,100 km either side of the centre.
 pub const PATCH_HALF_LAT_DEG: f64 = 10.0;
 /// Meridians converge; past about 70 degrees the patch is held narrower.
@@ -140,7 +148,12 @@ pub fn axis_of(lo: f64, hi: f64, step: f64, edge: f64, span: f64) -> Option<Axis
     let index = |deg: f64| (deg - edge) / width - 0.5;
     let first = (index(lo).ceil() as i64).max(0);
     let last = (index(hi).floor() as i64).min(bands - 1);
-    (last >= first).then_some(Axis { first, last, width, bands })
+    (last >= first).then_some(Axis {
+        first,
+        last,
+        width,
+        bands,
+    })
 }
 
 fn centre(axis: &Axis, edge: f64, i: i64) -> f64 {
@@ -150,7 +163,10 @@ fn centre(axis: &Axis, edge: f64, i: i64) -> f64 {
 /// A quarter of a cell outside the first and last point, so no rounding in
 /// the engine can drop or add a row.
 fn edges(axis: &Axis, edge: f64, first: i64, last: i64) -> (f64, f64) {
-    (centre(axis, edge, first) - axis.width / 4.0, centre(axis, edge, last) + axis.width / 4.0)
+    (
+        centre(axis, edge, first) - axis.width / 4.0,
+        centre(axis, edge, last) + axis.width / 4.0,
+    )
 }
 
 /// The whole world cut into latitude strips that together run exactly the
@@ -171,7 +187,12 @@ pub fn lat_strips(lat_step: f64, lon_step: f64, strips: usize) -> Option<Vec<Bou
                 let size = (rows / strips + usize::from(i < rows % strips)) as i64;
                 let (lat_min, lat_max) = edges(&lat, -90.0, next, next + size - 1);
                 next += size;
-                Bounds { lat_min, lat_max, lon_min, lon_max }
+                Bounds {
+                    lat_min,
+                    lat_max,
+                    lon_min,
+                    lon_max,
+                }
             })
             .collect(),
     )
@@ -201,7 +222,10 @@ impl PatchGrid {
     /// cell does not spend an engine run on an answer already held.
     pub fn key(&self) -> String {
         let b = self.bounds;
-        format!("{},{},{},{},{},{}", b.lat_min, b.lat_max, b.lon_min, b.lon_max, self.lat_step, self.lon_step)
+        format!(
+            "{},{},{},{},{},{}",
+            b.lat_min, b.lat_max, b.lon_min, b.lon_max, self.lat_step, self.lon_step
+        )
     }
 }
 
@@ -229,13 +253,13 @@ pub fn patch_bounds(lat: f64, lon: f64, half_lat_deg: f64) -> Option<Bounds> {
 pub fn patch_grid(lat: f64, lon: f64, half_lat_deg: f64) -> Option<PatchGrid> {
     let b = patch_bounds(lat, lon, half_lat_deg)?;
     let count = |(ls, ws): (f64, f64)| {
-        ((b.lat_max - b.lat_min) / ls).ceil() as usize * ((b.lon_max - b.lon_min) / ws).ceil() as usize
+        ((b.lat_max - b.lat_min) / ls).ceil() as usize
+            * ((b.lon_max - b.lon_min) / ws).ceil() as usize
     };
     let (lat_step, lon_step) = PATCH_STEPS
         .iter()
         .copied()
-        .filter(|&s| count(s) <= MAX_PATCH_POINTS)
-        .last()
+        .rfind(|&s| count(s) <= MAX_PATCH_POINTS)
         .unwrap_or(PATCH_STEPS[0]);
     let down = axis_of(b.lat_min, b.lat_max, lat_step, -90.0, 180.0)?;
     let across = axis_of(b.lon_min, b.lon_max, lon_step, -180.0, 360.0)?;
@@ -283,9 +307,10 @@ mod tests {
         // Cell centres sit at half steps from the world edges.
         let frac = ((p.bounds.lat_min + 90.0) / p.lat_step).fract();
         assert!((frac - 0.5).abs() < 1e-9);
-        // Zoomed in, the same budget buys a finer grid.
-        let near = patch_grid(39.47, -0.38, 3.0).unwrap();
-        assert!(near.lat_step < p.lat_step);
+        // The default patch is finer than the whole-world fine grid.
+        assert!(p.lat_step < FINE_LAT_STEP);
+        // Zoomed out it is held to the same rectangle.
+        assert_eq!(patch_grid(39.47, -0.38, 40.0), Some(p));
     }
 
     #[test]

@@ -30,7 +30,12 @@ impl RawGrid {
     /// Corrects every cell against the middle of its own day. Without a
     /// lattice the engine's reliability stands, which is what a map shows
     /// until the lattice arrives.
-    pub fn corrected(&self, centre: Option<&CentreField>, required_snr_db: f64, kp_max_24h: Option<f64>) -> Grid {
+    pub fn corrected(
+        &self,
+        centre: Option<&CentreField>,
+        required_snr_db: f64,
+        kp_max_24h: Option<f64>,
+    ) -> Grid {
         let Some(field) = centre else {
             return self.grid.clone();
         };
@@ -54,7 +59,10 @@ impl RawGrid {
                 ) as f32);
             }
         }
-        Grid { reliability, ..g.clone() }
+        Grid {
+            reliability,
+            ..g.clone()
+        }
     }
 }
 
@@ -99,16 +107,27 @@ struct WireArea {
 
 /// The lattice a set of points sits on: rows and columns from the asked
 /// steps, anchored at the world's half-step cell centres.
-fn lattice(points: &[WirePoint], lat_step: f64, lon_step: f64, whole_world: bool) -> Option<(f64, f64, usize, usize)> {
+fn lattice(
+    points: &[WirePoint],
+    lat_step: f64,
+    lon_step: f64,
+    whole_world: bool,
+) -> Option<(f64, f64, usize, usize)> {
     if whole_world {
         let ny = (180.0 / lat_step).round() as usize;
         let nx = (360.0 / lon_step).round() as usize;
         return Some((-90.0 + lat_step / 2.0, -180.0 + lon_step / 2.0, nx, ny));
     }
     let lat_min = points.iter().map(|p| p.lat).fold(f64::INFINITY, f64::min);
-    let lat_max = points.iter().map(|p| p.lat).fold(f64::NEG_INFINITY, f64::max);
+    let lat_max = points
+        .iter()
+        .map(|p| p.lat)
+        .fold(f64::NEG_INFINITY, f64::max);
     let lon_min = points.iter().map(|p| p.lon).fold(f64::INFINITY, f64::min);
-    let lon_max = points.iter().map(|p| p.lon).fold(f64::NEG_INFINITY, f64::max);
+    let lon_max = points
+        .iter()
+        .map(|p| p.lon)
+        .fold(f64::NEG_INFINITY, f64::max);
     if !lat_min.is_finite() {
         return None;
     }
@@ -119,9 +138,15 @@ fn lattice(points: &[WirePoint], lat_step: f64, lon_step: f64, whole_world: bool
 
 /// Places every point by its own coordinates (never trusting emission
 /// order), one band's columns out of a possibly multi-band answer.
-fn raw_grid(points: &[WirePoint], lat_step: f64, lon_step: f64, whole_world: bool, band_index: usize) -> Result<RawGrid, Error> {
-    let (lat_min, lon_min, nx, ny) =
-        lattice(points, lat_step, lon_step, whole_world).ok_or_else(|| Error::Engine("the engine produced no coverage points".into()))?;
+fn raw_grid(
+    points: &[WirePoint],
+    lat_step: f64,
+    lon_step: f64,
+    whole_world: bool,
+    band_index: usize,
+) -> Result<RawGrid, Error> {
+    let (lat_min, lon_min, nx, ny) = lattice(points, lat_step, lon_step, whole_world)
+        .ok_or_else(|| Error::Engine("the engine produced no coverage points".into()))?;
     let n = nx * ny;
     let mut grid = Grid {
         lat_min,
@@ -152,7 +177,12 @@ fn raw_grid(points: &[WirePoint], lat_step: f64, lon_step: f64, whole_world: boo
         low[i] = nan(get(&p.snr_low_decile));
         up[i] = nan(get(&p.snr_up_decile));
     }
-    Ok(RawGrid { grid, snr, snr_low: low, snr_up: up })
+    Ok(RawGrid {
+        grid,
+        snr,
+        snr_low: low,
+        snr_up: up,
+    })
 }
 
 fn check_echo(answer: &WireArea, bands: &[Band]) -> Result<(), Error> {
@@ -160,11 +190,27 @@ fn check_echo(answer: &WireArea, bands: &[Band]) -> Result<(), Error> {
         return Ok(());
     }
     let echoed = answer.freqs_mhz.as_deref().unwrap_or(&[]);
-    let same = echoed.len() == bands.len() && echoed.iter().zip(bands).all(|(f, b)| (f - b.mhz()).abs() < 1e-4);
-    if same { Ok(()) } else { Err(Error::Engine("the engine did not answer the bands asked for".into())) }
+    let same = echoed.len() == bands.len()
+        && echoed
+            .iter()
+            .zip(bands)
+            .all(|(f, b)| (f - b.mhz()).abs() < 1e-4);
+    if same {
+        Ok(())
+    } else {
+        Err(Error::Engine(
+            "the engine did not answer the bands asked for".into(),
+        ))
+    }
 }
 
-fn area_request(engine: &Engine, ctx: &RunContext, from: LatLon, hour: Option<u32>, bands: &[Band]) -> Result<Map<String, Value>, Error> {
+fn area_request(
+    engine: &Engine,
+    ctx: &RunContext,
+    from: LatLon,
+    hour: Option<u32>,
+    bands: &[Band],
+) -> Result<Map<String, Value>, Error> {
     let mut req = engine.base_request(ctx)?;
     req.insert("mode".into(), json!("area"));
     req.insert("fromLat".into(), json!(from.lat));
@@ -180,7 +226,10 @@ fn area_request(engine: &Engine, ctx: &RunContext, from: LatLon, hour: Option<u3
     if let [band] = bands {
         req.insert("freqMhz".into(), json!(band.mhz()));
     } else {
-        req.insert("freqsMhz".into(), json!(bands.iter().map(|b| b.mhz()).collect::<Vec<_>>()));
+        req.insert(
+            "freqsMhz".into(),
+            json!(bands.iter().map(|b| b.mhz()).collect::<Vec<_>>()),
+        );
     }
     Ok(req)
 }
@@ -193,7 +242,12 @@ fn with_bounds(req: &mut Map<String, Value>, b: Bounds) {
 }
 
 /// Every band on the coarse whole-world grid, one hour, uncorrected.
-pub fn coarse(engine: &Engine, ctx: &RunContext, from: LatLon, hour: u32) -> Result<Vec<(Band, RawGrid)>, Error> {
+pub fn coarse(
+    engine: &Engine,
+    ctx: &RunContext,
+    from: LatLon,
+    hour: u32,
+) -> Result<Vec<(Band, RawGrid)>, Error> {
     let bands = Band::BY_FREQ;
     let mut req = area_request(engine, ctx, from, Some(hour), &bands)?;
     req.insert("latStep".into(), json!(coverage::LAT_STEP));
@@ -203,7 +257,12 @@ pub fn coarse(engine: &Engine, ctx: &RunContext, from: LatLon, hour: u32) -> Res
     bands
         .iter()
         .enumerate()
-        .map(|(i, &band)| Ok((band, raw_grid(&answer.points, answer.lat_step, answer.lon_step, true, i)?)))
+        .map(|(i, &band)| {
+            Ok((
+                band,
+                raw_grid(&answer.points, answer.lat_step, answer.lon_step, true, i)?,
+            ))
+        })
         .collect()
 }
 
@@ -232,9 +291,21 @@ pub fn centres(
             let points: Vec<(f64, f64, f64)> = answer
                 .points
                 .iter()
-                .map(|p| (p.lat, p.lon, p.median_snr.as_ref().and_then(|m| m.at(i)).unwrap_or(correct::DEAD_SIGNAL_FLOOR_DB)))
+                .map(|p| {
+                    (
+                        p.lat,
+                        p.lon,
+                        p.median_snr
+                            .as_ref()
+                            .and_then(|m| m.at(i))
+                            .unwrap_or(correct::DEAD_SIGNAL_FLOOR_DB),
+                    )
+                })
                 .collect();
-            (b, CentreField::new(&points, answer.lat_step, answer.lon_step))
+            (
+                b,
+                CentreField::new(&points, answer.lat_step, answer.lon_step),
+            )
         })
         .collect())
 }
@@ -242,7 +313,14 @@ pub fn centres(
 /// One band on the fine whole-world grid, uncorrected. Truecast threads
 /// inside the engine; VOACAP's area driver is serial (it carries state from
 /// point to point, as the Fortran does), so it runs in latitude strips.
-pub fn fine(engine: &Engine, ctx: &RunContext, from: LatLon, hour: u32, band: Band, threads: usize) -> Result<RawGrid, Error> {
+pub fn fine(
+    engine: &Engine,
+    ctx: &RunContext,
+    from: LatLon,
+    hour: u32,
+    band: Band,
+    threads: usize,
+) -> Result<RawGrid, Error> {
     let mut req = area_request(engine, ctx, from, Some(hour), &[band])?;
     let (lat_step, lon_step) = (coverage::FINE_LAT_STEP, coverage::FINE_LON_STEP);
     req.insert("latStep".into(), json!(lat_step));
@@ -273,7 +351,13 @@ pub fn fine(engine: &Engine, ctx: &RunContext, from: LatLon, hour: u32, band: Ba
 }
 
 /// Every band on a patch around the view, uncorrected.
-pub fn patch(engine: &Engine, ctx: &RunContext, from: LatLon, hour: u32, grid: &PatchGrid) -> Result<Vec<(Band, RawGrid)>, Error> {
+pub fn patch(
+    engine: &Engine,
+    ctx: &RunContext,
+    from: LatLon,
+    hour: u32,
+    grid: &PatchGrid,
+) -> Result<Vec<(Band, RawGrid)>, Error> {
     let bands = Band::BY_FREQ;
     let mut req = area_request(engine, ctx, from, Some(hour), &bands)?;
     req.insert("latStep".into(), json!(grid.lat_step));
@@ -284,7 +368,12 @@ pub fn patch(engine: &Engine, ctx: &RunContext, from: LatLon, hour: u32, grid: &
     bands
         .iter()
         .enumerate()
-        .map(|(i, &band)| Ok((band, raw_grid(&answer.points, grid.lat_step, grid.lon_step, false, i)?)))
+        .map(|(i, &band)| {
+            Ok((
+                band,
+                raw_grid(&answer.points, grid.lat_step, grid.lon_step, false, i)?,
+            ))
+        })
         .collect()
 }
 
@@ -293,7 +382,10 @@ mod tests {
     use super::*;
     use crate::engine::tests::ctx;
 
-    const VALENCIA: LatLon = LatLon { lat: 39.47, lon: -0.38 };
+    const VALENCIA: LatLon = LatLon {
+        lat: 39.47,
+        lon: -0.38,
+    };
 
     #[test]
     fn coarse_grid_is_whole_and_corrects() {
@@ -303,8 +395,23 @@ mod tests {
         assert_eq!(grids.len(), 10);
         let (_, g20) = grids.iter().find(|(b, _)| *b == Band::M20).unwrap();
         assert_eq!((g20.grid.nx, g20.grid.ny), (16, 12));
-        let fields = centres(&engine, &c, VALENCIA, coverage::CENTRE_LAT_STEP, coverage::CENTRE_LON_STEP, None, 4).unwrap();
-        let field = fields.iter().find(|(b, _)| *b == Band::M20).unwrap().1.as_ref().unwrap();
+        let fields = centres(
+            &engine,
+            &c,
+            VALENCIA,
+            coverage::CENTRE_LAT_STEP,
+            coverage::CENTRE_LON_STEP,
+            None,
+            4,
+        )
+        .unwrap();
+        let field = fields
+            .iter()
+            .find(|(b, _)| *b == Band::M20)
+            .unwrap()
+            .1
+            .as_ref()
+            .unwrap();
         let fixed = g20.corrected(Some(field), 24.0, None);
         assert_eq!(fixed.reliability.len(), 192);
         assert!(fixed.reach() > 0.0 && fixed.reach() < 1.0);

@@ -23,7 +23,13 @@ pub const MAX_NAME_LENGTH: usize = 24;
 impl Default for Station {
     /// 100 W of CW into no particular antenna, as VOACAP assumes.
     fn default() -> Self {
-        Station { id: "s1".into(), name: String::new(), mode: Mode::DEFAULT, watts: 100.0, antenna: Antenna::default() }
+        Station {
+            id: "s1".into(),
+            name: String::new(),
+            mode: Mode::DEFAULT,
+            watts: 100.0,
+            antenna: Antenna::default(),
+        }
     }
 }
 
@@ -34,7 +40,11 @@ impl Station {
             id: self.id.clone(),
             name: self.name.trim().chars().take(MAX_NAME_LENGTH).collect(),
             mode: self.mode,
-            watts: if self.watts.is_finite() { self.watts.clamp(MIN_WATTS, MAX_WATTS) } else { 100.0 },
+            watts: if self.watts.is_finite() {
+                self.watts.clamp(MIN_WATTS, MAX_WATTS)
+            } else {
+                100.0
+            },
             antenna: self.antenna.clamped(),
         }
     }
@@ -47,7 +57,11 @@ impl Station {
             self.mode.key(),
             self.watts,
             a.kind,
-            if a.kind.uses_height() { a.height_m } else { 0.0 },
+            if a.kind.uses_height() {
+                a.height_m
+            } else {
+                0.0
+            },
             if a.kind.uses_gain() { a.gain_dbd } else { 0.0 },
             a.engine_beam_deg()
         )
@@ -56,7 +70,11 @@ impl Station {
 
 /// The next free id, `s<n>`.
 pub fn next_id(stations: &[Station]) -> String {
-    let max = stations.iter().filter_map(|s| s.id.strip_prefix('s')?.parse::<u32>().ok()).max().unwrap_or(0);
+    let max = stations
+        .iter()
+        .filter_map(|s| s.id.strip_prefix('s')?.parse::<u32>().ok())
+        .max()
+        .unwrap_or(0);
     format!("s{}", max + 1)
 }
 
@@ -67,7 +85,10 @@ mod tests {
 
     #[test]
     fn clamps_and_signs() {
-        let mut s = Station { watts: 5000.0, ..Station::default() };
+        let mut s = Station {
+            watts: 5000.0,
+            ..Station::default()
+        };
         s.antenna.kind = AntennaKind::Vertical;
         s.antenna.beam_deg = 400.0;
         let c = s.clamped();
@@ -75,6 +96,15 @@ mod tests {
         assert_eq!(c.antenna.beam_deg, 40.0);
         // A vertical's bearing does not reach the engine, so not the key either.
         assert!(c.signature().ends_with(":0.0"));
-        assert_eq!(next_id(&[Station::default(), Station { id: "s7".into(), ..Station::default() }]), "s8");
+        assert_eq!(
+            next_id(&[
+                Station::default(),
+                Station {
+                    id: "s7".into(),
+                    ..Station::default()
+                }
+            ]),
+            "s8"
+        );
     }
 }

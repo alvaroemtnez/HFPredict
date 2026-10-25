@@ -47,7 +47,10 @@ impl AntennaKind {
     pub fn uses_beam(self) -> bool {
         matches!(
             self,
-            AntennaKind::Dipole | AntennaKind::InvertedV | AntennaKind::InvertedL | AntennaKind::Yagi
+            AntennaKind::Dipole
+                | AntennaKind::InvertedV
+                | AntennaKind::InvertedL
+                | AntennaKind::Yagi
         )
     }
 
@@ -59,7 +62,10 @@ impl AntennaKind {
 
     /// Two equal lobes, opposite each other.
     pub fn is_bidirectional(self) -> bool {
-        matches!(self, AntennaKind::Dipole | AntennaKind::InvertedV | AntennaKind::InvertedL)
+        matches!(
+            self,
+            AntennaKind::Dipole | AntennaKind::InvertedV | AntennaKind::InvertedL
+        )
     }
 
     fn voa_type(self) -> u32 {
@@ -118,7 +124,12 @@ pub struct Antenna {
 
 impl Default for Antenna {
     fn default() -> Self {
-        Antenna { kind: AntennaKind::Isotropic, height_m: 10.0, gain_dbd: 6.0, beam_deg: 0.0 }
+        Antenna {
+            kind: AntennaKind::Isotropic,
+            height_m: 10.0,
+            gain_dbd: 6.0,
+            beam_deg: 0.0,
+        }
     }
 }
 
@@ -159,7 +170,11 @@ impl Antenna {
     /// The bearing the engine is given: only directional families carry one,
     /// so a vertical does not refetch answers that cannot differ.
     pub fn engine_beam_deg(&self) -> f64 {
-        if self.kind.uses_beam() { self.beam_deg } else { 0.0 }
+        if self.kind.uses_beam() {
+            self.beam_deg
+        } else {
+            0.0
+        }
     }
 
     /// The file for this antenna, or `None` for an isotropic station, which
@@ -169,18 +184,30 @@ impl Antenna {
             return None;
         }
         let height = self.height_m.round() as i64;
-        let gain = if self.kind == AntennaKind::Yagi { self.gain_dbd.round() as i64 } else { 0 };
+        let gain = if self.kind == AntennaKind::Yagi {
+            self.gain_dbd.round() as i64
+        } else {
+            0
+        };
         // The card holds 21 columns for the path; `antennas/` is stripped by
         // the engine, so `hfpredict/` plus this name must fit.
         let name = format!("hfp/{}{height}g{gain}.voa", self.kind.short());
-        Some(VoaFile { path: format!("antennas/{name}"), name, text: self.definition() })
+        Some(VoaFile {
+            path: format!("antennas/{name}"),
+            name,
+            text: self.definition(),
+        })
     }
 
     fn definition(&self) -> String {
         let height = format!("{:>6.2}", self.effective_height_m());
         let mut params = vec![
             param("  0.00", 1, "Max Gain dBi..:"),
-            param(&format!("{:>6}", self.kind.voa_type()), 2, "Antenna Type..:"),
+            param(
+                &format!("{:>6}", self.kind.voa_type()),
+                2,
+                "Antenna Type..:",
+            ),
             param(&format!("{:>6}", DIELECTRIC), 3, "Dielectric....:"),
             param(&format!("{:>6.5}", CONDUCTIVITY), 4, "Conductivity..:"),
             param(&format!("{:>6.3}", DESIGN_MHZ), 5, "Operating Freq:"),
@@ -196,7 +223,11 @@ impl Antenna {
             AntennaKind::Yagi => {
                 params.push(param("  -.50", 6, "Antenna Length:"));
                 params.push(param(&height, 7, "Antenna Height:"));
-                params.push(param(&format!("{:>6.1}", self.gain_dbd), 8, "Gain ab dipole:"));
+                params.push(param(
+                    &format!("{:>6.1}", self.gain_dbd),
+                    8,
+                    "Gain ab dipole:",
+                ));
             }
             AntennaKind::Vertical => {
                 params.push(param(&height, 6, "Antenna Height:"));
@@ -285,7 +316,12 @@ mod tests {
     use super::*;
 
     fn antenna(kind: AntennaKind, height_m: f64) -> Antenna {
-        Antenna { kind, height_m, gain_dbd: 6.0, beam_deg: 45.0 }
+        Antenna {
+            kind,
+            height_m,
+            gain_dbd: 6.0,
+            beam_deg: 45.0,
+        }
     }
 
     #[test]

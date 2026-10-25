@@ -49,7 +49,10 @@ pub fn grid_to_lat_lon(text: &str) -> Option<LatLon> {
         lon += a * lon_step;
         lat += b * lat_step;
     }
-    Some(LatLon { lat: lat + lat_step / 2.0, lon: lon + lon_step / 2.0 })
+    Some(LatLon {
+        lat: lat + lat_step / 2.0,
+        lon: lon + lon_step / 2.0,
+    })
 }
 
 /// Latitude and longitude to a 6-character locator.
@@ -98,7 +101,10 @@ pub fn point_from(from: LatLon, bearing: f64, km: f64) -> LatLon {
     let sin_lat2 = (lat1.sin() * d.cos() + lat1.cos() * d.sin() * theta.cos()).clamp(-1.0, 1.0);
     let lat2 = sin_lat2.asin();
     let lon2 = lon1 + (theta.sin() * d.sin() * lat1.cos()).atan2(d.cos() - lat1.sin() * sin_lat2);
-    LatLon { lat: lat2 / DEG, lon: normalise_lon(lon2 / DEG) }
+    LatLon {
+        lat: lat2 / DEG,
+        lon: normalise_lon(lon2 / DEG),
+    }
 }
 
 /// Into -180..180.
@@ -121,7 +127,10 @@ pub fn great_circle(a: LatLon, b: LatLon, steps: usize) -> Vec<LatLon> {
             let x = s * p1.cos() * l1.cos() + t * p2.cos() * l2.cos();
             let y = s * p1.cos() * l1.sin() + t * p2.cos() * l2.sin();
             let z = s * p1.sin() + t * p2.sin();
-            LatLon { lat: z.atan2((x * x + y * y).sqrt()) / DEG, lon: y.atan2(x) / DEG }
+            LatLon {
+                lat: z.atan2((x * x + y * y).sqrt()) / DEG,
+                lon: y.atan2(x) / DEG,
+            }
         })
         .collect()
 }
@@ -134,7 +143,10 @@ pub fn subsolar_point(unix_secs: i64) -> LatLon {
     let day_of_year = days - year_start as f64;
     let declination = -23.44 * (2.0 * PI / 365.0 * (day_of_year + 10.0)).cos();
     let hours = (unix_secs.rem_euclid(86_400)) as f64 / 3600.0;
-    LatLon { lat: declination, lon: normalise_lon(-15.0 * (hours - 12.0)) }
+    LatLon {
+        lat: declination,
+        lon: normalise_lon(-15.0 * (hours - 12.0)),
+    }
 }
 
 /// Whether the sun is below the horizon at a point.
@@ -187,7 +199,12 @@ pub struct UtcDate {
 impl UtcDate {
     pub fn of(unix_secs: i64) -> UtcDate {
         let (year, month, day) = civil_from_days(unix_secs.div_euclid(86_400));
-        UtcDate { year, month, day, hour: (unix_secs.rem_euclid(86_400) / 3600) as u32 }
+        UtcDate {
+            year,
+            month,
+            day,
+            hour: (unix_secs.rem_euclid(86_400) / 3600) as u32,
+        }
     }
 }
 
@@ -202,7 +219,10 @@ mod tests {
     #[test]
     fn grid_round_trip() {
         let p = grid_to_lat_lon("IM99sl").unwrap();
-        assert!(close(p.lat, 39.479, 0.01) && close(p.lon, -0.458, 0.01), "{p:?}");
+        assert!(
+            close(p.lat, 39.479, 0.01) && close(p.lon, -0.458, 0.01),
+            "{p:?}"
+        );
         assert_eq!(lat_lon_to_grid(p.lat, p.lon), "IM99sl");
         let four = grid_to_lat_lon("JO01").unwrap();
         assert_eq!((four.lat, four.lon), (51.5, 1.0));
@@ -213,8 +233,14 @@ mod tests {
 
     #[test]
     fn distance_and_bearing() {
-        let valencia = LatLon { lat: 39.47, lon: -0.38 };
-        let london = LatLon { lat: 51.5, lon: -0.1 };
+        let valencia = LatLon {
+            lat: 39.47,
+            lon: -0.38,
+        };
+        let london = LatLon {
+            lat: 51.5,
+            lon: -0.1,
+        };
         assert!(close(distance_km(valencia, london), 1338.0, 5.0));
         assert!(close(bearing_deg(valencia, london), 0.9, 0.5));
         let p = point_from(valencia, 90.0, 1000.0);
@@ -236,7 +262,19 @@ mod tests {
         let t = days_from_civil(2026, 6, 21) * 86_400 + 12 * 3600;
         let s = subsolar_point(t);
         assert!(close(s.lat, 23.4, 0.5) && close(s.lon, 0.0, 0.01), "{s:?}");
-        assert!(!is_night(LatLon { lat: 40.0, lon: 0.0 }, t));
-        assert!(is_night(LatLon { lat: 40.0, lon: 180.0 }, t));
+        assert!(!is_night(
+            LatLon {
+                lat: 40.0,
+                lon: 0.0
+            },
+            t
+        ));
+        assert!(is_night(
+            LatLon {
+                lat: 40.0,
+                lon: 180.0
+            },
+            t
+        ));
     }
 }

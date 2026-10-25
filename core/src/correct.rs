@@ -41,13 +41,17 @@ pub struct Factors {
     pub spread_up: f64,
 }
 
-pub const VALIDATED: Factors =
-    Factors { swing: SWING_FACTOR, spread_low: SPREAD_FACTOR_LOW, spread_up: SPREAD_FACTOR_UP };
+pub const VALIDATED: Factors = Factors {
+    swing: SWING_FACTOR,
+    spread_low: SPREAD_FACTOR_LOW,
+    spread_up: SPREAD_FACTOR_UP,
+};
 
 /// How much wider the downward spread is after a storm, from the highest Kp
 /// of the last 24 hours.
 pub fn storm_widening(kp_max_24h: f64) -> f64 {
-    (1.0 + STORM_WIDENING_PER_KP * (kp_max_24h - STORM_WIDENING_START_KP)).clamp(1.0, STORM_WIDENING_CAP)
+    (1.0 + STORM_WIDENING_PER_KP * (kp_max_24h - STORM_WIDENING_START_KP))
+        .clamp(1.0, STORM_WIDENING_CAP)
 }
 
 /// The factors for current conditions; `None` (no live reading) is the
@@ -55,7 +59,10 @@ pub fn storm_widening(kp_max_24h: f64) -> f64 {
 pub fn factors_for(kp_max_24h: Option<f64>) -> Factors {
     match kp_max_24h {
         None => VALIDATED,
-        Some(kp) => Factors { spread_low: VALIDATED.spread_low * storm_widening(kp), ..VALIDATED },
+        Some(kp) => Factors {
+            spread_low: VALIDATED.spread_low * storm_widening(kp),
+            ..VALIDATED
+        },
     }
 }
 
@@ -66,9 +73,14 @@ pub fn phi(z: f64) -> f64 {
     let t = 1.0 / (1.0 + 0.327_591_1 * x);
     let poly = t
         * (0.254_829_592
-            + t * (-0.284_496_736 + t * (1.421_413_741 + t * (-1.453_152_027 + t * 1.061_405_429))));
+            + t * (-0.284_496_736
+                + t * (1.421_413_741 + t * (-1.453_152_027 + t * 1.061_405_429))));
     let erf = 1.0 - poly * (-x * x).exp();
-    if z >= 0.0 { 0.5 * (1.0 + erf) } else { 0.5 * (1.0 - erf) }
+    if z >= 0.0 {
+        0.5 * (1.0 + erf)
+    } else {
+        0.5 * (1.0 - erf)
+    }
 }
 
 /// The chance a day's SNR meets the requirement, from the corrected median
@@ -110,22 +122,37 @@ fn median(values: &mut [f64]) -> f64 {
     }
     values.sort_by(f64::total_cmp);
     let mid = values.len() / 2;
-    if values.len() % 2 == 0 { (values[mid - 1] + values[mid]) / 2.0 } else { values[mid] }
+    if values.len().is_multiple_of(2) {
+        (values[mid - 1] + values[mid]) / 2.0
+    } else {
+        values[mid]
+    }
 }
 
 /// Applies the swing correction per band and recomputes reliability. Cells
 /// without both deciles keep the engine's reliability: moving the median
 /// without the spread would be a guess.
-pub fn correct_cells(cells: &[RawCell], required_snr_db: f64, factors: Factors) -> Vec<CorrectedCell> {
+pub fn correct_cells(
+    cells: &[RawCell],
+    required_snr_db: f64,
+    factors: Factors,
+) -> Vec<CorrectedCell> {
     let centre_of = |band: Band| {
-        let mut snrs: Vec<f64> = cells.iter().filter(|c| c.band == band).map(|c| c.snr).collect();
+        let mut snrs: Vec<f64> = cells
+            .iter()
+            .filter(|c| c.band == band)
+            .map(|c| c.snr)
+            .collect();
         median(&mut snrs)
     };
     let centres: Vec<(Band, f64)> = Band::BY_FREQ.iter().map(|&b| (b, centre_of(b))).collect();
     cells
         .iter()
         .map(|cell| {
-            let centre = centres.iter().find(|(b, _)| *b == cell.band).map_or(cell.snr, |(_, c)| *c);
+            let centre = centres
+                .iter()
+                .find(|(b, _)| *b == cell.band)
+                .map_or(cell.snr, |(_, c)| *c);
             let snr = centre + factors.swing * (cell.snr - centre);
             let reliability = match (cell.snr_low_decile, cell.snr_up_decile) {
                 (Some(low), Some(up)) => reliability_from(
@@ -190,7 +217,15 @@ impl CentreField {
             let column = ((lon - lon_min) / lon_step).round() as usize;
             values[row * columns + column] = median.max(DEAD_SIGNAL_FLOOR_DB) as f32;
         }
-        Some(CentreField { lat_min, lon_min, lat_step, lon_step, rows, columns, values })
+        Some(CentreField {
+            lat_min,
+            lon_min,
+            lat_step,
+            lon_step,
+            rows,
+            columns,
+            values,
+        })
     }
 
     /// Bilinear between the four lattice points around a coordinate.
@@ -233,7 +268,13 @@ pub fn correct_point(
         return reliability;
     };
     let snr = centre + factors.swing * (level - centre);
-    reliability_from(snr, required_snr_db, low * factors.spread_low, up * factors.spread_up).clamp(0.0, 1.0)
+    reliability_from(
+        snr,
+        required_snr_db,
+        low * factors.spread_low,
+        up * factors.spread_up,
+    )
+    .clamp(0.0, 1.0)
 }
 
 #[cfg(test)]
@@ -270,7 +311,9 @@ mod tests {
 
     #[test]
     fn swing_shrinks_toward_the_median() {
-        let cells: Vec<RawCell> = (0..4).map(|h| raw(h, [0.0, 10.0, 20.0, 40.0][h as usize])).collect();
+        let cells: Vec<RawCell> = (0..4)
+            .map(|h| raw(h, [0.0, 10.0, 20.0, 40.0][h as usize]))
+            .collect();
         let out = correct_cells(&cells, 24.0, VALIDATED);
         // median 15: 0 -> 11.25, 40 -> 21.25
         assert!((out[0].snr - 11.25).abs() < 1e-9);
@@ -303,6 +346,9 @@ mod tests {
         assert!((field.at(-15.0, 180.0) - 7.5).abs() < 1e-6);
         // Dead values are floored
         let dead: Vec<_> = points.iter().map(|p| (p.0, p.1, -272.0)).collect();
-        assert_eq!(CentreField::new(&dead, 30.0, 22.5).unwrap().at(0.0, 0.0), DEAD_SIGNAL_FLOOR_DB);
+        assert_eq!(
+            CentreField::new(&dead, 30.0, 22.5).unwrap().at(0.0, 0.0),
+            DEAD_SIGNAL_FLOOR_DB
+        );
     }
 }

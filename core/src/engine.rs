@@ -73,8 +73,14 @@ impl RunContext {
 
     /// The part of the context that changes an answer, for cache keys.
     pub fn signature(&self) -> String {
-        let day = if self.model == Model::Truecast { self.date.day } else { 0 };
-        let now = self.nowcast.map_or("-".to_string(), |n| format!("{:.0}:{:.1}", n.effective_ssn, n.kp_max_24h));
+        let day = if self.model == Model::Truecast {
+            self.date.day
+        } else {
+            0
+        };
+        let now = self.nowcast.map_or("-".to_string(), |n| {
+            format!("{:.0}:{:.1}", n.effective_ssn, n.kp_max_24h)
+        });
         format!(
             "{}|{}|{:04}-{:02}-{:02}|{}",
             self.station.signature(),
@@ -97,7 +103,9 @@ pub struct Engine {
 
 impl Engine {
     pub fn new(work_dir: impl Into<PathBuf>) -> Engine {
-        Engine { work_dir: work_dir.into() }
+        Engine {
+            work_dir: work_dir.into(),
+        }
     }
 
     pub fn work_dir(&self) -> &Path {
@@ -115,7 +123,10 @@ impl Engine {
             }
             Some(file) => {
                 self.write_once(&file.path, &file.text)?;
-                req.insert("itshfbc".into(), json!(format!("<embedded>+{}", self.work_dir.display())));
+                req.insert(
+                    "itshfbc".into(),
+                    json!(format!("<embedded>+{}", self.work_dir.display())),
+                );
                 req.insert(
                     "txAntenna".into(),
                     json!({
@@ -144,7 +155,10 @@ impl Engine {
             }
         }
         req.insert("watts".into(), json!(station.watts));
-        req.insert("requiredSnrDb".into(), json!(station.mode.required_snr_db()));
+        req.insert(
+            "requiredSnrDb".into(),
+            json!(station.mode.required_snr_db()),
+        );
         req.insert("noiseDbw".into(), json!(NOISE_DBW));
         Ok(req)
     }
@@ -168,7 +182,9 @@ impl Engine {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let tmp = path.with_extension(format!("tmp{:?}", std::thread::current().id()).replace(['(', ')'], ""));
+        let tmp = path.with_extension(
+            format!("tmp{:?}", std::thread::current().id()).replace(['(', ')'], ""),
+        );
         fs::write(&tmp, text)?;
         fs::rename(&tmp, &path)?;
         Ok(())
@@ -184,7 +200,12 @@ pub(crate) mod tests {
         RunContext {
             station: Station::default(),
             model,
-            date: UtcDate { year: 2026, month: 10, day: 25, hour: 12 },
+            date: UtcDate {
+                year: 2026,
+                month: 10,
+                day: 25,
+                hour: 12,
+            },
             nowcast: None,
         }
     }

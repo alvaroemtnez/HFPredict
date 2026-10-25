@@ -25,7 +25,12 @@ pub enum Quality {
 
 impl Quality {
     /// Best first, as legends list them.
-    pub const ORDER: [Quality; 4] = [Quality::Reliable, Quality::Patchy, Quality::Weak, Quality::Closed];
+    pub const ORDER: [Quality; 4] = [
+        Quality::Reliable,
+        Quality::Patchy,
+        Quality::Weak,
+        Quality::Closed,
+    ];
 
     pub fn of(reliability: f64) -> Quality {
         if reliability >= RELIABLE_AT {
@@ -52,7 +57,8 @@ impl Quality {
 /// Whether a band and hour reach by near-vertical incidence. A closed band
 /// is excluded: the angle describes a mode the engine found working.
 pub fn is_nvis(takeoff_angle_deg: Option<f64>, reliability: f64) -> bool {
-    takeoff_angle_deg.is_some_and(|a| a >= NVIS_MIN_ANGLE_DEG) && Quality::of(reliability) != Quality::Closed
+    takeoff_angle_deg.is_some_and(|a| a >= NVIS_MIN_ANGLE_DEG)
+        && Quality::of(reliability) != Quality::Closed
 }
 
 #[cfg(test)]

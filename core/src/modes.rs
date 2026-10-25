@@ -68,7 +68,11 @@ impl Mode {
             Mode::Js8 => (50.0, 2_500.0, -24.0),
             Mode::Wspr => (6.0, 2_500.0, -29.0),
         };
-        ModeSpec { occupied_hz, reference_hz, snr_db }
+        ModeSpec {
+            occupied_hz,
+            reference_hz,
+            snr_db,
+        }
     }
 
     /// The required SNR the engine takes, in 1 Hz, rounded to whole dB (the

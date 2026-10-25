@@ -78,7 +78,9 @@ impl Forecast {
     /// True when nothing opens at any hour: a real answer that looks like a
     /// failed one, so the screen says it in words.
     pub fn all_closed(&self) -> bool {
-        self.cells.iter().all(|c| crate::quality::Quality::of(c.reliability) == crate::quality::Quality::Closed)
+        self.cells
+            .iter()
+            .all(|c| crate::quality::Quality::of(c.reliability) == crate::quality::Quality::Closed)
     }
 }
 
@@ -107,7 +109,9 @@ struct WirePrediction {
 }
 
 fn hours(values: &[Option<f64>]) -> Vec<Option<f64>> {
-    (0..24).map(|h| values.get(h).copied().flatten().filter(|v| v.is_finite())).collect()
+    (0..24)
+        .map(|h| values.get(h).copied().flatten().filter(|v| v.is_finite()))
+        .collect()
 }
 
 /// One point-to-point run, all ten bands, corrected.
@@ -145,7 +149,11 @@ fn run_path(engine: &Engine, ctx: &RunContext, from: LatLon, to: LatLon) -> Resu
     }
     let factors = correct::factors_for(ctx.nowcast.map(|n| n.kp_max_24h));
     let required = f64::from(ctx.station.mode.required_snr_db());
-    let window = match (&answer.fot_by_hour, &answer.hpf_by_hour, &answer.luf_by_hour) {
+    let window = match (
+        &answer.fot_by_hour,
+        &answer.hpf_by_hour,
+        &answer.luf_by_hour,
+    ) {
         (None, None, None) => None,
         (fot, hpf, luf) => Some(OperatingWindow {
             fot_by_hour: hours(fot.as_deref().unwrap_or(&[])),
@@ -155,7 +163,10 @@ fn run_path(engine: &Engine, ctx: &RunContext, from: LatLon, to: LatLon) -> Resu
     };
     Ok(PathRun {
         cells: correct::correct_cells(&raw, required, factors),
-        muf_by_hour: hours(&answer.muf_by_hour).into_iter().map(|m| m.unwrap_or(0.0)).collect(),
+        muf_by_hour: hours(&answer.muf_by_hour)
+            .into_iter()
+            .map(|m| m.unwrap_or(0.0))
+            .collect(),
         window,
     })
 }
@@ -176,7 +187,12 @@ fn to_cells(cells: &[CorrectedCell]) -> Vec<Cell> {
 }
 
 /// The forecast to one place.
-pub fn path(engine: &Engine, ctx: &RunContext, from: &Place, to: &Place) -> Result<Forecast, Error> {
+pub fn path(
+    engine: &Engine,
+    ctx: &RunContext,
+    from: &Place,
+    to: &Place,
+) -> Result<Forecast, Error> {
     let run = run_path(engine, ctx, from.lat_lon(), to.lat_lon())?;
     let km = geo::distance_km(from.lat_lon(), to.lat_lon());
     let (ssn, basis) = ctx.ssn();
@@ -209,7 +225,9 @@ pub fn sample_points(from: LatLon) -> Vec<LatLon> {
     (0..SAMPLE_BEARINGS)
         .flat_map(|i| {
             let bearing = i as f64 * 360.0 / SAMPLE_BEARINGS as f64;
-            SAMPLE_RANGES_KM.iter().map(move |&km| geo::point_from(from, bearing, km))
+            SAMPLE_RANGES_KM
+                .iter()
+                .map(move |&km| geo::point_from(from, bearing, km))
         })
         .collect()
 }
@@ -217,11 +235,18 @@ pub fn sample_points(from: LatLon) -> Vec<LatLon> {
 /// The forecast with no destination: each cell is the share of sampled
 /// directions this band reaches at this hour, counted against the same
 /// threshold as the map's reach figure.
-pub fn survey(engine: &Engine, ctx: &RunContext, from: &Place, threads: usize) -> Result<Forecast, Error> {
+pub fn survey(
+    engine: &Engine,
+    ctx: &RunContext,
+    from: &Place,
+    threads: usize,
+) -> Result<Forecast, Error> {
     let points = sample_points(from.lat_lon());
-    let runs = crate::parallel::map(&points, threads, |p| run_path(engine, ctx, from.lat_lon(), *p))
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()?;
+    let runs = crate::parallel::map(&points, threads, |p| {
+        run_path(engine, ctx, from.lat_lon(), *p)
+    })
+    .into_iter()
+    .collect::<Result<Vec<_>, _>>()?;
     let mut reached = [[0u32; 24]; 10];
     for run in &runs {
         for c in &run.cells {
@@ -296,14 +321,23 @@ mod tests {
     fn path_forecast_has_every_band_and_hour() {
         let engine = Engine::new(std::env::temp_dir().join("hfp-forecast-test"));
         for model in [Model::Voacap, Model::Truecast] {
-            let f = path(&engine, &ctx(model), &valencia(), &Place::at("London", "UK", 51.5, -0.1)).unwrap();
+            let f = path(
+                &engine,
+                &ctx(model),
+                &valencia(),
+                &Place::at("London", "UK", 51.5, -0.1),
+            )
+            .unwrap();
             assert_eq!(f.cells.len(), 240, "{model:?}");
             assert_eq!(f.hops, Some(1));
             assert!(f.cells.iter().all(|c| (0.0..=1.0).contains(&c.reliability)));
             assert!(f.muf_by_hour.iter().any(|m| *m > 0.0));
             assert!(f.window.is_some());
             // A European path in October opens 20m at midday.
-            assert!(f.cell(Band::M20, 12).unwrap().reliability > 0.4, "{model:?}");
+            assert!(
+                f.cell(Band::M20, 12).unwrap().reliability > 0.4,
+                "{model:?}"
+            );
         }
     }
 
@@ -314,7 +348,11 @@ mod tests {
         assert_eq!(f.cells.len(), 240);
         assert!(f.to.is_none());
         // Shares come in 48ths.
-        assert!(f.cells.iter().all(|c| ((c.reliability * 48.0).round() - c.reliability * 48.0).abs() < 1e-9));
+        assert!(
+            f.cells
+                .iter()
+                .all(|c| ((c.reliability * 48.0).round() - c.reliability * 48.0).abs() < 1e-9)
+        );
         assert!(f.cells.iter().any(|c| c.reliability > 0.0));
     }
 }
