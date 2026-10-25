@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# build.sh - Builds dist/HFPredict-<version>-x86_64.AppImage.
+# build.sh - Builds dist/HFPredict-<version>-<arch>.AppImage for the machine's
+# architecture (x86_64, or aarch64 in an arm64 container).
 #
 # Runs in the GNOME build container (Debian 13: GTK 4.18, libadwaita 1.7),
 # bundling GTK and libadwaita with linuxdeploy and its GTK plugin, so the
@@ -19,7 +20,10 @@ fi
 TOOLS=.cache/appimage
 mkdir -p "$TOOLS" dist
 fetch() { [ -f "$TOOLS/$2" ] || curl -fsSL --retry 3 "$1" -o "$TOOLS/$2"; chmod +x "$TOOLS/$2"; }
-fetch https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage linuxdeploy-x86_64.AppImage
+# The machine's own architecture: x86_64 here, aarch64 in the arm64 CI
+# container (QEMU on an x86 server; docs/releasing.md, "ARM builds").
+ARCH="$(uname -m)"
+fetch "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-$ARCH.AppImage" "linuxdeploy-$ARCH.AppImage"
 fetch https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh linuxdeploy-plugin-gtk.sh
 
 cargo build --release --locked -p hfpredict
@@ -37,9 +41,9 @@ cp -r /usr/share/icons/Adwaita/symbolic /usr/share/icons/Adwaita/index.theme "$A
 
 # Screenshot URLs only resolve once pushed; metadata is validated offline
 # by gnome/build.sh test.
-export NO_APPSTREAM=1 APPIMAGE_EXTRACT_AND_RUN=1 DEPLOY_GTK_VERSION=4 ARCH=x86_64 LINUXDEPLOY_OUTPUT_VERSION="$VERSION"
+export NO_APPSTREAM=1 APPIMAGE_EXTRACT_AND_RUN=1 DEPLOY_GTK_VERSION=4 ARCH="$ARCH" LINUXDEPLOY_OUTPUT_VERSION="$VERSION"
 export PATH="$PWD/$TOOLS:$PATH"
-(cd "$TOOLS" && ./linuxdeploy-x86_64.AppImage --appdir AppDir \
+(cd "$TOOLS" && "./linuxdeploy-$ARCH.AppImage" --appdir AppDir \
     --desktop-file "$ROOT/gnome/data/io.alvaroedo.HFPredict.desktop" \
     --icon-file "$ROOT/gnome/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg" \
     --plugin gtk)
@@ -47,6 +51,6 @@ export PATH="$PWD/$TOOLS:$PATH"
 # It also forces GTK_THEME, which overrides libadwaita's own stylesheet;
 # libadwaita follows the dark/light preference through the portal itself.
 sed -i -e '/GDK_BACKEND/d' -e '/GTK_THEME/d' "$APPDIR"/apprun-hooks/*gtk*.sh
-(cd "$TOOLS" && ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage)
-mv "$TOOLS"/HFPredict-*.AppImage "dist/HFPredict-$VERSION-x86_64.AppImage"
-echo "==> dist/HFPredict-$VERSION-x86_64.AppImage"
+(cd "$TOOLS" && "./linuxdeploy-$ARCH.AppImage" --appdir AppDir --output appimage)
+mv "$TOOLS"/HFPredict-*.AppImage "dist/HFPredict-$VERSION-$ARCH.AppImage"
+echo "==> dist/HFPredict-$VERSION-$ARCH.AppImage"

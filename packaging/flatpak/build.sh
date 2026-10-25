@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# build.sh - Builds the Flatpak bundle: dist/HFPredict-<version>-x86_64.flatpak
+# build.sh - Builds the Flatpak bundle: dist/HFPredict-<version>-<arch>.flatpak
+# (x86_64, or aarch64 with FLATPAK_ARCH=aarch64)
 #
 # 1. vendors every crate into .cache/flatpak-vendor (with the toolchain in
 #    .tools/), so the Flatpak build itself is offline;
@@ -16,7 +17,10 @@ CPUS="${HFP_CPUS:-$(( $(nproc) < 4 ? $(nproc) : 4 ))}"
 IMAGE=ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
 APP=io.alvaroedo.HFPredict
 VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -n1)
-OUT="dist/HFPredict-$VERSION-x86_64.flatpak"
+# FLATPAK_ARCH=aarch64 builds for arm64 from an x86 machine; the build
+# steps then run under QEMU (binfmt on the host; docs/releasing.md).
+ARCH="${FLATPAK_ARCH:-x86_64}"
+OUT="dist/HFPredict-$VERSION-$ARCH.flatpak"
 cd "$ROOT"
 
 vendor() {
@@ -38,11 +42,11 @@ vendor() {
 
 build() {
     flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    flatpak-builder --user --install-deps-from=flathub --force-clean --disable-rofiles-fuse \
+    flatpak-builder --user --arch="$ARCH" --install-deps-from=flathub --force-clean --disable-rofiles-fuse \
         --repo=packaging/flatpak/repo --state-dir=packaging/flatpak/.flatpak-builder \
         packaging/flatpak/build-dir packaging/flatpak/$APP.yml
     mkdir -p dist
-    flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+    flatpak build-bundle --arch="$ARCH" --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
         packaging/flatpak/repo "$OUT" "$APP"
     echo "==> $OUT"
 }

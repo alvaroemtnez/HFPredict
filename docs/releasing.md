@@ -99,6 +99,25 @@ token that can push). The release job creates the GitHub release itself, at the
 tagged commit, so it does not wait for the mirror to sync. Obtainium (the
 README's button) reads the GitHub releases.
 
+### 6. ARM builds (arm64 Flatpak and AppImage)
+
+The release workflow also builds for arm64 on the same x86 runner, under
+QEMU emulation (as for multi-arch Docker images). Once, on the runner's host:
+
+```sh
+docker run --privileged --rm tonistiigi/binfmt --install arm64
+```
+
+That registers QEMU for arm64 with the "fix binary" flag, so containers
+started with `--platform linux/arm64` run, and flatpak-builder's own sandbox
+can run arm64 tools. It does not survive a reboot unless the host's
+binfmt service keeps it (on Debian, the `qemu-user-static` and
+`binfmt-support` packages do it permanently instead).
+
+Emulated builds are slow (expect one to two hours for both), so they run
+only for releases; the jobs allow five hours. Windows on ARM has no packaged
+GTK to build against; the x64 zip runs there under Windows' own emulation.
+
 ## Each release
 
 1. Bump `version` in the root `Cargo.toml` (the only place it lives: Android
