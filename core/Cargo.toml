@@ -23,6 +23,11 @@ unicode-normalization = "0.1"
 ureq = { version = "3", optional = true }
 uniffi = { workspace = true, optional = true }
 thiserror = "2"
+# Local time at a place: the zone from its coordinates (boundaries from
+# timezone-boundary-builder, OpenStreetMap data, ODbL) and the zone's rules
+# from a bundled tz database, so no system files are needed.
+tzf-rs = { version = "2", default-features = false, features = ["bundled"] }
+jiff = { version = "0.2", default-features = false, features = ["std", "tzdb-bundle-always"] }
 
 [dev-dependencies]
 tiny-skia = { version = "0.12", features = ["png-format"] }

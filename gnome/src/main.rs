@@ -161,6 +161,8 @@ fn dirs() -> (PathBuf, PathBuf) {
 fn main() -> glib::ExitCode {
     let (data, cache) = dirs();
     let core = Arc::new(Core::open(data, cache));
+    // The time-zone map takes a moment to load: load it before it is needed.
+    std::thread::spawn(|| hfpredict_core::localtime::zone_name(0.0, 0.0));
     let lang = i18n::resolve(core.state().settings.language.as_deref());
     i18n::init(&lang);
 

@@ -348,6 +348,7 @@ pub fn about(w: &Rc<Window>) {
     about.add_credit_section(Some(&tr("about.dataAndServices")), &[
         "ITU-R Study Group 3, CCIR coefficients https://github.com/ITU-R-Study-Group-3/ITU-R-HF",
         "Natural Earth https://www.naturalearthdata.com/",
+        "Time zones: timezone-boundary-builder (© OpenStreetMap contributors, ODbL) via tzf-rs, and the IANA tz database https://github.com/evansiroky/timezone-boundary-builder",
         "NOAA Space Weather Prediction Center https://www.swpc.noaa.gov/",
         "GIRO, UMass Lowell https://giro.uml.edu/",
         "Open-Meteo (CC BY 4.0) https://open-meteo.com/",

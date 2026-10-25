@@ -75,6 +75,13 @@ NOTICE and docs/licence.md for the full breakdown.
 
 City list: NTIA/ITS, from the VOACAP distribution (itshfbc/geocity).
 Coastlines: Natural Earth, https://www.naturalearthdata.com/, public domain.
+Time-zone boundaries: timezone-boundary-builder,
+https://github.com/evansiroky/timezone-boundary-builder, built from
+OpenStreetMap data, © OpenStreetMap contributors, available under the Open
+Database License (ODbL) 1.0; packed by tzf-rs / tzf-dist
+(https://github.com/ringsaturn/tzf-rs, MIT).
+Time-zone rules: the IANA tz database, public domain, bundled by jiff
+(https://github.com/BurntSushi/jiff, MIT or Unlicense).
 Sunspot numbers: NOAA Space Weather Prediction Center, public domain.
 
 

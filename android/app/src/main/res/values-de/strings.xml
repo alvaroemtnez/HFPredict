@@ -266,6 +266,7 @@
     <string name="about_credit_coefficients">Die Karten der Ionosphärenkoeffizienten</string>
     <string name="about_credit_cities">Die eingebaute Ortsliste</string>
     <string name="about_credit_naturalEarth">Küstenlinien</string>
+    <string name="about_credit_timeZones">Lokale Zeitzonen</string>
     <string name="about_credit_noaa">Sonnenfleckenzahlen und Sonnenmesswerte</string>
     <string name="about_credit_giro">Gemessene Ionosondenlotungen</string>
     <string name="about_credit_openMeteo">Ortssuche, wenn online</string>

@@ -38,9 +38,6 @@ Linux:
 
 ## Later
 
-- **Local time zones**: local time is solar (an hour per 15° of longitude), as in
-  HFcast; a coordinate-to-zone lookup (tzf) would give legal time with summer
-  time, at a few MB.
 - **Compute maps ahead** (HFcast's background job): left out on purpose (it
   needs a foreground service and the notification permission). Revisit if map
   computation feels slow on old devices; the cache covers browsing.

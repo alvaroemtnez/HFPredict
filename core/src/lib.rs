@@ -22,6 +22,7 @@ pub mod engine;
 pub mod exports;
 pub mod forecast;
 pub mod geo;
+pub mod localtime;
 pub mod maps;
 pub mod modes;
 pub mod online;

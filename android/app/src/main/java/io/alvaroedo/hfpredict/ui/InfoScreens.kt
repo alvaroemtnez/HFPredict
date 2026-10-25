@@ -189,6 +189,7 @@ private val BUILT_ON = listOf(
 private val DATA = listOf(
     Credit("NTIA/ITS", R.string.about_credit_cities, "https://its.ntia.gov/"),
     Credit("Natural Earth", R.string.about_credit_naturalEarth, "https://www.naturalearthdata.com/"),
+    Credit("timezone-boundary-builder (© OpenStreetMap, ODbL)", R.string.about_credit_timeZones, "https://github.com/evansiroky/timezone-boundary-builder"),
     Credit("NOAA SWPC", R.string.about_credit_noaa, "https://www.swpc.noaa.gov/"),
     Credit("GIRO, UMass Lowell", R.string.about_credit_giro, "https://giro.uml.edu/", "CC BY-NC-SA 4.0"),
     Credit("Open-Meteo", R.string.about_credit_openMeteo, "https://open-meteo.com/", "CC BY 4.0"),

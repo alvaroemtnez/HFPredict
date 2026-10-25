@@ -267,6 +267,7 @@
     <string name="about_credit_coefficients">The ionospheric coefficient maps</string>
     <string name="about_credit_cities">The built-in list of places</string>
     <string name="about_credit_naturalEarth">Coastlines</string>
+    <string name="about_credit_timeZones">Local time zones</string>
     <string name="about_credit_noaa">Sunspot numbers and solar readings</string>
     <string name="about_credit_giro">Measured ionosonde soundings</string>
     <string name="about_credit_openMeteo">Place search, when online</string>

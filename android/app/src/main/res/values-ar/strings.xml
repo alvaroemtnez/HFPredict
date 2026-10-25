@@ -266,6 +266,7 @@
     <string name="about_credit_coefficients">خرائط المعاملات الأيونوسفيرية</string>
     <string name="about_credit_cities">قائمة الأماكن المدمجة</string>
     <string name="about_credit_naturalEarth">خطوط السواحل</string>
+    <string name="about_credit_timeZones">المناطق الزمنية المحلية</string>
     <string name="about_credit_noaa">أعداد البقع الشمسية والقراءات الشمسية</string>
     <string name="about_credit_giro">قياسات السبر الأيونوسفيري</string>
     <string name="about_credit_openMeteo">البحث عن الأماكن عند الاتصال</string>

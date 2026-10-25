@@ -612,15 +612,20 @@ impl ReachCard {
             self.syncing.set(true);
             let start = v.track_start();
             self.scale.clear_marks();
-            let offset = (from.lon / 15.0).round() as i32;
+            // Legal local time at the station, summer time and half-hour
+            // zones included, for the moment each mark stands for.
+            let first = v.now - v.now.rem_euclid(3600) - i64::from(PAST_HOURS) * 3600;
             for i in 0..24u32 {
                 let utc = (start + i) % 24;
-                let local = (utc as i32 + offset).rem_euclid(24) as u32;
                 let labelled = i % 4 == PAST_HOURS % 4;
                 let top = if i == PAST_HOURS {
                     Some(tr("time.now"))
                 } else if labelled {
-                    Some(format::hour(local))
+                    Some(hfpredict_core::localtime::clock(
+                        from.lat,
+                        from.lon,
+                        first + i64::from(i) * 3600,
+                    ))
                 } else {
                     None
                 };

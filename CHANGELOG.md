@@ -13,4 +13,5 @@ First release: HFPredict for Android and for Linux (Flatpak and AppImage).
 - Every band at every hour, to one place or as the share of directions reached, and the usable window.
 - Your station: mode, power, antenna, height and direction; several stations can be saved.
 - Live solar readings from NOAA and the nearest ionosonde from GIRO when online; place search beyond the built-in list through Open-Meteo. All of it can be switched off.
+- Local time at your station is the legal time there, summer time included, worked out on the device.
 - Light, dark and low-light (red) themes following the system's colours; English, Spanish, Valencian, German, Japanese and Arabic.

@@ -287,6 +287,7 @@
   "about.credit.coefficients": "The ionospheric coefficient maps",
   "about.credit.cities": "The built-in list of places",
   "about.credit.naturalEarth": "Coastlines",
+  "about.credit.timeZones": "Local time zones",
   "about.credit.noaa": "Sunspot numbers and solar readings",
   "about.credit.giro": "Measured ionosonde soundings",
   "about.credit.openMeteo": "Place search, when online",

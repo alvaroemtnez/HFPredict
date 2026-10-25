@@ -179,6 +179,13 @@ pub fn long_path_deg(bearing: f64) -> f64 {
     (bearing + 180.0).rem_euclid(360.0)
 }
 
+/// The local clock ("HH:MM") at a place and moment: legal time with summer
+/// time, nautical time at sea.
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn local_clock(lat: f64, lon: f64, unix: i64) -> String {
+    crate::localtime::clock(lat, lon, unix)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

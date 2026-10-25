@@ -266,6 +266,7 @@
     <string name="about_credit_coefficients">Els mapes de coeficients ionosfèrics</string>
     <string name="about_credit_cities">La llista de llocs inclosa</string>
     <string name="about_credit_naturalEarth">Línies de costa</string>
+    <string name="about_credit_timeZones">Fusos horaris locals</string>
     <string name="about_credit_noaa">Nombres de taques i lectures solars</string>
     <string name="about_credit_giro">Sondejos d\'ionosondes</string>
     <string name="about_credit_openMeteo">Busca de llocs, amb connexió</string>

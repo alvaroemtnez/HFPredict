@@ -21,6 +21,14 @@ fn main() {
         f();
         println!("{what:<28} {:>7.1} ms", t0.elapsed().as_secs_f64() * 1000.0);
     };
+    t("local time, first lookup", &mut || {
+        hfpredict_core::localtime::clock(39.47, -0.38, now);
+    });
+    t("local time, 24 more", &mut || {
+        for h in 0..24 {
+            hfpredict_core::localtime::clock(39.47, -0.38, now + h * 3600);
+        }
+    });
     t("forecast (survey)", &mut || {
         core.forecast(now).unwrap();
     });

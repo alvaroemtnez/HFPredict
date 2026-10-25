@@ -266,6 +266,7 @@
     <string name="about_credit_coefficients">電離層係数マップ</string>
     <string name="about_credit_cities">内蔵の地名リスト</string>
     <string name="about_credit_naturalEarth">海岸線</string>
+    <string name="about_credit_timeZones">現地のタイムゾーン</string>
     <string name="about_credit_noaa">太陽黒点数と太陽観測値</string>
     <string name="about_credit_giro">イオノゾンデの観測</string>
     <string name="about_credit_openMeteo">オンライン時の地名検索</string>

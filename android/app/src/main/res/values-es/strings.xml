@@ -266,6 +266,7 @@
     <string name="about_credit_coefficients">Los mapas de coeficientes ionosféricos</string>
     <string name="about_credit_cities">La lista de lugares incluida</string>
     <string name="about_credit_naturalEarth">Líneas de costa</string>
+    <string name="about_credit_timeZones">Husos horarios locales</string>
     <string name="about_credit_noaa">Números de manchas y lecturas solares</string>
     <string name="about_credit_giro">Sondeos de ionosondas</string>
     <string name="about_credit_openMeteo">Búsqueda de lugares, con conexión</string>

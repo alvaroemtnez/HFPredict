@@ -73,6 +73,8 @@ import io.alvaroedo.hfpredict.WHOLE_GLOBE
 import io.alvaroedo.hfpredict.core.MapDetail
 import io.alvaroedo.hfpredict.core.MapView
 import io.alvaroedo.hfpredict.core.bandLabel
+import io.alvaroedo.hfpredict.core.greenwich
+import io.alvaroedo.hfpredict.core.localClock
 import io.alvaroedo.hfpredict.core.qualityOf
 import io.alvaroedo.hfpredict.core.viewPanned
 import io.alvaroedo.hfpredict.core.viewZoomed
@@ -306,13 +308,19 @@ private fun MapButton(icon: Int, label: String, onClick: () -> Unit) {
 
 /**
  * The hour slider: six hours back to eighteen ahead, local time at the
- * station above (solar, an hour per 15 degrees of longitude) and UTC below.
+ * station above (legal time, from its time zone) and UTC below.
  */
 @Composable
 fun HourTrack(state: UiState, vm: AppViewModel, fmt: Format) {
     val start = state.trackStart
     val from = state.saved.from
-    val offset = from?.let { (it.lon / 15).roundToInt() } ?: 0
+    // Legal local time at the station (summer time and half-hour zones
+    // included) for the moment each mark stands for; UTC below.
+    val first = state.now - Math.floorMod(state.now, 3600L) - PAST_HOURS * 3600L
+    val here = from ?: greenwich()
+    val local = remember(here.lat, here.lon, first) {
+        List(24) { i -> localClock(here.lat, here.lon, first + i * 3600L) }
+    }
     val position = Math.floorMod(state.hour - start, 24)
     var dragging by remember { mutableFloatStateOf(-1f) }
     val shown = if (dragging >= 0) dragging else position.toFloat()
@@ -321,7 +329,7 @@ fun HourTrack(state: UiState, vm: AppViewModel, fmt: Format) {
     val haptics = LocalHapticFeedback.current
     Column(Modifier.padding(top = 4.dp)) {
         Kicker(tr(R.string.time_localAt, "place" to (from?.name ?: "Greenwich")))
-        Labels(start, offset, top = true, fmt = fmt)
+        Labels(top = true) { i -> local[i] }
         Slider(
             value = shown,
             onValueChange = {
@@ -341,13 +349,13 @@ fun HourTrack(state: UiState, vm: AppViewModel, fmt: Format) {
                 stateDescription = fmt.hour(state.hour) + " UTC"
             },
         )
-        Labels(start, 0, top = false, fmt = fmt)
+        Labels(top = false) { i -> fmt.hour((start + i) % 24) }
         Kicker(tr(R.string.time_utcAt))
     }
 }
 
 @Composable
-private fun Labels(start: Int, offset: Int, top: Boolean, fmt: Format) {
+private fun Labels(top: Boolean, label: (Int) -> String) {
     val now = MaterialTheme.colorScheme.tertiary
     BoxWithConstraints(Modifier.fillMaxWidth().height(18.dp)) {
         // The slider's track runs inside a thumb's width of each edge.
@@ -356,8 +364,7 @@ private fun Labels(start: Int, offset: Int, top: Boolean, fmt: Format) {
         for (i in 0 until 24) {
             val labelled = i % 4 == PAST_HOURS % 4
             if (!labelled) continue
-            val text = if (top && i == PAST_HOURS) tr(R.string.time_now)
-            else fmt.hour((start + i + offset) % 24)
+            val text = if (top && i == PAST_HOURS) tr(R.string.time_now) else label(i)
             val x = inset + track * (i / 23f)
             Text(
                 text,
