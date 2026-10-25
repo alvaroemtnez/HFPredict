@@ -10,5 +10,5 @@ RUN apt-get update \
       build-essential pkg-config ca-certificates curl git \
       libgtk-4-dev libadwaita-1-dev librsvg2-common \
       weston dbus dbus-x11 fonts-cantarell fonts-noto-core fonts-noto-cjk adwaita-icon-theme \
-      librsvg2-bin python3 desktop-file-utils appstream \
+      librsvg2-bin python3 desktop-file-utils appstream file \
  && rm -rf /var/lib/apt/lists/*

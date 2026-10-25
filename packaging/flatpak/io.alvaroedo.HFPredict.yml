@@ -1,0 +1,51 @@
+# Flatpak manifest. Built by packaging/flatpak/build.sh (locally in podman,
+# and by the release workflow), which vendors the crates first so the build
+# runs without network.
+id: io.alvaroedo.HFPredict
+runtime: org.gnome.Platform
+runtime-version: "51"
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: hfpredict
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # NOAA, GIRO and Open-Meteo, all optional (Preferences > Use the network).
+  - --share=network
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/hfpredict/cargo
+    CARGO_NET_OFFLINE: "true"
+modules:
+  - name: hfpredict
+    buildsystem: simple
+    build-commands:
+      - mkdir -p cargo && cp vendor-config.toml cargo/config.toml
+      - cargo build --release --locked --offline -p hfpredict
+      - install -Dm755 target/release/hfpredict /app/bin/hfpredict
+      - install -Dm644 gnome/data/io.alvaroedo.HFPredict.desktop /app/share/applications/io.alvaroedo.HFPredict.desktop
+      - install -Dm644 gnome/data/io.alvaroedo.HFPredict.metainfo.xml /app/share/metainfo/io.alvaroedo.HFPredict.metainfo.xml
+      - install -Dm644 gnome/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg /app/share/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg
+      - install -Dm644 gnome/data/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg /app/share/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - .tools
+          - .cache
+          - android
+          - dist
+          - packaging/flatpak/.flatpak-builder
+          - packaging/flatpak/build-dir
+          - packaging/flatpak/repo
+      - type: dir
+        path: ../../.cache/flatpak-vendor
+        dest: vendor
+      - type: file
+        path: ../../.cache/flatpak-vendor-config.toml
+        dest-filename: vendor-config.toml

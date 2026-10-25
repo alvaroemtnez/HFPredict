@@ -76,6 +76,7 @@ case "${1:-build}" in
     flatpak) exec "$ROOT/packaging/flatpak/build.sh" ;;
     appimage) exec "$ROOT/packaging/appimage/build.sh" ;;
     shell) in_container bash ;;
+    shell-cmd) shift; in_container "$*" ;;
     image)
         "${PODMAN[@]}" build --target gnome -t "$IMAGE" -f "$ROOT/tools/containers/Containerfile" "$ROOT/tools/containers"
         ;;
