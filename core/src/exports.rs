@@ -164,3 +164,30 @@ pub fn greenwich() -> crate::places::Place {
 pub fn highlight_colors(accent: u32, dark: bool, low_light: bool) -> crate::render::Highlight {
     crate::render::highlight(accent, dark, low_light)
 }
+
+/// The turn from a heading to a bearing, degrees: negative to the left,
+/// positive to the right, within half a turn.
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn turn_deg(heading: f64, target: f64) -> f64 {
+    let d = (target - heading).rem_euclid(360.0);
+    if d > 180.0 { d - 360.0 } else { d }
+}
+
+/// The long path's bearing: the short one turned round.
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn long_path_deg(bearing: f64) -> f64 {
+    (bearing + 180.0).rem_euclid(360.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn turns_take_the_short_way() {
+        assert_eq!(turn_deg(350.0, 10.0), 20.0);
+        assert_eq!(turn_deg(10.0, 350.0), -20.0);
+        assert_eq!(turn_deg(0.0, 180.0), 180.0);
+        assert_eq!(long_path_deg(300.0), 120.0);
+    }
+}

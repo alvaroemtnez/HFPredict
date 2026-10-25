@@ -24,6 +24,7 @@ import io.alvaroedo.hfpredict.core.Settings
 import io.alvaroedo.hfpredict.core.Station
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +38,9 @@ data class RenderedMap(val image: ImageBitmap, val view: MapView)
 
 /** How many hours behind "now" the hour track starts. */
 const val PAST_HOURS = 6
+
+/** How long the hour must stay put before a fine map is worked out, ms. */
+private const val FINE_DELAY_MS = 280L
 
 val WHOLE_GLOBE = MapView(1.0, 0.5, 0.5)
 
@@ -83,6 +87,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private var mapJob: Job? = null
     private var mapGeneration = 0
     private var surfacePx = 0
+    private var cardPx = 0
+    private var fullPx = 0
     private var density = 1f
     private var palette: Palette? = null
     private var rendering = false
@@ -165,6 +171,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             if (generation != mapGeneration) return@launch
             _state.update { st -> reach.fold({ st.copy(reach = it) }, { st.copy(mapError = it.message) }) }
             render()
+            // A fine map not yet held waits until the hour stays put: sliding
+            // across the day then costs a coarse run per hour, not a fine one
+            // each (a started run cannot be stopped), and the last stop wins.
+            val held = withContext(Dispatchers.Default) { runCatching { core.hasFineMap(s.band, hour, s.now) }.getOrDefault(false) }
+            if (!held) delay(FINE_DELAY_MS)
+            if (generation != mapGeneration) return@launch
             val fine = withContext(Dispatchers.Default) {
                 runCatching {
                     val status = core.fineMap(s.band, hour, s.now)
@@ -180,10 +192,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** The map's size on screen, its density and the theme's colours. */
-    fun setMapSurface(px: Int, density: Float, palette: Palette) {
-        if (px == surfacePx && density == this.density && palette == this.palette) return
-        surfacePx = px
+    /**
+     * The map's size on screen, its density and the theme's colours. The
+     * full-screen map sets its own size over the card's while it is open,
+     * and `px = 0` there hands back to the card.
+     */
+    fun setMapSurface(px: Int, density: Float, palette: Palette, full: Boolean = false) {
+        if (full) fullPx = px else cardPx = px
+        val effective = if (fullPx > 0) fullPx else cardPx
+        if (effective == surfacePx && density == this.density && palette == this.palette) return
+        surfacePx = effective
         this.density = density
         this.palette = palette
         render()
@@ -217,7 +235,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val s = _state.value
         viewModelScope.launch {
             val p = withContext(Dispatchers.Default) { core.probe(s.band, s.hour.toUInt(), s.now, s.view, x, y, size) }
-            _state.update { it.copy(probe = p) }
+            // A second tap on the same cell clears it.
+            _state.update { it.copy(probe = if (p != null && p.grid == it.probe?.grid) null else p) }
+            render()
         }
     }
 
@@ -239,7 +259,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val image = withContext(Dispatchers.Default) {
                 val img = core.renderMap(
                     s.band, s.hour.toUInt(), s.now, s.view, px.toUInt(), d, pal,
-                    MapOptions(showNight = true, showNvis = true, showPath = true),
+                    MapOptions(showNight = true, showNvis = true, showPath = true, highlight = s.probe),
                 )
                 val size = img.size.toInt()
                 val bitmap = createBitmap(size, size, Bitmap.Config.ARGB_8888)

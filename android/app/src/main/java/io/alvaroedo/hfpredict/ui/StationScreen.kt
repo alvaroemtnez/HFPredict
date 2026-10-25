@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -41,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -238,6 +241,25 @@ fun StationScreen(state: UiState, vm: AppViewModel, fmt: Format, compact: Boolea
                     },
                     valueRange = 0f..355f,
                 )
+                val context = LocalContext.current
+                if (remember { compassSensor(context) != null }) {
+                    var measuring by remember { mutableStateOf(false) }
+                    OutlinedButton(onClick = { measuring = true }) {
+                        Icon(painterResource(R.drawable.ic_explore), null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr(R.string.compass_measure))
+                    }
+                    if (measuring) {
+                        val here = saved.from ?: io.alvaroedo.hfpredict.core.greenwich()
+                        CompassScreen(
+                            CompassGoal.Measure(draft) { v ->
+                                draft = draft.copy(antenna = draft.antenna.copy(beamDeg = if (wire) beamFromWire(v) else v))
+                                measuring = false
+                            },
+                            draft, here.lat, here.lon, fmt, compact,
+                        ) { measuring = false }
+                    }
+                }
                 val from = saved.from
                 val to = saved.to
                 val target = if (from != null && to != null) bearingBetween(from.lat, from.lon, to.lat, to.lon) else null

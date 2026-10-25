@@ -66,7 +66,7 @@ private fun <T> Choice(options: List<Pair<T, String>>, selected: T, hint: (T) ->
             supportingContent = hint(value)?.let { { Text(it) } },
             leadingContent = { RadioButton(selected = value == selected, onClick = null) },
             modifier = Modifier.selectable(value == selected, role = Role.RadioButton) { onPick(value) },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
         )
     }
 }
@@ -96,7 +96,7 @@ fun PreferencesScreen(state: UiState, vm: AppViewModel, compact: Boolean, onDism
             Choice(
                 listOf(null to tr(R.string.preferences_language_system)) + Languages.ALL.map { it.first to it.second },
                 current,
-            ) { Languages.set(context, it); vm.setSettings(s.copy(language = it)) }
+            ) { vm.setSettings(s.copy(language = it)); Languages.set(context, it) }
 
             Group(tr(R.string.preferences_units))
             Choice(
@@ -146,7 +146,7 @@ private fun SwitchRow(title: String, hint: String, checked: Boolean, onChange: (
         supportingContent = { Text(hint) },
         trailingContent = { Switch(checked = checked, onCheckedChange = null) },
         modifier = Modifier.selectable(checked, role = Role.Switch) { onChange(!checked) },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
     )
 }
 
@@ -226,12 +226,12 @@ fun AboutScreen(compact: Boolean, onDismiss: () -> Unit) {
                 headlineContent = { Text(tr(R.string.about_source)) },
                 supportingContent = { Text(SOURCE_URL) },
                 modifier = Modifier.clickable { open(SOURCE_URL) },
-                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
             )
             ListItem(
                 headlineContent = { Text(tr(R.string.about_issues)) },
                 modifier = Modifier.clickable { open("$SOURCE_URL/issues") },
-                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
             )
             Group(tr(R.string.about_builtOn))
             BUILT_ON.forEach { CreditRow(it, open) }
@@ -249,7 +249,7 @@ fun AboutScreen(compact: Boolean, onDismiss: () -> Unit) {
                 ListItem(
                     headlineContent = { Text(what) },
                     supportingContent = { Text(terms) },
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
                 )
             }
         }
@@ -262,6 +262,6 @@ private fun CreditRow(c: Credit, open: (String) -> Unit) {
         headlineContent = { Text(c.who) },
         supportingContent = { Text(tr(c.what) + (c.terms?.let { " · $it" } ?: "")) },
         modifier = Modifier.clickable { open(c.url) },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
     )
 }

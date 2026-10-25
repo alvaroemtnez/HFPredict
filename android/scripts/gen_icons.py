@@ -37,6 +37,9 @@ ICONS = [
     ("ic_cell_tower", "cell_tower", False),
     ("ic_settings_input_antenna", "settings_input_antenna", False),
     ("ic_travel_explore", "travel_explore", False),
+    ("ic_fullscreen", "fullscreen", False),
+    ("ic_fullscreen_exit", "fullscreen_exit", False),
+    ("ic_navigation", "navigation", False),
 ]
 
 URL = "https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/{}/default/24px.svg"

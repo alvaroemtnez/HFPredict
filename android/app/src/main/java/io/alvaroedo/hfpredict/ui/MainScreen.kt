@@ -1,5 +1,6 @@
 package io.alvaroedo.hfpredict.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
@@ -29,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -41,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -70,12 +74,18 @@ sealed interface Overlay {
     data object Preferences : Overlay
     data object Help : Overlay
     data object About : Overlay
+    data object Map : Overlay
+    /** Point the antenna at a bearing (true, short path), or just read the heading. */
+    data class Compass(val bearing: Double?, val name: String?) : Overlay
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(state: UiState, vm: AppViewModel, fmt: Format, open: (Overlay) -> Unit) {
     val scroll = TopAppBarDefaults.pinnedScrollBehavior()
+    val context = LocalContext.current
+    val hasCompass = remember { compassSensor(context) != null }
+    val point: ((Double, String) -> Unit)? = if (hasCompass) { b, name -> open(Overlay.Compass(b, name)) } else null
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         topBar = {
@@ -83,6 +93,12 @@ fun MainScreen(state: UiState, vm: AppViewModel, fmt: Format, open: (Overlay) ->
                 TopAppBar(
                     title = { PathTitle(state, fmt) { open(Overlay.Path(to = false)) } },
                     actions = {
+                        if (hasCompass) {
+                            val to = state.saved.to
+                            IconButton(onClick = { open(Overlay.Compass(state.forecast?.takeIf { it.to != null }?.bearingDeg, to?.name)) }) {
+                                Icon(painterResource(R.drawable.ic_explore), contentDescription = tr(R.string.compass_open))
+                            }
+                        }
                         StatusChip(state, fmt)
                         Menu(open, refresh = { vm.refreshReadings(force = true) })
                     },
@@ -112,11 +128,11 @@ fun MainScreen(state: UiState, vm: AppViewModel, fmt: Format, open: (Overlay) ->
                     val content = Modifier.widthIn(max = 1500.dp).fillMaxWidth()
                     if (wide) {
                         Row(content, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            ReachCard(state, vm, fmt, Modifier.weight(1f))
+                            ReachCard(state, vm, fmt, Modifier.weight(1f), onFullscreen = { open(Overlay.Map) }, onPoint = point)
                             BandsCard(state, vm, fmt, Modifier.weight(1f))
                         }
                     } else {
-                        ReachCard(state, vm, fmt, content)
+                        ReachCard(state, vm, fmt, content, onFullscreen = { open(Overlay.Map) }, onPoint = point)
                         BandsCard(state, vm, fmt, content)
                     }
                     SunCard(state, fmt, content)
@@ -168,23 +184,37 @@ private fun PathTitle(state: UiState, fmt: Format, onClick: () -> Unit) {
     }
 }
 
+/** Live or offline; a tap says what that means. */
 @Composable
 private fun StatusChip(state: UiState, fmt: Format) {
-    val color = if (state.live) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+    val colors = LocalMapColors.current
+    val color = if (state.live) colors.live else colors.offline
     val hint = state.saved.spaceWeather?.takeIf { state.live }
         ?.let { tr(R.string.status_liveHint, "time" to fmt.hm(it.observedAt)) }
         ?: tr(R.string.status_offlineHint)
+    var open by remember { mutableStateOf(false) }
+    val label = tr(if (state.live) R.string.status_live else R.string.status_offline)
     Surface(
+        onClick = { open = true },
         shape = MaterialTheme.shapes.small,
-        color = color.copy(alpha = 0.12f),
+        color = color.copy(alpha = 0.14f),
         contentColor = color,
+        border = BorderStroke(1.dp, color.copy(alpha = 0.6f)),
         modifier = Modifier.semantics { contentDescription = hint },
     ) {
         Text(
-            tr(if (state.live) R.string.status_live else R.string.status_offline).uppercase(),
+            label.uppercase(),
             Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
+        )
+    }
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            confirmButton = { TextButton(onClick = { open = false }) { Text(tr(R.string.common_close)) } },
+            title = { Text(label) },
+            text = { Text(hint + "\n\n" + tr(R.string.status_liveExplain)) },
         )
     }
 }
@@ -260,7 +290,7 @@ private fun StationStrip(state: UiState, fmt: Format, onClick: () -> Unit) {
 
 /** The bands, highest first; each carries a dot in this hour's colour. */
 @Composable
-private fun BandChips(state: UiState, vm: AppViewModel) {
+fun BandChips(state: UiState, vm: AppViewModel) {
     val colors = LocalMapColors.current
     val outline = MaterialTheme.colorScheme.outline
     LazyRow(

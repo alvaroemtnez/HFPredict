@@ -22,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
@@ -149,10 +150,10 @@ fun FullScreenDialog(
                 modifier = if (compact) Modifier.fillMaxSize()
                 else Modifier.widthIn(max = maxWidth).fillMaxWidth(0.9f).fillMaxSize(0.9f),
                 shape = shape,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                color = MaterialTheme.colorScheme.surface,
             ) {
                 Scaffold(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    containerColor = MaterialTheme.colorScheme.surface,
                     topBar = {
                         TopAppBar(
                             title = { Text(title) },
@@ -162,6 +163,11 @@ fun FullScreenDialog(
                                 }
                             },
                             actions = { actions() },
+                            // One colour for the whole screen, bar included.
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                            ),
                         )
                     },
                 ) { padding -> content(Modifier.padding(padding)) }

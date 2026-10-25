@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import io.alvaroedo.hfpredict.core.Palette
 import io.alvaroedo.hfpredict.core.Quality
 import io.alvaroedo.hfpredict.core.Theme
+import io.alvaroedo.hfpredict.core.highlightColors
 
 /*
  * The theme is the device's: Material You colours from the wallpaper on
@@ -83,6 +84,9 @@ data class MapColors(
     val cells: List<Color>,
     val now: Color,
     val palette: Palette,
+    /** The status chip: green when live, amber offline (dim reds in low light). */
+    val live: Color,
+    val offline: Color,
 ) {
     fun cell(q: Quality): Color = cells[when (q) {
         Quality.CLOSED -> 0
@@ -102,6 +106,8 @@ fun mapColors(scheme: ColorScheme, dark: Boolean, lowLight: Boolean): MapColors 
     val closed = scheme.onSurface.copy(alpha = 0.07f)
     val disc = if (dark) scheme.surfaceContainerLowest else scheme.surfaceContainerHigh
     val station = if (lowLight) Color(0xFFFF8A65) else scheme.tertiary
+    // Yellow, or magenta under a yellow theme: worked out by the core, as on GNOME.
+    val highlight = highlightColors(scheme.primary.argb(), dark, lowLight)
     val palette = Palette(
         disc = disc.argb(),
         reliable = reliable.argb(),
@@ -110,12 +116,25 @@ fun mapColors(scheme: ColorScheme, dark: Boolean, lowLight: Boolean): MapColors 
         night = (if (dark) Color.Black.copy(alpha = 0.36f) else Color(0xFF000020).copy(alpha = 0.14f)).argb(),
         coastline = scheme.onSurface.copy(alpha = if (dark) 0.72f else 0.62f).argb(),
         gridLines = scheme.onSurface.copy(alpha = 0.28f).argb(),
-        path = station.argb(),
+        path = highlight.line,
+        pathHalo = highlight.halo,
         station = station.argb(),
         halo = disc.argb(),
         nvis = scheme.onSurface.argb(),
     )
-    return MapColors(listOf(closed, weak, patchy, reliable), station, palette)
+    // Fixed meanings, not theme colours, so live and offline never look
+    // alike whatever the wallpaper.
+    val live = when {
+        lowLight -> Color(0xFFFF6A50)
+        dark -> Color(0xFF8FD694)
+        else -> Color(0xFF1B7F3B)
+    }
+    val offline = when {
+        lowLight -> Color(0xFFB0331F)
+        dark -> Color(0xFFF5C26B)
+        else -> Color(0xFF9A5B00)
+    }
+    return MapColors(listOf(closed, weak, patchy, reliable), station, palette, live, offline)
 }
 
 val LocalMapColors = staticCompositionLocalOf { mapColors(TealDark, dark = true, lowLight = false) }

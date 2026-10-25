@@ -96,7 +96,7 @@ private fun PlaceRow(place: Place, onPick: (Place) -> Unit) {
         headlineContent = { Text(place.name) },
         supportingContent = { Text(if (place.detail.isEmpty()) place.grid else "${place.detail} · ${place.grid}") },
         modifier = Modifier.fillMaxWidth().clickableRow { onPick(place) },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
     )
 }
 
@@ -183,7 +183,7 @@ fun PathScreen(state: UiState, vm: AppViewModel, startOnTo: Boolean, compact: Bo
                     supportingContent = { Text(tr(R.string.location_everyDirectionHint)) },
                     leadingContent = { Icon(painterResource(R.drawable.ic_travel_explore), null) },
                     modifier = Modifier.clickableRow { vm.setTo(null); onDismiss() },
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
                 )
             }
             problem?.let { Text(tr(it), color = MaterialTheme.colorScheme.error) }

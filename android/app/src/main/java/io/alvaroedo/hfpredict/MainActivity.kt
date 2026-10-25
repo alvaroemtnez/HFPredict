@@ -30,6 +30,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import io.alvaroedo.hfpredict.ui.AboutScreen
+import io.alvaroedo.hfpredict.ui.CompassGoal
+import io.alvaroedo.hfpredict.ui.CompassScreen
+import io.alvaroedo.hfpredict.ui.FullScreenMap
+import io.alvaroedo.hfpredict.ui.compassSensor
 import io.alvaroedo.hfpredict.ui.FirstRunScreen
 import io.alvaroedo.hfpredict.ui.HelpScreen
 import io.alvaroedo.hfpredict.ui.HfpTheme
@@ -55,15 +59,20 @@ object Languages {
 
     /**
      * Android 13 and later keep the choice themselves (and show it in the
-     * system's per-app language settings); older versions read it from the
-     * saved state as the activity starts.
+     * system's per-app language settings) and hand the activity the new
+     * configuration, which Compose redraws in place (the manifest takes
+     * locale changes, so nothing is torn down). Older versions read it
+     * from the saved state as the activity starts, so it is saved first
+     * and the activity then recreated.
      */
     fun set(context: Context, code: String?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.getSystemService(LocaleManager::class.java).applicationLocales =
                 if (code == null) LocaleList.getEmptyLocaleList() else LocaleList.forLanguageTags(code)
         } else {
-            (context as? MainActivity)?.recreate()
+            val core = (context.applicationContext as HfpApplication).core
+            runCatching { core.setSettings(core.state().settings.copy(language = code)) }
+            (context.findActivity() as? MainActivity)?.recreate()
         }
     }
 
@@ -73,6 +82,12 @@ object Languages {
         } else {
             (context.applicationContext as HfpApplication).core.state().settings.language
         }
+}
+
+private tailrec fun Context.findActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 class MainActivity : ComponentActivity() {
@@ -118,7 +133,8 @@ class MainActivity : ComponentActivity() {
                 )
             }
             HfpTheme(state.saved.settings.theme) {
-                val locale = resources.configuration.locales[0]
+                // Read through Compose, so a language change redraws in place.
+                val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
                 val imperial = state.saved.settings.units.let {
                     when (it) {
                         io.alvaroedo.hfpredict.core.Units.METRIC -> false
@@ -145,6 +161,17 @@ class MainActivity : ComponentActivity() {
                             Overlay.Preferences -> PreferencesScreen(state, vm, compact, dismiss)
                             Overlay.Help -> HelpScreen(fmt, compact, dismiss)
                             Overlay.About -> AboutScreen(compact, dismiss)
+                            Overlay.Map -> FullScreenMap(
+                                state, vm, fmt,
+                                onPoint = if (compassSensor(this@MainActivity) != null) { b, name -> overlay = Overlay.Compass(b, name) } else null,
+                                onDismiss = dismiss,
+                            )
+                            is Overlay.Compass -> {
+                                val saved = state.saved
+                                val station = saved.stations.firstOrNull { it.id == saved.activeStation } ?: saved.stations.first()
+                                val from = saved.from ?: io.alvaroedo.hfpredict.core.greenwich()
+                                CompassScreen(CompassGoal.Point(o.bearing, o.name), station, from.lat, from.lon, fmt, compact, dismiss)
+                            }
                         }
                     }
                 }
@@ -182,6 +209,8 @@ private val OverlaySaver = androidx.compose.runtime.saveable.Saver<Overlay, Stri
             Overlay.Preferences -> "preferences"
             Overlay.Help -> "help"
             Overlay.About -> "about"
+            Overlay.Map -> "map"
+            is Overlay.Compass -> "compass|${it.bearing ?: ""}|${it.name ?: ""}"
         }
     },
     restore = {
@@ -192,7 +221,11 @@ private val OverlaySaver = androidx.compose.runtime.saveable.Saver<Overlay, Stri
             "preferences" -> Overlay.Preferences
             "help" -> Overlay.Help
             "about" -> Overlay.About
-            else -> Overlay.None
+            "map" -> Overlay.Map
+            else -> if (it.startsWith("compass|")) {
+                val parts = it.split("|", limit = 3)
+                Overlay.Compass(parts.getOrNull(1)?.toDoubleOrNull(), parts.getOrNull(2)?.ifEmpty { null })
+            } else Overlay.None
         }
     },
 )

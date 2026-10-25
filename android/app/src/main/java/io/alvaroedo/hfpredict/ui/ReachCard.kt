@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -23,11 +25,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -41,10 +45,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -70,7 +77,14 @@ import io.alvaroedo.hfpredict.tr
 import kotlin.math.roundToInt
 
 @Composable
-fun ReachCard(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier = Modifier) {
+fun ReachCard(
+    state: UiState,
+    vm: AppViewModel,
+    fmt: Format,
+    modifier: Modifier = Modifier,
+    onFullscreen: () -> Unit = {},
+    onPoint: ((Double, String) -> Unit)? = null,
+) {
     val ctx = LocalResources.current
     val band = bandLabel(state.band)
     SectionCard(modifier) {
@@ -80,7 +94,7 @@ fun ReachCard(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier 
         Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             val headline = when {
                 cell == null -> tr(R.string.status_loading)
-                state.forecast?.to != null -> tr(
+                state.forecast.to != null -> tr(
                     R.string.reach_answer, "band" to band, "place" to state.forecast.to!!.name,
                     "hour" to fmt.hour(state.hour), "percent" to fmt.percent(cell.reliability),
                 )
@@ -90,7 +104,7 @@ fun ReachCard(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier 
             if (cell != null) QualityPill(qualityOf(cell.reliability))
         }
 
-        MapBox(state, vm, fmt)
+        MapBox(state, vm, fmt, Modifier.fillMaxWidth().widthIn(max = 720.dp), onFullscreen = onFullscreen, onPoint = onPoint)
 
         val detail = when {
             state.mapError != null -> tr(R.string.reach_mapUnavailable)
@@ -122,19 +136,34 @@ fun ReachCard(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier 
     }
 }
 
+/**
+ * The map with its buttons. In the card one finger scrolls the page and
+ * two move the map; [full] screen, one finger moves it too.
+ */
 @Composable
-private fun MapBox(state: UiState, vm: AppViewModel, fmt: Format) {
+fun MapBox(
+    state: UiState,
+    vm: AppViewModel,
+    fmt: Format,
+    modifier: Modifier = Modifier,
+    full: Boolean = false,
+    onFullscreen: () -> Unit,
+    onPoint: ((Double, String) -> Unit)? = null,
+) {
     val colors = LocalMapColors.current
     val density = LocalDensity.current.density
     val latest by rememberUpdatedState(state)
     var sidePx by remember { mutableIntStateOf(0) }
     val mapLabel = latestReachLabel(state, fmt)
-    LaunchedEffect(sidePx, colors) { if (sidePx > 0) vm.setMapSurface(sidePx, density, colors.palette) }
+    LaunchedEffect(sidePx, colors) { if (sidePx > 0) vm.setMapSurface(sidePx, density, colors.palette, full) }
+    if (full) {
+        DisposableEffect(Unit) { onDispose { vm.setMapSurface(0, density, colors.palette, full = true) } }
+    }
+    val fingers = if (full) 1 else 2
+    val slop = LocalViewConfiguration.current.touchSlop
 
     Box(
-        Modifier
-            .fillMaxWidth()
-            .widthIn(max = 720.dp)
+        modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(20.dp)),
     ) {
@@ -149,9 +178,13 @@ private fun MapBox(state: UiState, vm: AppViewModel, fmt: Format) {
                         awaitFirstDown(requireUnconsumed = false)
                         var view = latest.view
                         var moved = false
+                        var travel = 0f
                         do {
                             val event = awaitPointerEvent()
-                            if (event.changes.count { it.pressed } >= 2) {
+                            val down = event.changes.count { it.pressed }
+                            if (down == 1) travel += event.calculatePan().getDistance()
+                            // One finger pans only past the touch slop, so a tap still probes.
+                            if (down >= 2 || (down >= fingers && travel > slop)) {
                                 val s = size.width.toDouble()
                                 val c = event.calculateCentroid()
                                 val pan = event.calculatePan()
@@ -202,6 +235,8 @@ private fun MapBox(state: UiState, vm: AppViewModel, fmt: Format) {
             MapButton(R.drawable.ic_remove, tr(R.string.map_zoomOut)) { zoom(1 / 1.6) }
             MapButton(R.drawable.ic_fit_screen, tr(R.string.map_fitReach)) { vm.fitReach() }
             MapButton(R.drawable.ic_globe, tr(R.string.map_wholeGlobe)) { vm.setView(WHOLE_GLOBE, settled = true) }
+            if (full) MapButton(R.drawable.ic_fullscreen_exit, tr(R.string.map_exitFullscreen), onFullscreen)
+            else MapButton(R.drawable.ic_fullscreen, tr(R.string.map_fullscreen), onFullscreen)
         }
         if (state.mapWorking) {
             CircularProgressIndicator(Modifier.align(Alignment.BottomEnd).padding(14.dp).size(22.dp), strokeWidth = 2.5.dp)
@@ -216,7 +251,16 @@ private fun MapBox(state: UiState, vm: AppViewModel, fmt: Format) {
                 Modifier.align(Alignment.BottomStart).padding(10.dp),
                 shape = RoundedCornerShape(10.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.92f),
-            ) { Text(text, Modifier.padding(horizontal = 10.dp, vertical = 5.dp), style = MaterialTheme.typography.labelMedium) }
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text, Modifier.padding(horizontal = 10.dp, vertical = 5.dp), style = MaterialTheme.typography.labelMedium)
+                    if (onPoint != null) {
+                        IconButton(onClick = { onPoint(p.bearingDeg, p.grid) }, Modifier.size(32.dp)) {
+                            Icon(painterResource(R.drawable.ic_navigation), contentDescription = tr(R.string.compass_pointHere), Modifier.size(18.dp))
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -233,7 +277,7 @@ private fun MapButton(icon: Int, label: String, onClick: () -> Unit) {
  * station above (solar, an hour per 15 degrees of longitude) and UTC below.
  */
 @Composable
-private fun HourTrack(state: UiState, vm: AppViewModel, fmt: Format) {
+fun HourTrack(state: UiState, vm: AppViewModel, fmt: Format) {
     val start = state.trackStart
     val from = state.saved.from
     val offset = from?.let { (it.lon / 15).roundToInt() } ?: 0
@@ -242,6 +286,7 @@ private fun HourTrack(state: UiState, vm: AppViewModel, fmt: Format) {
     val shown = if (dragging >= 0) dragging else position.toFloat()
 
     val hourLabel = tr(R.string.time_hourSlider)
+    val haptics = LocalHapticFeedback.current
     Column(Modifier.padding(top = 4.dp)) {
         Kicker(tr(R.string.time_localAt, "place" to (from?.name ?: "Greenwich")))
         Labels(start, offset, top = true, fmt = fmt)
@@ -250,7 +295,11 @@ private fun HourTrack(state: UiState, vm: AppViewModel, fmt: Format) {
             onValueChange = {
                 dragging = it
                 val hour = (start + it.roundToInt()) % 24
-                if (hour != state.hour) vm.select(state.band, hour)
+                if (hour != state.hour) {
+                    // A tick per hour crossed, so the hand feels the steps.
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                    vm.select(state.band, hour)
+                }
             },
             onValueChangeFinished = { dragging = -1f },
             valueRange = 0f..23f,
@@ -294,4 +343,45 @@ private fun latestReachLabel(state: UiState, fmt: Format): String {
     val reach = state.status?.reach ?: state.reach.firstOrNull { it.band == state.band }?.reach
     return if (reach == null) tr(R.string.reach_mapLoading)
     else tr(R.string.map_description, "band" to bandLabel(state.band), "percent" to fmt.percent(reach))
+}
+
+/** The map over the whole screen, with the bands and the hour slider. */
+@Composable
+fun FullScreenMap(
+    state: UiState,
+    vm: AppViewModel,
+    fmt: Format,
+    onPoint: ((Double, String) -> Unit)?,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+            Column(
+                Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(painterResource(R.drawable.ic_close), contentDescription = tr(R.string.map_exitFullscreen))
+                    }
+                    val cell = state.forecast?.cells?.firstOrNull { it.band == state.band && it.hour.toInt() == state.hour }
+                    Text(
+                        bandLabel(state.band) + " · " + fmt.hour(state.hour) + " UTC",
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    if (cell != null) QualityPill(qualityOf(cell.reliability))
+                }
+                BandChips(state, vm)
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    val side = if (maxWidth < maxHeight) maxWidth else maxHeight
+                    MapBox(state, vm, fmt, Modifier.size(side), full = true, onFullscreen = onDismiss, onPoint = onPoint)
+                }
+                HourTrack(state, vm, fmt)
+            }
+        }
+    }
 }

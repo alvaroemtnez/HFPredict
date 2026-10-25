@@ -1,6 +1,7 @@
 package io.alvaroedo.hfpredict.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -18,14 +19,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -165,6 +170,8 @@ private fun Heatmap(state: UiState, vm: AppViewModel) {
     val labelW = 46.dp
     val axisH = 22.dp
     val description = tr(R.string.grid_unitChance)
+    val haptics = LocalHapticFeedback.current
+    val latest by rememberUpdatedState(state)
     Canvas(
         Modifier
             .fillMaxWidth()
@@ -175,7 +182,25 @@ private fun Heatmap(state: UiState, vm: AppViewModel) {
                     val colW = (size.width - labelW.toPx()) / 24f
                     val col = ((p.x - labelW.toPx()) / colW).toInt()
                     val row = (p.y / rowH.toPx()).toInt()
-                    if (col in 0..23 && row in DISPLAY.indices) vm.select(DISPLAY[row], (start + col) % 24)
+                    if (col in 0..23 && row in DISPLAY.indices) {
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        vm.select(DISPLAY[row], (start + col) % 24)
+                    }
+                }
+            }
+            // A sideways drag slides the hour: the cursor stays under the
+            // finger and each hour crossed ticks.
+            .pointerInput(start) {
+                detectHorizontalDragGestures { change, _ ->
+                    val colW = (size.width - labelW.toPx()) / 24f
+                    val col = ((change.position.x - labelW.toPx()) / colW).toInt().coerceIn(0, 23)
+                    val hour = (start + col) % 24
+                    val s = latest
+                    if (hour != s.hour) {
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        vm.select(s.band, hour)
+                    }
+                    change.consume()
                 }
             },
     ) {
