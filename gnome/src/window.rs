@@ -243,19 +243,15 @@ fn main_page(app: &Rc<App>, w: &Rc<Window>) -> gtk::Widget {
         .build();
     view.set_content(Some(&scroll));
 
-    // The map's full-screen mode hides everything else on the page.
+    // The enlarged map hides everything else on the page; the window
+    // stays as it is.
     {
-        let (all, sun, window) = (all.root.clone(), sun.root.clone(), w.window.clone());
+        let (all, sun) = (all.root.clone(), sun.root.clone());
         let strip = strip_scroll.clone();
         *reach.on_expand.borrow_mut() = Some(Box::new(move |on| {
             all.set_visible(!on);
             sun.set_visible(!on);
             strip.set_visible(!on);
-            if on {
-                window.fullscreen();
-            } else {
-                window.unfullscreen();
-            }
         }));
     }
     let toggle = gio::SimpleAction::new("map-fullscreen", None);
@@ -268,16 +264,6 @@ fn main_page(app: &Rc<App>, w: &Rc<Window>) -> gtk::Widget {
         });
     }
     w.window.add_action(&toggle);
-    let r = Rc::downgrade(&reach);
-    w.window.connect_fullscreened_notify(move |win| {
-        if let Some(r) = r.upgrade()
-            && !win.is_fullscreen()
-            && r.is_expanded()
-        {
-            r.set_expanded(false);
-        }
-    });
-
     let breakpoint =
         adw::Breakpoint::new(adw::BreakpointCondition::parse(WIDE).expect("valid condition"));
     breakpoint.add_setter(

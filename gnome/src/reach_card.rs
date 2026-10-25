@@ -18,6 +18,29 @@ use crate::palette;
 
 type ExpandFn = Box<dyn Fn(bool)>;
 
+/// Room the floating hour slider takes at the map's foot, so the probe
+/// and the spinner sit above it.
+const FLOAT_CLEARANCE: i32 = 128;
+
+/// Marks the map canvas while enlarged.
+const ENLARGED: &str = "hfp-map-enlarged";
+
+/// Largest square the enlarged map is rendered at, device pixels.
+const FULL_MAX_PX: i32 = 1800;
+
+/// The map's square on the canvas: its side and top-left corner. The
+/// shorter side in the card, the longer one enlarged (the rest is cut off).
+fn square(c: &Canvas) -> (f64, f64, f64) {
+    let full = c.has_css_class(ENLARGED);
+    let (w, h) = (f64::from(c.width().max(1)), f64::from(c.height().max(1)));
+    let side = if full { w.max(h) } else { w.min(h) };
+    (
+        side,
+        (w - side) / 2.0,
+        if full { (h - side) / 2.0 } else { 0.0 },
+    )
+}
+
 /// Largest the map is drawn, logical pixels.
 const MAP_MAX: i32 = 720;
 
@@ -35,8 +58,13 @@ pub struct ReachCard {
     local_label: gtk::Label,
     /// The map's frame: square, as large as the room it is given.
     frame: gtk::AspectFrame,
+    /// Holds the square frame, or the bare map when enlarged.
+    holder: gtk::Box,
+    overlay: gtk::Overlay,
+    /// The hour slider and its labels: under the map, or floating on it.
+    hours: gtk::Box,
     fullscreen: gtk::Button,
-    expanded: Cell<bool>,
+    expanded: Rc<Cell<bool>>,
     /// Told when the map goes full screen or comes back.
     pub on_expand: RefCell<Option<ExpandFn>>,
     /// Set while the code moves the slider, so its signal is not read as
@@ -127,7 +155,9 @@ impl ReachCard {
 
         let frame = gtk::AspectFrame::new(0.5, 0.0, 1.0, false);
         frame.set_child(Some(&overlay));
-        root.append(&frame);
+        let holder = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        holder.append(&frame);
+        root.append(&holder);
 
         let detail = label(&["dim-label", "caption"]);
         let legend = gtk::Box::new(gtk::Orientation::Horizontal, 16);
@@ -137,18 +167,20 @@ impl ReachCard {
         root.append(&legend);
         root.append(&reach_line);
 
+        let hours = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let local_label = label(&["caption-heading", "dim-label"]);
         local_label.set_margin_top(6);
-        root.append(&local_label);
+        hours.append(&local_label);
         let scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 23.0, 1.0);
         scale.set_draw_value(false);
         scale.set_round_digits(0);
         scale.add_css_class("hfp-hours");
         scale.update_property(&[gtk::accessible::Property::Label(&tr("time.hourSlider"))]);
-        root.append(&scale);
+        hours.append(&scale);
         let utc_label = label(&["caption-heading", "dim-label"]);
         utc_label.set_text(&tr("time.utcAt"));
-        root.append(&utc_label);
+        hours.append(&utc_label);
+        root.append(&hours);
 
         let card = Rc::new(ReachCard {
             root,
@@ -163,8 +195,11 @@ impl ReachCard {
             scale,
             local_label,
             frame,
+            holder,
+            overlay,
+            hours,
             fullscreen,
-            expanded: Cell::new(false),
+            expanded: Rc::new(Cell::new(false)),
             on_expand: RefCell::new(None),
             syncing: Cell::new(false),
             texture: RefCell::new(None),
@@ -190,13 +225,21 @@ impl ReachCard {
             let (Some(me), Some(app)) = (me.upgrade(), a.upgrade()) else {
                 return;
             };
-            let side = w.min(h);
-            let x0 = (w - side) / 2.0;
+            let full = me.expanded.get();
+            let side = if full { w.max(h) } else { w.min(h) };
+            let (x0, y0) = ((w - side) / 2.0, (h - side) / 2.0);
             let current = app.view.borrow().map_view;
-            s.push_rounded_clip(&gtk::gsk::RoundedRect::from_rect(
-                canvas::rect(x0, 0.0, side, side),
-                12.0,
-            ));
+            // The square in the card; the whole area when enlarged.
+            let clip = if full {
+                canvas::rect(0.0, 0.0, w, h)
+            } else {
+                canvas::rect(x0, 0.0, side, side)
+            };
+            s.push_rounded_clip(&gtk::gsk::RoundedRect::from_rect(clip, 12.0));
+            if full {
+                let disc = app.view.borrow().colors.map.disc;
+                s.append_color(&palette::rgba_of(disc), &clip);
+            }
             if let Some((texture, at)) = me.texture.borrow().as_ref() {
                 let k = (current.scale / at.scale) as f32;
                 let t = |c_at: f64, c_now: f64| {
@@ -206,7 +249,7 @@ impl ReachCard {
                 s.save();
                 s.translate(&graphene::Point::new(
                     x0 + t(at.cx, current.cx),
-                    t(at.cy, current.cy),
+                    y0 + t(at.cy, current.cy),
                 ));
                 s.scale(k, k);
                 s.append_texture(texture, &canvas::rect(0.0, 0.0, side, side));
@@ -215,11 +258,14 @@ impl ReachCard {
             s.pop();
         });
         let a = Rc::downgrade(app);
+        let full = self.expanded.clone();
         self.map.set_on_resize(move |c, w, h| {
             if let Some(app) = a.upgrade() {
-                let side = w.min(h).max(1);
+                let side = if full.get() { w.max(h) } else { w.min(h) }.max(1);
                 let scale = c.scale_factor().max(1);
-                app.set_map_size((side * scale) as u32, scale as f32);
+                // Enlarged, the square is held to FULL_MAX_PX and scaled up.
+                let px = (side * scale).min(if full.get() { FULL_MAX_PX } else { i32::MAX });
+                app.set_map_size(px as u32, px as f32 / side as f32);
             }
         });
         let me = Rc::downgrade(self);
@@ -231,8 +277,9 @@ impl ReachCard {
         }));
 
         // Gestures: drag pans, pinch and scroll zoom, a click probes.
-        let side = |c: &Canvas| f64::from(c.width().min(c.height()).max(1));
-        let offset = |c: &Canvas| f64::from((c.width() - c.width().min(c.height())) / 2);
+        let side = |c: &Canvas| square(c).0;
+        let offset = |c: &Canvas| square(c).1;
+        let offset_y = |c: &Canvas| square(c).2;
         let drag = gtk::GestureDrag::new();
         let start_view = Rc::new(Cell::new(MapView::default()));
         {
@@ -286,7 +333,9 @@ impl ReachCard {
             let map = self.map.clone();
             zoom.connect_scale_changed(move |g, k| {
                 if let (Some(app), Some((x, y))) = (a.upgrade(), g.bounding_box_center()) {
-                    let v = sv.get().zoomed_at(k, x - offset(&map), y, side(&map));
+                    let v = sv
+                        .get()
+                        .zoomed_at(k, x - offset(&map), y - offset_y(&map), side(&map));
                     app.set_map_view(v, false);
                     map.queue_draw();
                 }
@@ -321,7 +370,7 @@ impl ReachCard {
                     let v = app.view.borrow().map_view.zoomed_at(
                         if dy < 0.0 { 1.25 } else { 0.8 },
                         x - offset(&map),
-                        y,
+                        y - offset_y(&map),
                         side(&map),
                     );
                     app.set_map_view(v, false);
@@ -340,7 +389,7 @@ impl ReachCard {
                 if let Some(app) = a.upgrade()
                     && n == 1
                 {
-                    app.probe(x - offset(&map), y, side(&map));
+                    app.probe(x - offset(&map), y - offset_y(&map), side(&map));
                 }
             });
         }
@@ -602,15 +651,52 @@ impl ReachCard {
     }
 
     pub fn set_expanded(&self, on: bool) {
+        if on == self.expanded.get() {
+            return;
+        }
         self.expanded.set(on);
         if on {
+            self.map.add_css_class(ENLARGED);
+        } else {
+            self.map.remove_css_class(ENLARGED);
+        }
+        if on {
+            // The map leaves its square frame and takes the card's room;
+            // the hour slider floats over its foot.
+            self.frame.set_child(None::<&gtk::Widget>);
+            self.holder.remove(&self.frame);
+            self.holder.append(&self.overlay);
             self.map.set_widths(120, 120);
             self.map.set_height_for_width(|_| 120);
+            self.root.remove(&self.hours);
+            self.hours.add_css_class("osd");
+            self.hours.add_css_class("hfp-floating");
+            self.hours.set_valign(gtk::Align::End);
+            self.hours.set_margin_start(12);
+            self.hours.set_margin_end(12);
+            self.hours.set_margin_bottom(12);
+            self.overlay.add_overlay(&self.hours);
+            self.probe.set_margin_bottom(FLOAT_CLEARANCE);
+            self.spinner.set_margin_bottom(FLOAT_CLEARANCE + 6);
         } else {
+            self.overlay.remove_overlay(&self.hours);
+            self.hours.remove_css_class("osd");
+            self.hours.remove_css_class("hfp-floating");
+            self.hours.set_valign(gtk::Align::Fill);
+            self.hours.set_margin_start(0);
+            self.hours.set_margin_end(0);
+            self.hours.set_margin_bottom(0);
+            self.root.append(&self.hours);
+            self.holder.remove(&self.overlay);
+            self.frame.set_child(Some(&self.overlay));
+            self.holder.append(&self.frame);
             self.map.set_widths(200, MAP_MAX);
             self.map.set_height_for_width(|w| w.min(MAP_MAX));
+            self.probe.set_margin_bottom(8);
+            self.spinner.set_margin_bottom(14);
         }
-        self.frame.set_vexpand(on);
+        self.overlay.set_vexpand(on);
+        self.holder.set_vexpand(on);
         self.root.set_vexpand(on);
         for w in [
             self.detail.upcast_ref::<gtk::Widget>(),
@@ -632,6 +718,8 @@ impl ReachCard {
         if let Some(f) = self.on_expand.borrow().as_ref() {
             f(on);
         }
+        self.map.queue_resize();
+        self.map.queue_draw();
         self.map.grab_focus();
     }
 

@@ -183,3 +183,9 @@ pub fn css(c: &gdk::RGBA) -> String {
         c.alpha()
     )
 }
+
+/// An 0xAARRGGBB colour as GDK's.
+pub fn rgba_of(c: u32) -> gdk::RGBA {
+    let ch = |shift: u32| ((c >> shift) & 255) as f32 / 255.0;
+    gdk::RGBA::new(ch(16), ch(8), ch(0), ch(24))
+}

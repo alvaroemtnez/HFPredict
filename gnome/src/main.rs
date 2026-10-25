@@ -43,6 +43,7 @@ togglebutton.hfp-band:checked, togglebutton.hfp-chip-toggle:checked { background
 .hfp-inset { padding: 10px 12px; border-radius: 12px; background: alpha(currentColor, 0.05); }
 .hfp-probe { padding: 4px 10px; border-radius: 8px; font-feature-settings: "tnum"; }
 .hfp-title-button { padding: 2px 12px; }
+.hfp-floating { border-radius: 18px; padding: 8px 14px 6px 14px; }
 scale.hfp-hours marks label { font-size: 0.85em; font-feature-settings: "tnum"; }
 .hfp-table label { font-feature-settings: "tnum"; }
 "#;

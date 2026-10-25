@@ -31,7 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,6 +57,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.alvaroedo.hfpredict.Format
@@ -68,6 +72,7 @@ import io.alvaroedo.hfpredict.tr
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -120,11 +125,12 @@ fun rememberHeading(lat: Double, lon: Double): Heading {
                     -r[2].toDouble() to -r[5].toDouble()
                 }
                 val a = atan2(ex, ny)
-                val k = if (sx == 0.0 && sy == 0.0) 1.0 else 0.18
+                // Light smoothing against sensor noise; the dial eases per frame.
+                val k = if (sx == 0.0 && sy == 0.0) 1.0 else 0.35
                 sx += (sin(a) - sx) * k
                 sy += (cos(a) - sy) * k
                 val magnetic = Math.toDegrees(atan2(sx, sy))
-                heading = Math.floorMod((magnetic + declination + displayTurn(context)).roundToInt() * 10, 3600) / 10.0
+                heading = (magnetic + declination + displayTurn(context)).mod(360.0)
             }
 
             override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
@@ -135,7 +141,7 @@ fun rememberHeading(lat: Double, lon: Double): Heading {
             }
         }
         if (sm != null && sensor != null) {
-            sm.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_UI)
+            sm.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
             magnetometer?.let { sm.registerListener(listener, it, SensorManager.SENSOR_DELAY_NORMAL) }
         }
         onDispose { sm?.unregisterListener(listener) }
@@ -194,6 +200,25 @@ fun CompassScreen(
     val target = point?.bearing?.let { if (longPath) longPathDeg(it) else it }
     val heading = reading.heading
     val turn = if (heading != null && target != null) turnDeg(heading, target) else null
+    // The dial follows the sensor smoothly on every display frame (60 or
+    // 120 Hz), easing the short way round, instead of jumping per reading.
+    val latestHeading by rememberUpdatedState(heading)
+    var dial by remember { mutableDoubleStateOf(Double.NaN) }
+    LaunchedEffect(Unit) {
+        var last = 0L
+        while (true) {
+            withFrameNanos { t ->
+                val goal = latestHeading
+                if (goal != null) {
+                    dial = if (dial.isNaN() || last == 0L) goal else {
+                        val dt = (t - last) / 1e9
+                        (dial + turnDeg(dial, goal) * (1 - exp(-dt * 14))).mod(360.0)
+                    }
+                }
+                last = t
+            }
+        }
+    }
 
     // A firm tap on arriving on target; leaving takes a little more, so
     // a trembling hand does not buzz.
@@ -217,15 +242,20 @@ fun CompassScreen(
         ) {
             if (point?.bearing != null) {
                 SingleChoiceSegmentedButtonRow(Modifier.widthIn(max = 420.dp).fillMaxWidth()) {
-                    SegmentedButton(!longPath, { longPath = false }, SegmentedButtonDefaults.itemShape(0, 2)) { Text(tr(R.string.compass_shortPath)) }
-                    SegmentedButton(longPath, { longPath = true }, SegmentedButtonDefaults.itemShape(1, 2)) { Text(tr(R.string.compass_longPath)) }
+                    // Equal halves, one line each, no check mark to unbalance them.
+                    SegmentedButton(!longPath, { longPath = false }, SegmentedButtonDefaults.itemShape(0, 2), Modifier.weight(1f), icon = {}) {
+                        Text(tr(R.string.compass_shortPath), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    SegmentedButton(longPath, { longPath = true }, SegmentedButtonDefaults.itemShape(1, 2), Modifier.weight(1f), icon = {}) {
+                        Text(tr(R.string.compass_longPath), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
 
             val lobes = if (goal is CompassGoal.Point && antennaUsesBeam(station.antenna.kind)) {
                 antennaLobes(station.antenna.beamDeg, station.antenna.kind)
             } else emptyList()
-            Dial(heading, target, lobes, onTarget, Modifier.widthIn(max = 360.dp).fillMaxWidth())
+            Dial(dial.takeUnless { it.isNaN() }, target, lobes, onTarget, Modifier.widthIn(max = 360.dp).fillMaxWidth())
 
             val headingText = heading?.let { fmt.degrees(it) + "°" } ?: "–"
             val headingLabel = tr(R.string.compass_heading) + " " + headingText

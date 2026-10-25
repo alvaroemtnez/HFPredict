@@ -42,6 +42,9 @@ const val PAST_HOURS = 6
 /** How long the hour must stay put before a fine map is worked out, ms. */
 private const val FINE_DELAY_MS = 280L
 
+/** How long after the last move a pan or zoom counts as settled, ms. */
+private const val SETTLE_MS = 180L
+
 val WHOLE_GLOBE = MapView(1.0, 0.5, 0.5)
 
 data class UiState(
@@ -92,6 +95,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private var density = 1f
     private var palette: Palette? = null
     private var rendering = false
+    private var draft = false
+    private var settleJob: Job? = null
+    private var prefetchJob: Job? = null
+    private var foreground = true
     private var renderAgain = false
     private var lastReadings = 0L
 
@@ -161,6 +168,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /** The coarse grid at once, then the fine one, then a patch if zoomed. */
     private fun updateMap() {
         mapJob?.cancel()
+        prefetchJob?.cancel()
         val generation = ++mapGeneration
         _state.update { it.copy(mapWorking = true, mapError = null) }
         render()
@@ -189,7 +197,35 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 fine.fold({ st.copy(status = it, mapWorking = false) }, { st.copy(mapError = it.message, mapWorking = false) })
             }
             render()
+            prefetch()
         }
+    }
+
+    /**
+     * Readies the rest of the day while the reader looks (Core.prefetch),
+     * one map at a time, only while the app is on screen, and stops on any
+     * new request. A step already running finishes (it cannot be stopped)
+     * but on half the cores.
+     */
+    private fun prefetch() {
+        prefetchJob?.cancel()
+        if (!foreground) return
+        val generation = mapGeneration
+        prefetchJob = viewModelScope.launch {
+            while (generation == mapGeneration && foreground && !_state.value.mapWorking) {
+                val s = _state.value
+                // Null: the whole day is ready, or it failed; either way, stop.
+                withContext(Dispatchers.Default) {
+                    runCatching { core.prefetch(s.band, s.hour.toUInt(), s.now) }.getOrNull()
+                } ?: break
+            }
+        }
+    }
+
+    /** The app came on screen or left it. */
+    fun setForeground(on: Boolean) {
+        foreground = on
+        if (on) prefetch() else prefetchJob?.cancel()
     }
 
     /**
@@ -207,10 +243,22 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         render()
     }
 
-    /** A pan or zoom: redraw at once, and work out a patch once it settles. */
+    /**
+     * A pan or zoom: redraw at once (at half size while it moves), and at
+     * full size with a patch once it settles, which a short pause after the
+     * last move also counts as.
+     */
     fun setView(view: MapView, settled: Boolean) {
         _state.update { it.copy(view = view) }
+        settleJob?.cancel()
+        draft = !settled
         render()
+        if (!settled) {
+            settleJob = viewModelScope.launch {
+                delay(SETTLE_MS)
+                setView(_state.value.view, settled = true)
+            }
+        }
         if (settled) {
             val s = _state.value
             val generation = mapGeneration
@@ -246,15 +294,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /** Draws the map from what is computed; one render at a time, the rest folded. */
     private fun render() {
         val pal = palette ?: return
-        if (surfacePx < 16) return
+        if (surfacePx < 32) return
         if (rendering) {
             renderAgain = true
             return
         }
         rendering = true
         val s = _state.value
-        val px = surfacePx
-        val d = density
+        val px = if (draft) surfacePx / 2 else surfacePx
+        val d = if (draft) density / 2 else density
         viewModelScope.launch {
             val image = withContext(Dispatchers.Default) {
                 val img = core.renderMap(
