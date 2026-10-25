@@ -4,6 +4,10 @@ Open work only. Done items go into the commit history and CHANGELOG.md.
 
 ## Before the first release
 
+- **Map rim clipped**: at the whole-earth view the map area cuts the disc's
+  outer circle (its rim and antialiasing) at the edges. Minor; likely the
+  square's side or the rim's half-pixel at the area's border.
+
 - **Release keys**: Android keystore and GPG key, Forgejo secrets
   (docs/releasing.md); then the fingerprints into docs/verifying.md.
 - **Translations review**: es, ca are written natively; de, ja and ar start from
@@ -58,3 +62,8 @@ Linux stays first; these are by-products of the same code.
   and the current band's fine maps (Core::prefetch). Other bands, and tiles
   for the next hours, could follow if scrubbing still waits on a slow phone.
   A background service stays out (owner's call).
+- **Android widget**: brainstorm what is worth a glance on the home screen
+  (the band open now to the destination, the best band this hour, the day's
+  window, the live/offline readings), then implement it. Without
+  Google: Glance or plain RemoteViews, refreshed by the system's own update
+  schedule, no background service or new permission.
