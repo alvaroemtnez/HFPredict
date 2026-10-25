@@ -243,6 +243,28 @@ impl BandsCard {
             });
         }
         self.grid.add_controller(click);
+        // Dragging along a row slides through the hours with the cursor
+        // under the pointer, rather than jumping at the end.
+        let drag = gtk::GestureDrag::new();
+        {
+            let a = Rc::downgrade(app);
+            let grid = self.grid.clone();
+            drag.connect_drag_update(move |g, dx, _| {
+                let (Some(app), Some((x0, y0))) = (a.upgrade(), g.start_point()) else {
+                    return;
+                };
+                let (band, start, hour) = {
+                    let v = app.view.borrow();
+                    (v.band, v.track_start(), v.hour)
+                };
+                if let Some((_, h)) = cell_at(x0 + dx, y0, f64::from(grid.width()), start)
+                    && h != hour
+                {
+                    app.select(band, h);
+                }
+            });
+        }
+        self.grid.add_controller(drag);
         let motion = gtk::EventControllerMotion::new();
         {
             let a = Rc::downgrade(app);

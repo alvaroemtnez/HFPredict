@@ -357,12 +357,13 @@ fn main_page(app: &Rc<App>, w: &Rc<Window>) -> gtk::Widget {
                 tr("status.offline")
             });
             pill.set_css_classes(&["hfp-status", if live { "hfp-live" } else { "hfp-offline" }]);
-            pill.set_tooltip_text(Some(&match (&v.saved.space_weather, live) {
+            let hint = match (&v.saved.space_weather, live) {
                 (Some(sw), true) => {
                     trf("status.liveHint", &[("time", &format::hm(sw.observed_at))])
                 }
                 _ => tr("status.offlineHint"),
-            }));
+            };
+            pill.set_tooltip_text(Some(&format!("{hint}\n\n{}", tr("status.liveExplain"))));
 
             for (band, button, dot) in &chips {
                 if *band == v.band && !button.is_active() {
