@@ -43,6 +43,7 @@
     <string name="reach_detailNear">Més detall en esta vista.</string>
     <string name="reach_probe">{grid} · {distance} · {bearing}°</string>
     <string name="reach_probeQuality">{grid} · {distance} · {bearing}° · {quality}</string>
+    <string name="reach_probeChance">{grid} · {distance} · {bearing}° · {percent} de probabilitat</string>
     <string name="map_zoomIn">Amplia</string>
     <string name="map_zoomOut">Redueix</string>
     <string name="map_fitReach">Enquadra fins on arriba esta banda</string>
@@ -279,6 +280,7 @@
     <string name="map_fullscreen">Mapa a pantalla completa</string>
     <string name="map_exitFullscreen">Eixir de la pantalla completa</string>
     <string name="map_clearSelection">Toca la cel·la una altra volta per a llevar-la.</string>
+    <string name="map_setDestination">Utilitzar com a destí</string>
     <string name="status_liveExplain">En directe: la previsió s\'ajusta al sol i a l\'activitat geomagnètica mesurats hui (NOAA). Sense connexió, utilitza les condicions típiques del mes.</string>
     <string name="compass_open">Orientar l\'antena amb la brúixola</string>
     <string name="compass_title">Orientar l\'antena</string>

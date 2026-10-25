@@ -5,10 +5,11 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use adw::prelude::*;
-use gtk::{gdk, glib, graphene};
+use gtk::{gdk, glib};
 use hfpredict_core::app::MapDetail;
 use hfpredict_core::projection::MapView;
 use hfpredict_core::quality::Quality;
+use hfpredict_core::tiles::{self, Screen};
 
 use crate::app::{App, Change, PAST_HOURS};
 use crate::canvas::{self, Canvas};
@@ -24,9 +25,6 @@ const FLOAT_CLEARANCE: i32 = 128;
 
 /// Marks the map canvas while enlarged.
 const ENLARGED: &str = "hfp-map-enlarged";
-
-/// Largest square the enlarged map is rendered at, device pixels.
-const FULL_MAX_PX: i32 = 1800;
 
 /// The map's square on the canvas: its side and top-left corner. The
 /// shorter side in the card, the longer one enlarged (the rest is cut off).
@@ -50,7 +48,9 @@ pub struct ReachCard {
     quality: gtk::Label,
     map: Canvas,
     spinner: adw::Spinner,
-    probe: gtk::Label,
+    /// What is under the last click: text and "set as destination".
+    probe: gtk::Box,
+    probe_text: gtk::Label,
     detail: gtk::Label,
     reach_line: gtk::Label,
     legend: gtk::Box,
@@ -70,7 +70,6 @@ pub struct ReachCard {
     /// Set while the code moves the slider, so its signal is not read as
     /// the reader's.
     syncing: Cell<bool>,
-    texture: RefCell<Option<(gdk::Texture, MapView)>>,
 }
 
 fn label(classes: &[&str]) -> gtk::Label {
@@ -135,7 +134,21 @@ impl ReachCard {
         }
         overlay.add_overlay(&controls);
 
-        let probe = gtk::Label::new(None);
+        let probe = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        let probe_text = gtk::Label::new(None);
+        probe.append(&probe_text);
+        let to_here = gtk::Button::with_label(&tr("map.setDestination"));
+        to_here.add_css_class("flat");
+        to_here.add_css_class("hfp-chip");
+        {
+            let a = Rc::downgrade(app);
+            to_here.connect_clicked(move |_| {
+                if let Some(app) = a.upgrade() {
+                    app.probe_to_destination();
+                }
+            });
+        }
+        probe.append(&to_here);
         probe.add_css_class("osd");
         probe.add_css_class("hfp-probe");
         probe.set_halign(gtk::Align::Start);
@@ -189,6 +202,7 @@ impl ReachCard {
             map,
             spinner,
             probe,
+            probe_text,
             detail,
             reach_line,
             legend,
@@ -202,7 +216,6 @@ impl ReachCard {
             expanded: Rc::new(Cell::new(false)),
             on_expand: RefCell::new(None),
             syncing: Cell::new(false),
-            texture: RefCell::new(None),
         });
         card.wire(app, &zoom_in, &zoom_out, &fit, &globe);
         card
@@ -216,19 +229,20 @@ impl ReachCard {
         fit: &gtk::Button,
         globe: &gtk::Button,
     ) {
-        // The map draws the last texture, moved and scaled from the view it
-        // was rendered for to the view on screen, so a gesture follows the
-        // fingers at once while the next render is worked out.
-        let me = Rc::downgrade(self);
+        // The map is drawn from tiles (see App::pump_tiles): every level
+        // from the whole earth down to the one that matches the screen, so
+        // a coarser tile shows wherever a finer one is not drawn yet. A
+        // gesture only moves textures.
         let a = Rc::downgrade(app);
-        self.map.set_draw(move |_, s, w, h| {
-            let (Some(me), Some(app)) = (me.upgrade(), a.upgrade()) else {
+        let me = Rc::downgrade(self);
+        self.map.set_draw(move |c, s, w, h| {
+            let (Some(app), Some(me)) = (a.upgrade(), me.upgrade()) else {
                 return;
             };
             let full = me.expanded.get();
-            let side = if full { w.max(h) } else { w.min(h) };
-            let (x0, y0) = ((w - side) / 2.0, (h - side) / 2.0);
-            let current = app.view.borrow().map_view;
+            let (side, x0, y0) = square(c);
+            let (side, x0) = (side as f32, x0 as f32);
+            let _ = y0;
             // The square in the card; the whole area when enlarged.
             let clip = if full {
                 canvas::rect(0.0, 0.0, w, h)
@@ -240,41 +254,48 @@ impl ReachCard {
                 let disc = app.view.borrow().colors.map.disc;
                 s.append_color(&palette::rgba_of(disc), &clip);
             }
-            if let Some((texture, at)) = me.texture.borrow().as_ref() {
-                let k = (current.scale / at.scale) as f32;
-                let t = |c_at: f64, c_now: f64| {
-                    ((c_at - c_now - 0.5 / at.scale + 0.5 / current.scale) * current.scale) as f32
-                        * side
-                };
-                s.save();
-                s.translate(&graphene::Point::new(
-                    x0 + t(at.cx, current.cx),
-                    y0 + t(at.cy, current.cy),
-                ));
-                s.scale(k, k);
-                s.append_texture(texture, &canvas::rect(0.0, 0.0, side, side));
-                s.restore();
+            if let Some((screen, scale)) = app.screen() {
+                let view = app.view.borrow().map_view;
+                let held = app.tiles.borrow();
+                let k = f64::from(scale);
+                for z in 0..=tiles::level_for(view, &screen) {
+                    for p in tiles::visible(view, &screen, z) {
+                        let Some(e) = held.get(&p.tile) else {
+                            continue;
+                        };
+                        e.used.set(app.next_use());
+                        // Half a pixel of overlap hides the seams.
+                        let r = canvas::rect(
+                            (p.left / k) as f32 - 0.25,
+                            (p.top / k) as f32 - 0.25,
+                            (p.size / k) as f32 + 0.5,
+                            (p.size / k) as f32 + 0.5,
+                        );
+                        s.append_scaled_texture(&e.texture, gtk::gsk::ScalingFilter::Trilinear, &r);
+                    }
+                }
             }
             s.pop();
         });
         let a = Rc::downgrade(app);
-        let full = self.expanded.clone();
         self.map.set_on_resize(move |c, w, h| {
             if let Some(app) = a.upgrade() {
-                let side = if full.get() { w.max(h) } else { w.min(h) }.max(1);
-                let scale = c.scale_factor().max(1);
-                // Enlarged, the square is held to FULL_MAX_PX and scaled up.
-                let px = (side * scale).min(if full.get() { FULL_MAX_PX } else { i32::MAX });
-                app.set_map_size(px as u32, px as f32 / side as f32);
+                let (side, x0, y0) = square(c);
+                let k = f64::from(c.scale_factor().max(1));
+                app.set_map_screen(
+                    Screen {
+                        side: side * k,
+                        x0: x0 * k,
+                        y0: y0 * k,
+                        width: f64::from(w) * k,
+                        height: f64::from(h) * k,
+                    },
+                    k as f32,
+                );
             }
         });
-        let me = Rc::downgrade(self);
-        *app.texture_sink.borrow_mut() = Some(Box::new(move |texture, view| {
-            if let Some(me) = me.upgrade() {
-                *me.texture.borrow_mut() = Some((texture.upcast(), view));
-                me.map.queue_draw();
-            }
-        }));
+        let map = self.map.clone();
+        *app.redraw.borrow_mut() = Some(Box::new(move || map.queue_draw()));
 
         // Gestures: drag pans, pinch and scroll zoom, a click probes.
         let side = |c: &Canvas| square(c).0;
@@ -587,14 +608,40 @@ impl ReachCard {
                     ("distance", &format::distance(p.distance_km, imperial)),
                     ("bearing", &format::degrees(p.bearing_deg)),
                 ];
-                let text = match p.quality {
-                    Some(q) => trf(
+                // The point's own chance once worked out, in its traffic-light
+                // colour (the bubble is dark, so the dark-theme shades);
+                // until then the map's quality there.
+                let markup = match (p.chance, p.quality) {
+                    (Some(c), _) => {
+                        let colour = hfpredict_core::render::semaphore(
+                            Some(Quality::of(c)),
+                            true,
+                            v.colors.low_light,
+                        );
+                        let percent = format!(
+                            "<span foreground=\"#{:06X}\" weight=\"bold\">{}</span>",
+                            colour & 0xFF_FFFF,
+                            glib::markup_escape_text(&format::percent(c))
+                        );
+                        let escaped: Vec<(&str, String)> = args
+                            .iter()
+                            .map(|(k, v)| (*k, glib::markup_escape_text(v).to_string()))
+                            .collect();
+                        let mut all: Vec<(&str, &str)> =
+                            escaped.iter().map(|(k, v)| (*k, v.as_str())).collect();
+                        all.push(("percent", &percent));
+                        trf("reach.probeChance", &all)
+                    }
+                    (None, Some(q)) => glib::markup_escape_text(&trf(
                         "reach.probeQuality",
                         &[args[0], args[1], args[2], ("quality", &format::quality(q))],
-                    ),
-                    None => trf("reach.probe", &args),
+                    ))
+                    .to_string(),
+                    (None, None) => {
+                        glib::markup_escape_text(&trf("reach.probe", &args)).to_string()
+                    }
                 };
-                self.probe.set_text(&text);
+                self.probe_text.set_markup(&markup);
                 self.probe.set_visible(true);
             }
             None => self.probe.set_visible(false),

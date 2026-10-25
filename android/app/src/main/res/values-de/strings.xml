@@ -43,6 +43,7 @@
     <string name="reach_detailNear">Zusätzliche Details in dieser Ansicht.</string>
     <string name="reach_probe">{grid} · {distance} · {bearing}°</string>
     <string name="reach_probeQuality">{grid} · {distance} · {bearing}° · {quality}</string>
+    <string name="reach_probeChance">{grid} · {distance} · {bearing}° · {percent} Chance</string>
     <string name="map_zoomIn">Vergrößern</string>
     <string name="map_zoomOut">Verkleinern</string>
     <string name="map_fitReach">Auf die Reichweite dieses Bands zoomen</string>
@@ -279,6 +280,7 @@
     <string name="map_fullscreen">Karte im Vollbild</string>
     <string name="map_exitFullscreen">Vollbild verlassen</string>
     <string name="map_clearSelection">Tippe erneut auf die Zelle, um sie abzuwählen.</string>
+    <string name="map_setDestination">Als Ziel festlegen</string>
     <string name="status_liveExplain">Live: Die Vorhersage ist auf die heute gemessene Sonnen- und geomagnetische Aktivität abgestimmt (NOAA). Offline nutzt sie die typischen Bedingungen des Monats.</string>
     <string name="compass_open">Antenne mit dem Kompass ausrichten</string>
     <string name="compass_title">Antenne ausrichten</string>

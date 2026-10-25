@@ -43,6 +43,7 @@
     <string name="reach_detailNear">Más detalle en esta vista.</string>
     <string name="reach_probe">{grid} · {distance} · {bearing}°</string>
     <string name="reach_probeQuality">{grid} · {distance} · {bearing}° · {quality}</string>
+    <string name="reach_probeChance">{grid} · {distance} · {bearing}° · {percent} de probabilidad</string>
     <string name="map_zoomIn">Acercar</string>
     <string name="map_zoomOut">Alejar</string>
     <string name="map_fitReach">Encuadrar hasta donde llega esta banda</string>
@@ -279,6 +280,7 @@
     <string name="map_fullscreen">Mapa a pantalla completa</string>
     <string name="map_exitFullscreen">Salir de pantalla completa</string>
     <string name="map_clearSelection">Toca la celda otra vez para quitarla.</string>
+    <string name="map_setDestination">Usar como destino</string>
     <string name="status_liveExplain">En directo: la previsión se ajusta al sol y a la actividad geomagnética medidos hoy (NOAA). Sin conexión, usa las condiciones típicas del mes.</string>
     <string name="compass_open">Orientar la antena con la brújula</string>
     <string name="compass_title">Orientar la antena</string>

@@ -43,6 +43,7 @@
     <string name="reach_detailNear">تفاصيل إضافية حول هذا العرض.</string>
     <string name="reach_probe">{grid} · {distance} · {bearing}°</string>
     <string name="reach_probeQuality">{grid} · {distance} · {bearing}° · {quality}</string>
+    <string name="reach_probeChance">{grid} · {distance} · {bearing}° · احتمال {percent}</string>
     <string name="map_zoomIn">تكبير</string>
     <string name="map_zoomOut">تصغير</string>
     <string name="map_fitReach">تأطير المنطقة التي يصل إليها هذا النطاق</string>
@@ -279,6 +280,7 @@
     <string name="map_fullscreen">الخريطة بملء الشاشة</string>
     <string name="map_exitFullscreen">الخروج من ملء الشاشة</string>
     <string name="map_clearSelection">انقر على الخلية مرة أخرى لإلغاء تحديدها.</string>
+    <string name="map_setDestination">تعيين كوجهة</string>
     <string name="status_liveExplain">مباشر: التنبؤ مضبوط على نشاط الشمس والنشاط المغنطيسي الأرضي المقيسين اليوم (NOAA). دون اتصال، يستخدم الظروف المعتادة للشهر.</string>
     <string name="compass_open">توجيه الهوائي بالبوصلة</string>
     <string name="compass_title">توجيه الهوائي</string>

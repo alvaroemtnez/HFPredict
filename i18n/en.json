@@ -48,6 +48,7 @@
   "reach.detailNear": "Extra detail around this view.",
   "reach.probe": "{grid} · {distance} · {bearing}°",
   "reach.probeQuality": "{grid} · {distance} · {bearing}° · {quality}",
+  "reach.probeChance": "{grid} · {distance} · {bearing}° · {percent} chance",
 
   "map.zoomIn": "Zoom in",
   "map.zoomOut": "Zoom out",
@@ -302,6 +303,7 @@
   "map.fullscreen": "Full-screen map",
   "map.exitFullscreen": "Leave full screen",
   "map.clearSelection": "Tap the cell again to clear it.",
+  "map.setDestination": "Set as destination",
 
   "status.liveExplain": "Live: the forecast is tuned to today's measured sun and geomagnetic activity (NOAA). Offline, it uses typical conditions for the month.",
 

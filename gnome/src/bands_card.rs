@@ -536,10 +536,9 @@ impl BandsCard {
                 let cell = gtk::Label::new(Some(&format!("{}", (r * 100.0).round())));
                 cell.add_css_class("numeric");
                 cell.add_css_class("caption");
+                // Traffic-light numbers (main.rs set_dynamic_css).
                 let q = Quality::of(r);
-                if q == Quality::Closed {
-                    cell.add_css_class("dim-label");
-                }
+                cell.add_css_class(&format!("hfp-sem-{}", q.key()));
                 cell.set_tooltip_text(Some(&format::quality(q)));
                 cell.set_xalign(1.0);
                 self.table.attach(&cell, i as i32 + 1, row as i32 + 1, 1, 1);

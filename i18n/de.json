@@ -47,6 +47,7 @@
   "reach.detailNear": "Zusätzliche Details in dieser Ansicht.",
   "reach.probe": "{grid} · {distance} · {bearing}°",
   "reach.probeQuality": "{grid} · {distance} · {bearing}° · {quality}",
+  "reach.probeChance": "{grid} · {distance} · {bearing}° · {percent} Chance",
 
   "map.zoomIn": "Vergrößern",
   "map.zoomOut": "Verkleinern",
@@ -301,6 +302,7 @@
   "map.fullscreen": "Karte im Vollbild",
   "map.exitFullscreen": "Vollbild verlassen",
   "map.clearSelection": "Tippe erneut auf die Zelle, um sie abzuwählen.",
+  "map.setDestination": "Als Ziel festlegen",
 
   "status.liveExplain": "Live: Die Vorhersage ist auf die heute gemessene Sonnen- und geomagnetische Aktivität abgestimmt (NOAA). Offline nutzt sie die typischen Bedingungen des Monats.",
 

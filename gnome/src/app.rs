@@ -6,6 +6,7 @@
 //! overtaken (the reader moved the slider again before the map arrived).
 
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -16,7 +17,9 @@ use hfpredict_core::app::{BandReach, MapDetail, MapOptions, MapStatus, Probe};
 use hfpredict_core::bands::Band;
 use hfpredict_core::forecast::Forecast;
 use hfpredict_core::projection::MapView;
+use hfpredict_core::quality::Quality;
 use hfpredict_core::store::{SavedState, Settings, Theme};
+use hfpredict_core::tiles::{self, Screen, Tile};
 
 use crate::palette::{self, Colors};
 
@@ -113,8 +116,16 @@ impl View {
 /// Something the window redraws when the state changes.
 pub type Listener = Box<dyn Fn(&App, Change)>;
 
-/// Receives each rendered map and the view it was rendered for.
-pub type TextureSink = Box<dyn Fn(gtk::gdk::MemoryTexture, MapView)>;
+/// A rendered tile: its texture, the content version it shows and when it
+/// was last drawn (for evicting the least used).
+pub struct TileEntry {
+    pub texture: gtk::gdk::Texture,
+    pub epoch: u64,
+    pub used: Cell<u64>,
+}
+
+/// Tiles kept as textures, about 1 MB each.
+const MAX_TILES: usize = 96;
 
 /// What changed, so listeners redraw only their part.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -137,17 +148,20 @@ pub struct App {
     listeners: RefCell<Vec<Listener>>,
     forecast_gen: Cell<u64>,
     map_gen: Cell<u64>,
-    /// The map widget's size in device pixels, and whether a render is
-    /// running / wanted again.
-    map_px: Cell<u32>,
-    density: Cell<f32>,
-    rendering: Cell<bool>,
-    render_again: Cell<bool>,
-    /// A gesture is under way: render at half size, and settle shortly
-    /// after the last move.
-    draft: Cell<bool>,
+    /// The map area in device pixels and their size in logical ones.
+    screen: Cell<Option<(Screen, f32)>>,
+    /// The map's tiles (see `hfpredict_core::tiles`), each the newest drawn,
+    /// for the content version `epoch` it was drawn at. A stale tile stays
+    /// on screen until its replacement arrives.
+    pub tiles: RefCell<HashMap<Tile, TileEntry>>,
+    epoch: Cell<u64>,
+    tile_busy: Cell<bool>,
+    uses: Cell<u64>,
+    /// Redraws the map widget.
+    pub redraw: RefCell<Option<Box<dyn Fn()>>>,
+    /// Settles a pan or zoom shortly after the last move (a scroll wheel
+    /// has no gesture end).
     settle: RefCell<Option<glib::SourceId>>,
-    pub texture_sink: RefCell<Option<TextureSink>>,
     me: RefCell<Weak<App>>,
 }
 
@@ -179,13 +193,13 @@ impl App {
             listeners: RefCell::new(vec![]),
             forecast_gen: Cell::new(0),
             map_gen: Cell::new(0),
-            map_px: Cell::new(0),
-            density: Cell::new(1.0),
-            rendering: Cell::new(false),
-            render_again: Cell::new(false),
-            draft: Cell::new(false),
+            screen: Cell::new(None),
+            tiles: RefCell::new(HashMap::new()),
+            epoch: Cell::new(0),
+            tile_busy: Cell::new(false),
+            uses: Cell::new(0),
+            redraw: RefCell::new(None),
             settle: RefCell::new(None),
-            texture_sink: RefCell::new(None),
             me: RefCell::new(Weak::new()),
         });
         *app.me.borrow_mut() = Rc::downgrade(&app);
@@ -237,7 +251,7 @@ impl App {
         let low = self.view.borrow().low_light();
         self.view.borrow_mut().colors = palette::current(low);
         self.emit(Change::Colors);
-        self.render_map();
+        self.map_changed();
     }
 
     // ---- Forecast and maps ---------------------------------------------
@@ -250,8 +264,9 @@ impl App {
             let mut v = self.view.borrow_mut();
             v.reach.clear();
             v.status = None;
-            v.probe = None;
         }
+        // A selected point stays; its chance is worked out again.
+        self.refresh_probe();
         let core = self.core.clone();
         let now = self.view.borrow().now;
         let me = self.rc();
@@ -285,7 +300,6 @@ impl App {
             let changed = v.band != band;
             v.band = band;
             v.hour = hour % 24;
-            v.probe = None;
             changed
         };
         if band_changed {
@@ -294,6 +308,7 @@ impl App {
         }
         self.emit(Change::Selection);
         self.update_map();
+        self.refresh_probe();
     }
 
     /// The coarse grid at once, then the fine one, then a patch if zoomed.
@@ -307,7 +322,7 @@ impl App {
             (v.band, v.hour, v.now)
         };
         self.emit(Change::Map);
-        self.render_map();
+        self.map_changed();
         let core = self.core.clone();
         let me = self.rc();
         let t0 = std::time::Instant::now();
@@ -326,7 +341,7 @@ impl App {
                     Err(e) => me.view.borrow_mut().map_error = Some(e.to_string()),
                 }
                 me.emit(Change::Map);
-                me.render_map();
+                me.map_changed();
                 // A fine map not yet held waits until the reader stops on
                 // an hour: sliding across the day then costs a coarse run
                 // per hour, not a fine one each, and the last stop wins.
@@ -372,7 +387,7 @@ impl App {
                     }
                 }
                 me.emit(Change::Map);
-                me.render_map();
+                me.map_changed();
                 me.prefetch(generation);
             },
         );
@@ -400,27 +415,33 @@ impl App {
         );
     }
 
-    /// The map widget's size changed.
-    pub fn set_map_size(&self, px: u32, density: f32) {
-        if px != self.map_px.get() || density != self.density.get() {
-            self.map_px.set(px);
-            self.density.set(density);
-            self.render_map();
+    /// The map area changed: `screen` in device pixels, `scale` of them
+    /// per logical pixel.
+    pub fn set_map_screen(&self, screen: Screen, scale: f32) {
+        let old = self.screen.replace(Some((screen, scale)));
+        if old.map(|(_, k)| k) != Some(scale) {
+            // Line widths follow the scale: every tile is redrawn.
+            self.map_changed();
+        } else {
+            self.pump_tiles();
         }
+        self.request_redraw();
     }
 
-    /// A pan or zoom: redraw at once, and work out a patch when the gesture
-    /// settles.
+    pub fn screen(&self) -> Option<(Screen, f32)> {
+        self.screen.get()
+    }
+
+    /// A pan or zoom: the held tiles move at once, missing ones follow, and
+    /// a patch is worked out once the view settles.
     pub fn set_map_view(&self, view: MapView, settled: bool) {
         self.view.borrow_mut().map_view = view;
         if let Some(id) = self.settle.borrow_mut().take() {
             id.remove();
         }
-        self.draft.set(!settled);
-        self.render_map();
+        self.request_redraw();
+        self.pump_tiles();
         if !settled {
-            // Full size once the moves stop, even with no gesture end
-            // (a scroll wheel has none).
             let me = Rc::downgrade(&self.rc());
             let id = glib::timeout_add_local_once(
                 std::time::Duration::from_millis(SETTLE_MS),
@@ -433,88 +454,153 @@ impl App {
                 },
             );
             *self.settle.borrow_mut() = Some(id);
+            return;
         }
-        if settled {
-            let (hour, now) = {
-                let v = self.view.borrow();
-                (v.hour, v.now)
-            };
-            let generation = self.map_gen.get();
-            let core = self.core.clone();
-            let me = self.rc();
-            spawn(
-                move || core.patch_map(hour, now, view),
-                move |r| {
-                    if me.map_gen.get() == generation && r.unwrap_or(false) {
-                        me.render_map();
-                        me.emit(Change::Map);
-                    }
-                },
-            );
+        let (hour, now) = {
+            let v = self.view.borrow();
+            (v.hour, v.now)
+        };
+        let generation = self.map_gen.get();
+        let core = self.core.clone();
+        let me = self.rc();
+        spawn(
+            move || core.patch_map(hour, now, view),
+            move |r| {
+                // A patch for this view (new or held) changes what its tiles show.
+                if me.map_gen.get() == generation && r.unwrap_or(false) {
+                    me.map_changed();
+                    me.emit(Change::Map);
+                }
+            },
+        );
+    }
+
+    fn request_redraw(&self) {
+        if let Some(f) = self.redraw.borrow().as_ref() {
+            f();
         }
     }
 
-    /// Draws the map from what has been computed. One render at a time; a
-    /// request during one is folded into a single follow-up.
-    pub fn render_map(&self) {
-        let (px, density) = if self.draft.get() {
-            (self.map_px.get() / 2, self.density.get() / 2.0)
-        } else {
-            (self.map_px.get(), self.density.get())
+    /// What the map shows has changed (data, band, hour, colours, the
+    /// selection): every tile is now stale and is redrawn, those on screen
+    /// first.
+    pub fn map_changed(&self) {
+        self.epoch.set(self.epoch.get() + 1);
+        self.pump_tiles();
+    }
+
+    /// Draws the next tile the screen lacks, one at a time: the one in the
+    /// middle first; the whole-earth tile first when none is held at all,
+    /// so zooming out never shows empty space.
+    fn pump_tiles(&self) {
+        if self.tile_busy.get() {
+            return;
+        }
+        let Some((screen, scale)) = self.screen.get() else {
+            return;
         };
-        if px < 16 {
+        if screen.side < 16.0 {
             return;
         }
-        if self.rendering.get() {
-            self.render_again.set(true);
-            return;
-        }
-        self.rendering.set(true);
-        let (band, hour, now, view, palette, highlight) = {
+        let epoch = self.epoch.get();
+        let (band, hour, now, view, palette, options) = {
             let v = self.view.borrow();
+            let q = v
+                .probe
+                .as_ref()
+                .and_then(|p| p.chance.map(Quality::of).or(p.quality));
             (
                 v.band,
                 v.hour,
                 v.now,
                 v.map_view,
                 v.colors.map,
-                v.probe.clone(),
+                MapOptions {
+                    show_night: true,
+                    show_nvis: true,
+                    show_path: true,
+                    highlight: v.probe.clone(),
+                    highlight_color: hfpredict_core::render::semaphore(
+                        q,
+                        v.colors.dark,
+                        v.colors.low_light,
+                    ),
+                },
             )
         };
+        let z = tiles::level_for(view, &screen);
+        let next = {
+            let held = self.tiles.borrow();
+            let fresh = |t: &Tile| held.get(t).is_some_and(|e| e.epoch == epoch);
+            let mut wanted = vec![];
+            if !held.contains_key(&Tile::WORLD) {
+                wanted.push(Tile::WORLD);
+            }
+            wanted.extend(tiles::visible(view, &screen, z).into_iter().map(|p| p.tile));
+            wanted.push(Tile::WORLD);
+            wanted.into_iter().find(|t| !fresh(t))
+        };
+        let Some(tile) = next else {
+            return;
+        };
+        self.tile_busy.set(true);
         let core = self.core.clone();
         let me = self.rc();
-        let options = MapOptions {
-            show_night: true,
-            show_nvis: true,
-            show_path: true,
-            highlight,
-        };
         spawn(
-            move || core.render_map(band, hour, now, view, px, density, palette, options),
+            move || core.render_tile(band, hour, now, view, tile, scale, palette, options),
             move |image| {
-                me.rendering.set(false);
+                me.tile_busy.set(false);
                 let changed = me.view.borrow().map_detail != image.detail;
                 me.view.borrow_mut().map_detail = image.detail;
                 if changed {
                     me.emit(Change::Map);
                 }
                 let size = image.size as i32;
-                let bytes = glib::Bytes::from_owned(image.pixels);
                 let texture = gtk::gdk::MemoryTexture::new(
                     size,
                     size,
                     gtk::gdk::MemoryFormat::R8g8b8a8Premultiplied,
-                    &bytes,
+                    &glib::Bytes::from_owned(image.pixels),
                     (size * 4) as usize,
                 );
-                if let Some(sink) = me.texture_sink.borrow().as_ref() {
-                    sink(texture, view);
-                }
-                if me.render_again.replace(false) {
-                    me.render_map();
-                }
+                me.keep_tile(tile, gtk::prelude::Cast::upcast(texture), epoch);
+                me.request_redraw();
+                me.pump_tiles();
             },
         );
+    }
+
+    fn keep_tile(&self, tile: Tile, texture: gtk::gdk::Texture, epoch: u64) {
+        let mut held = self.tiles.borrow_mut();
+        // A slow tile from an older version never replaces a newer one.
+        if held.get(&tile).is_some_and(|e| e.epoch > epoch) {
+            return;
+        }
+        held.insert(
+            tile,
+            TileEntry {
+                texture,
+                epoch,
+                used: Cell::new(self.next_use()),
+            },
+        );
+        while held.len() > MAX_TILES {
+            let oldest = held
+                .iter()
+                .filter(|(t, _)| **t != Tile::WORLD)
+                .min_by_key(|(_, e)| e.used.get())
+                .map(|(t, _)| *t);
+            match oldest {
+                Some(t) => held.remove(&t),
+                None => break,
+            };
+        }
+    }
+
+    /// A tick of the use clock, stamped on every tile drawn.
+    pub fn next_use(&self) -> u64 {
+        self.uses.set(self.uses.get() + 1);
+        self.uses.get()
     }
 
     pub fn fit_reach(&self) {
@@ -539,7 +625,54 @@ impl App {
         };
         self.view.borrow_mut().probe = if same { None } else { probe };
         self.emit(Change::Map);
-        self.render_map();
+        self.map_changed();
+        self.refresh_probe();
+    }
+
+    /// Works out the selected point's own chance of contact (a path
+    /// forecast to it, kept by the core), for the band and hour on screen.
+    pub fn refresh_probe(&self) {
+        let Some((lat, lon, grid)) = self
+            .view
+            .borrow()
+            .probe
+            .as_ref()
+            .map(|p| (p.lat, p.lon, p.grid.clone()))
+        else {
+            return;
+        };
+        let (band, hour, now) = {
+            let v = self.view.borrow();
+            (v.band, v.hour, v.now)
+        };
+        let core = self.core.clone();
+        let me = self.rc();
+        spawn(
+            move || core.probe_at(band, hour, now, lat, lon),
+            move |full| {
+                let current = {
+                    let v = me.view.borrow();
+                    v.probe.as_ref().is_some_and(|p| p.grid == grid)
+                        && v.band == band
+                        && v.hour == hour
+                };
+                if current {
+                    me.view.borrow_mut().probe = Some(full);
+                    me.emit(Change::Map);
+                    me.map_changed();
+                }
+            },
+        );
+    }
+
+    /// Makes the selected point the path's destination.
+    pub fn probe_to_destination(&self) {
+        let Some((lat, lon)) = self.view.borrow().probe.as_ref().map(|p| (p.lat, p.lon)) else {
+            return;
+        };
+        let place = self.core.place_at(lat, lon);
+        self.view.borrow_mut().probe = None;
+        self.save(|c| c.set_to(Some(place)));
     }
 
     // ---- Online readings -----------------------------------------------

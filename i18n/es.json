@@ -47,6 +47,7 @@
   "reach.detailNear": "Más detalle en esta vista.",
   "reach.probe": "{grid} · {distance} · {bearing}°",
   "reach.probeQuality": "{grid} · {distance} · {bearing}° · {quality}",
+  "reach.probeChance": "{grid} · {distance} · {bearing}° · {percent} de probabilidad",
 
   "map.zoomIn": "Acercar",
   "map.zoomOut": "Alejar",
@@ -301,6 +302,7 @@
   "map.fullscreen": "Mapa a pantalla completa",
   "map.exitFullscreen": "Salir de pantalla completa",
   "map.clearSelection": "Toca la celda otra vez para quitarla.",
+  "map.setDestination": "Usar como destino",
 
   "status.liveExplain": "En directo: la previsión se ajusta al sol y a la actividad geomagnética medidos hoy (NOAA). Sin conexión, usa las condiciones típicas del mes.",
 

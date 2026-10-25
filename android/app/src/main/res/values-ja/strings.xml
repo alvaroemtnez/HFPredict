@@ -43,6 +43,7 @@
     <string name="reach_detailNear">この表示の周辺をさらに詳しく表示しています。</string>
     <string name="reach_probe">{grid} · {distance} · {bearing}°</string>
     <string name="reach_probeQuality">{grid} · {distance} · {bearing}° · {quality}</string>
+    <string name="reach_probeChance">{grid} · {distance} · {bearing}° · 確率 {percent}</string>
     <string name="map_zoomIn">拡大</string>
     <string name="map_zoomOut">縮小</string>
     <string name="map_fitReach">このバンドが届く範囲に合わせる</string>
@@ -279,6 +280,7 @@
     <string name="map_fullscreen">地図を全画面表示</string>
     <string name="map_exitFullscreen">全画面表示を終了</string>
     <string name="map_clearSelection">もう一度タップすると選択を解除します。</string>
+    <string name="map_setDestination">目的地に設定</string>
     <string name="status_liveExplain">ライブ：予報は本日観測された太陽活動と地磁気活動（NOAA）に合わせています。オフラインでは、その月の典型的な状態を使います。</string>
     <string name="compass_open">コンパスでアンテナを向ける</string>
     <string name="compass_title">アンテナを向ける</string>

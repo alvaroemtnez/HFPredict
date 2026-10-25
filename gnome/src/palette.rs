@@ -15,11 +15,22 @@ pub struct Colors {
     pub dim: gdk::RGBA,
     /// The "now" marker.
     pub now: gdk::RGBA,
+    pub dark: bool,
+    pub low_light: bool,
 }
 
 impl Colors {
     pub fn cell(&self, q: Quality) -> gdk::RGBA {
         self.cells[q as usize]
+    }
+
+    /// A quality as a traffic light (green to red, grey unknown).
+    pub fn semaphore(&self, q: Option<Quality>) -> gdk::RGBA {
+        rgba_of(hfpredict_core::render::semaphore(
+            q,
+            self.dark,
+            self.low_light,
+        ))
     }
 }
 
@@ -105,6 +116,8 @@ pub fn colors(accent: gdk::RGBA, dark: bool, low_light: bool) -> Colors {
             fg,
             dim,
             now: rgba(1.0, 0.45, 0.3, 1.0),
+            dark: true,
+            low_light: true,
         };
     }
     let highlight = hfpredict_core::render::highlight(argb(&accent), dark, false);
@@ -137,6 +150,8 @@ pub fn colors(accent: gdk::RGBA, dark: bool, low_light: bool) -> Colors {
             fg: rgba(1.0, 1.0, 1.0, 1.0),
             dim: rgba(1.0, 1.0, 1.0, 0.55),
             now: rgba(0.96, 0.83, 0.18, 1.0),
+            dark: true,
+            low_light: false,
         }
     } else {
         let cells = [
@@ -164,6 +179,8 @@ pub fn colors(accent: gdk::RGBA, dark: bool, low_light: bool) -> Colors {
             fg: rgba(0.0, 0.0, 0.0, 0.8),
             dim: rgba(0.0, 0.0, 0.0, 0.55),
             now: rgba(0.90, 0.38, 0.0, 1.0),
+            dark: false,
+            low_light: false,
         }
     }
 }

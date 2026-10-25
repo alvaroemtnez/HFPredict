@@ -47,6 +47,7 @@
   "reach.detailNear": "Més detall en esta vista.",
   "reach.probe": "{grid} · {distance} · {bearing}°",
   "reach.probeQuality": "{grid} · {distance} · {bearing}° · {quality}",
+  "reach.probeChance": "{grid} · {distance} · {bearing}° · {percent} de probabilitat",
 
   "map.zoomIn": "Amplia",
   "map.zoomOut": "Redueix",
@@ -301,6 +302,7 @@
   "map.fullscreen": "Mapa a pantalla completa",
   "map.exitFullscreen": "Eixir de la pantalla completa",
   "map.clearSelection": "Toca la cel·la una altra volta per a llevar-la.",
+  "map.setDestination": "Utilitzar com a destí",
 
   "status.liveExplain": "En directe: la previsió s'ajusta al sol i a l'activitat geomagnètica mesurats hui (NOAA). Sense connexió, utilitza les condicions típiques del mes.",
 

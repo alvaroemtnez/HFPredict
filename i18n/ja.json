@@ -47,6 +47,7 @@
   "reach.detailNear": "この表示の周辺をさらに詳しく表示しています。",
   "reach.probe": "{grid} · {distance} · {bearing}°",
   "reach.probeQuality": "{grid} · {distance} · {bearing}° · {quality}",
+  "reach.probeChance": "{grid} · {distance} · {bearing}° · 確率 {percent}",
 
   "map.zoomIn": "拡大",
   "map.zoomOut": "縮小",
@@ -301,6 +302,7 @@
   "map.fullscreen": "地図を全画面表示",
   "map.exitFullscreen": "全画面表示を終了",
   "map.clearSelection": "もう一度タップすると選択を解除します。",
+  "map.setDestination": "目的地に設定",
 
   "status.liveExplain": "ライブ：予報は本日観測された太陽活動と地磁気活動（NOAA）に合わせています。オフラインでは、その月の典型的な状態を使います。",
 

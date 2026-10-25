@@ -23,6 +23,7 @@ use std::time::Duration;
 use adw::prelude::*;
 use gtk::{gdk, gio, glib};
 use hfpredict_core::Core;
+use hfpredict_core::quality::Quality;
 
 use crate::app::{App, Change};
 use crate::dialogs::APP_ID;
@@ -133,6 +134,19 @@ fn set_dynamic_css(app: &App) {
         css.push_str(&format!(
             ".hfp-q-{q} {{ background: {}; color: {fg}; }}\n",
             palette::css(&bg)
+        ));
+    }
+    // Traffic-light text (the band table's numbers, the probe's chance).
+    for q in [
+        Quality::Reliable,
+        Quality::Patchy,
+        Quality::Weak,
+        Quality::Closed,
+    ] {
+        css.push_str(&format!(
+            ".hfp-sem-{} {{ color: {}; font-weight: bold; }}\n",
+            q.key(),
+            palette::css(&c.semaphore(Some(q)))
         ));
     }
     DYNAMIC_CSS.with(|cell| {

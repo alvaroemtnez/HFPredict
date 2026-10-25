@@ -44,6 +44,7 @@
     <string name="reach_detailNear">Extra detail around this view.</string>
     <string name="reach_probe">{grid} · {distance} · {bearing}°</string>
     <string name="reach_probeQuality">{grid} · {distance} · {bearing}° · {quality}</string>
+    <string name="reach_probeChance">{grid} · {distance} · {bearing}° · {percent} chance</string>
     <string name="map_zoomIn">Zoom in</string>
     <string name="map_zoomOut">Zoom out</string>
     <string name="map_fitReach">Frame where this band reaches</string>
@@ -280,6 +281,7 @@
     <string name="map_fullscreen">Full-screen map</string>
     <string name="map_exitFullscreen">Leave full screen</string>
     <string name="map_clearSelection">Tap the cell again to clear it.</string>
+    <string name="map_setDestination">Set as destination</string>
     <string name="status_liveExplain">Live: the forecast is tuned to today\'s measured sun and geomagnetic activity (NOAA). Offline, it uses typical conditions for the month.</string>
     <string name="compass_open">Point the antenna with the compass</string>
     <string name="compass_title">Point the antenna</string>

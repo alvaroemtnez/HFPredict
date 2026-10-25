@@ -223,14 +223,20 @@ fn main_page(app: &Rc<App>, w: &Rc<Window>) -> gtk::Widget {
     all.root.set_hexpand(true);
     all.root.set_valign(gtk::Align::Start);
     columns.append(&reach.root);
-    columns.append(&all.root);
+    // The bands and the sun share the second column: under the map when
+    // narrow, beside it when wide, so neither leaves a gap.
+    let side = gtk::Box::new(gtk::Orientation::Vertical, 18);
+    side.set_valign(gtk::Align::Start);
+    side.set_hexpand(true);
+    side.append(&all.root);
+    side.append(&sun.root);
+    columns.append(&side);
     let page = gtk::Box::new(gtk::Orientation::Vertical, 18);
     page.set_margin_top(18);
     page.set_margin_bottom(24);
     page.set_margin_start(12);
     page.set_margin_end(12);
     page.append(&columns);
-    page.append(&sun.root);
     let clamp = adw::Clamp::builder()
         .maximum_size(1500)
         .tightening_threshold(1200)

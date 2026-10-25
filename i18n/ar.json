@@ -47,6 +47,7 @@
   "reach.detailNear": "تفاصيل إضافية حول هذا العرض.",
   "reach.probe": "{grid} · {distance} · {bearing}°",
   "reach.probeQuality": "{grid} · {distance} · {bearing}° · {quality}",
+  "reach.probeChance": "{grid} · {distance} · {bearing}° · احتمال {percent}",
 
   "map.zoomIn": "تكبير",
   "map.zoomOut": "تصغير",
@@ -301,6 +302,7 @@
   "map.fullscreen": "الخريطة بملء الشاشة",
   "map.exitFullscreen": "الخروج من ملء الشاشة",
   "map.clearSelection": "انقر على الخلية مرة أخرى لإلغاء تحديدها.",
+  "map.setDestination": "تعيين كوجهة",
 
   "status.liveExplain": "مباشر: التنبؤ مضبوط على نشاط الشمس والنشاط المغنطيسي الأرضي المقيسين اليوم (NOAA). دون اتصال، يستخدم الظروف المعتادة للشهر.",
 
