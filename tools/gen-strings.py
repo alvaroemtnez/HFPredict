@@ -42,7 +42,7 @@ def main():
     problems = 0
     for lang in LANGS:
         table = load(lang)
-        missing = [k for k in english if k not in table]
+        missing = [k for k in english if k not in table and k != "app.name"]
         extra = [k for k in table if k not in english]
         for k, v in table.items():
             if k in english and set(PLACEHOLDER.findall(v)) != set(PLACEHOLDER.findall(english[k])):

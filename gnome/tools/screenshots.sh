@@ -59,6 +59,8 @@ setup_help() { state "$1" light "$TOKYO" null; }
 setup_about() { state "$1" dark "$TOKYO" null; }
 setup_zoom() { state "$1" dark null null; }
 setup_spanish() { state "$1" light "$TOKYO" '"es"'; }
+setup_arabic() { state "$1" dark "$TOKYO" '"ar"'; }
+setup_valencian_station() { state "$1" light "$TOKYO" '"ca"'; }
 
 EXTRA="" shot wide_dark 1400x1000 true
 EXTRA="" shot wide_light 1400x1000 true
@@ -73,4 +75,6 @@ EXTRA="HFPREDICT_OPEN=help" shot help 900x900 true
 EXTRA="HFPREDICT_OPEN=about" shot about 900x900 true
 EXTRA="HFPREDICT_BAND=40m HFPREDICT_ZOOM=5" shot zoom 1400x1000 true
 EXTRA="" shot spanish 1400x1000 true
+EXTRA="" shot arabic 1400x1000 true
+EXTRA="HFPREDICT_OPEN=station" shot valencian_station 900x1000 true
 ls -la "$OUT"

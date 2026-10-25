@@ -162,9 +162,6 @@ fn main() -> glib::ExitCode {
     let core = Arc::new(Core::open(data, cache));
     let lang = i18n::resolve(core.state().settings.language.as_deref());
     i18n::init(&lang);
-    if i18n::is_rtl() {
-        gtk::Widget::set_default_direction(gtk::TextDirection::Rtl);
-    }
 
     let application = adw::Application::builder().application_id(APP_ID).build();
     let core2 = core.clone();
@@ -190,6 +187,13 @@ fn main() -> glib::ExitCode {
             w.present();
             return;
         }
+        // The app's language decides the direction, not the system's: GTK
+        // sets it from the locale during start-up, so this comes after.
+        gtk::Widget::set_default_direction(if i18n::is_rtl() {
+            gtk::TextDirection::Rtl
+        } else {
+            gtk::TextDirection::Ltr
+        });
         let app = App::new(core.clone());
         let w = window::build(application, &app);
         install_actions(application, &w);
@@ -203,6 +207,14 @@ fn main() -> glib::ExitCode {
         app.refresh_readings();
         start_timers(&app);
         w.window.present();
+        if std::env::var_os("HFPREDICT_DEBUG").is_some() {
+            eprintln!(
+                "hfpredict: direction default={:?} window={:?} lang={}",
+                gtk::Widget::default_direction(),
+                w.window.direction(),
+                i18n::lang()
+            );
+        }
         screenshot_hook(&w);
     });
     application.run()
