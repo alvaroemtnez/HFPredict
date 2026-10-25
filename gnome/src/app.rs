@@ -26,6 +26,9 @@ pub const PAST_HOURS: u32 = 6;
 /// How long the hour must stay put before a fine map is worked out.
 const FINE_DELAY_MS: u64 = 280;
 
+/// How long after the last move a pan or zoom counts as settled.
+const SETTLE_MS: u64 = 180;
+
 /// `HFPREDICT_DEBUG=1` prints how long each step takes.
 pub fn debug(what: &str, started: std::time::Instant) {
     if std::env::var_os("HFPREDICT_DEBUG").is_some() {
@@ -140,6 +143,10 @@ pub struct App {
     density: Cell<f32>,
     rendering: Cell<bool>,
     render_again: Cell<bool>,
+    /// A gesture is under way: render at half size, and settle shortly
+    /// after the last move.
+    draft: Cell<bool>,
+    settle: RefCell<Option<glib::SourceId>>,
     pub texture_sink: RefCell<Option<TextureSink>>,
     me: RefCell<Weak<App>>,
 }
@@ -176,6 +183,8 @@ impl App {
             density: Cell::new(1.0),
             rendering: Cell::new(false),
             render_again: Cell::new(false),
+            draft: Cell::new(false),
+            settle: RefCell::new(None),
             texture_sink: RefCell::new(None),
             me: RefCell::new(Weak::new()),
         });
@@ -364,6 +373,29 @@ impl App {
                 }
                 me.emit(Change::Map);
                 me.render_map();
+                me.prefetch(generation);
+            },
+        );
+    }
+
+    /// Readies the rest of the day while the reader looks (see
+    /// `Core::prefetch`), one map at a time, until anything new is asked.
+    fn prefetch(&self, generation: u64) {
+        if self.map_gen.get() != generation || self.view.borrow().map_working {
+            return;
+        }
+        let (band, hour, now) = {
+            let v = self.view.borrow();
+            (v.band, v.hour, v.now)
+        };
+        let core = self.core.clone();
+        let me = self.rc();
+        spawn(
+            move || core.prefetch(band, hour, now),
+            move |r| {
+                if let Ok(Some(_)) = r {
+                    me.prefetch(generation);
+                }
             },
         );
     }
@@ -381,7 +413,27 @@ impl App {
     /// settles.
     pub fn set_map_view(&self, view: MapView, settled: bool) {
         self.view.borrow_mut().map_view = view;
+        if let Some(id) = self.settle.borrow_mut().take() {
+            id.remove();
+        }
+        self.draft.set(!settled);
         self.render_map();
+        if !settled {
+            // Full size once the moves stop, even with no gesture end
+            // (a scroll wheel has none).
+            let me = Rc::downgrade(&self.rc());
+            let id = glib::timeout_add_local_once(
+                std::time::Duration::from_millis(SETTLE_MS),
+                move || {
+                    if let Some(me) = me.upgrade() {
+                        me.settle.borrow_mut().take();
+                        let v = me.view.borrow().map_view;
+                        me.set_map_view(v, true);
+                    }
+                },
+            );
+            *self.settle.borrow_mut() = Some(id);
+        }
         if settled {
             let (hour, now) = {
                 let v = self.view.borrow();
@@ -405,7 +457,11 @@ impl App {
     /// Draws the map from what has been computed. One render at a time; a
     /// request during one is folded into a single follow-up.
     pub fn render_map(&self) {
-        let px = self.map_px.get();
+        let (px, density) = if self.draft.get() {
+            (self.map_px.get() / 2, self.density.get() / 2.0)
+        } else {
+            (self.map_px.get(), self.density.get())
+        };
         if px < 16 {
             return;
         }
@@ -425,7 +481,6 @@ impl App {
                 v.probe.clone(),
             )
         };
-        let density = self.density.get();
         let core = self.core.clone();
         let me = self.rc();
         let options = MapOptions {

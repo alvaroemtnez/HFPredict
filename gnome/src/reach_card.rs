@@ -324,7 +324,7 @@ impl ReachCard {
                         y,
                         side(&map),
                     );
-                    app.set_map_view(v, true);
+                    app.set_map_view(v, false);
                     map.queue_draw();
                 }
                 glib::Propagation::Stop

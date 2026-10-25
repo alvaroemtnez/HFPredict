@@ -195,6 +195,7 @@ impl Core {
         ctx: &RunContext,
         from: &Place,
         band: Band,
+        threads: usize,
     ) -> Result<Arc<Option<CentreField>>, Error> {
         let key = Self::key("fc", ctx, from, band.label());
         if let Some(c) = lock(&self.caches).fine_centres.get(&key) {
@@ -207,7 +208,7 @@ impl Core {
             coverage::FINE_CENTRE_LAT_STEP,
             coverage::FINE_CENTRE_LON_STEP,
             Some(band),
-            self.threads,
+            threads,
         )?;
         let c = Arc::new(fields.pop().and_then(|f| f.1));
         lock(&self.caches).fine_centres.put(key, c.clone());
@@ -270,12 +271,13 @@ impl Core {
         from: &Place,
         band: Band,
         hour: u32,
+        threads: usize,
     ) -> Result<Arc<Grid>, Error> {
         if let Some(g) = self.cached_fine(ctx, from, band, hour) {
             return Ok(g);
         }
-        let raw = maps::fine(&self.engine, ctx, from.lat_lon(), hour, band, self.threads)?;
-        let centre = self.fine_centre(ctx, from, band)?;
+        let raw = maps::fine(&self.engine, ctx, from.lat_lon(), hour, band, threads)?;
+        let centre = self.fine_centre(ctx, from, band, threads)?;
         let grid = Arc::new(raw.corrected(
             centre.as_ref().as_ref(),
             f64::from(ctx.station.mode.required_snr_db()),
@@ -446,12 +448,46 @@ impl Core {
     pub fn fine_map(&self, band: Band, hour: u32, now: i64) -> Result<MapStatus, Error> {
         let (ctx, from, _) = self.context(now);
         self.coarse_grids(&ctx, &from, hour)?;
-        let grid = self.fine_grid(&ctx, &from, band, hour)?;
+        let grid = self.fine_grid(&ctx, &from, band, hour, self.threads)?;
         Ok(MapStatus {
             detail: MapDetail::Fine,
             reach: Some(grid.reach()),
             nvis_km: render::nvis_reach_km(from.lat_lon(), &grid),
         })
+    }
+
+    /// Works out one map the reader is likely to look at next, so that
+    /// sliding through the day finds them ready: first every hour's coarse
+    /// grid (every band at once, quick), then `band`'s fine map at the hours
+    /// nearest `hour`. On half the cores, so the reader's own requests keep
+    /// most of the machine. Returns the hour worked on, or `None` when the
+    /// whole day is ready. Apps call it again and again while the reader is
+    /// idle and the app is on screen, and stop on any new request.
+    pub fn prefetch(&self, band: Band, hour: u32, now: i64) -> Result<Option<u32>, Error> {
+        let (ctx, from, _) = self.context(now);
+        let threads = (self.threads / 2).max(1);
+        let order: Vec<u32> = (0..24u32)
+            .flat_map(|k| [(hour + k) % 24, (hour + 24 - k) % 24])
+            .fold(vec![], |mut seen, h| {
+                if !seen.contains(&h) {
+                    seen.push(h);
+                }
+                seen
+            });
+        for &h in &order {
+            let key = Self::key("coarse", &ctx, &from, &h.to_string());
+            if lock(&self.caches).coarse.get(&key).is_none() {
+                self.coarse_grids(&ctx, &from, h)?;
+                return Ok(Some(h));
+            }
+        }
+        for &h in &order {
+            if self.cached_fine(&ctx, &from, band, h).is_none() {
+                self.fine_grid(&ctx, &from, band, h, threads)?;
+                return Ok(Some(h));
+            }
+        }
+        Ok(None)
     }
 
     /// Whether a fine map is already held, without computing anything.
@@ -781,6 +817,23 @@ mod tests {
             std::env::temp_dir().join("hfp-app-flow/cache"),
         );
         assert!(again.has_fine_map(Band::M20, 12, NOW));
+    }
+
+    #[test]
+    fn prefetch_readies_the_day_nearest_first() {
+        let c = core("hfp-app-prefetch");
+        c.set_from(Place::at("Valencia", "Spain", 39.47, -0.38))
+            .unwrap();
+        let mut done = vec![];
+        while let Some(h) = c.prefetch(Band::M20, 12, NOW).unwrap() {
+            done.push(h);
+            assert!(done.len() <= 48, "prefetch never finishes");
+        }
+        // Every hour's coarse grid, then the band's fine maps from 12 outwards.
+        assert_eq!(done.len(), 48);
+        assert_eq!(&done[..3], &[12, 13, 11]);
+        assert_eq!(&done[24..27], &[12, 13, 11]);
+        assert!((0..24).all(|h| c.has_fine_map(Band::M20, h, NOW)));
     }
 
     #[test]

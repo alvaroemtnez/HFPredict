@@ -10,7 +10,7 @@
 //! not depend on how many cells there are. Lines (coastlines, range rings,
 //! the path) are antialiased vectors on top.
 
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use tiny_skia::{
     Color, FillRule, LineCap, LineJoin, Paint, PathBuilder, Pixmap, PremultipliedColorU8, Stroke,
@@ -148,6 +148,10 @@ fn paint(c: u32) -> Paint<'static> {
 /// Draws the map into a `size` by `size` square of premultiplied RGBA, the
 /// byte order Android's `ARGB_8888` and GDK's `R8g8b8a8Premultiplied` take.
 /// `density` scales line widths (device pixels per dp / logical pixel).
+///
+/// What depends only on the view is kept between calls (each pixel's place
+/// on the earth, and the lines: coast, rings, path), so a new hour or band
+/// redraws with lookups alone.
 pub fn render(
     scene: &Scene,
     view: MapView,
@@ -176,75 +180,26 @@ pub fn render(
         );
     }
 
-    raster_cells(
-        &mut pixmap,
-        scene,
-        &projection,
-        view,
-        palette,
-        threads,
-        radius,
-    );
+    let geometry = geometry(scene.centre, view, size, threads);
+    raster_cells(&mut pixmap, scene, &geometry, palette, threads, radius);
 
     let line = density.max(0.5);
+    let lines = overlay(scene, view, size, line, palette);
+    pixmap.draw_pixmap(
+        0,
+        0,
+        lines.as_ref().as_ref(),
+        &tiny_skia::PixmapPaint::default(),
+        Transform::identity(),
+        None,
+    );
+
     let stroke = |width: f32| Stroke {
         width: width * line,
         line_cap: LineCap::Round,
         line_join: LineJoin::Round,
         ..Stroke::default()
     };
-
-    // Distance rings, dashed, and the rim.
-    let mut ring_km = RING_KM;
-    while Projection::radius_of_km(ring_km) < 0.999 {
-        let r = radius * Projection::radius_of_km(ring_km) as f32;
-        if let Some(c) = PathBuilder::from_circle(ox as f32, oy as f32, r) {
-            let mut st = stroke(1.0);
-            st.dash = StrokeDash::new(vec![4.0 * line, 4.0 * line], 0.0);
-            pixmap.stroke_path(
-                &c,
-                &paint(palette.grid_lines),
-                &st,
-                Transform::identity(),
-                None,
-            );
-        }
-        ring_km += RING_KM;
-    }
-    if let Some(c) = PathBuilder::from_circle(ox as f32, oy as f32, radius) {
-        pixmap.stroke_path(
-            &c,
-            &paint(palette.grid_lines),
-            &stroke(1.0),
-            Transform::identity(),
-            None,
-        );
-    }
-
-    // Coastlines.
-    let mut coast = PathBuilder::new();
-    for ring in land() {
-        add_polyline(
-            &mut coast,
-            &projection,
-            view,
-            s,
-            ring.iter().map(|&(lon, lat)| LatLon {
-                lat: f64::from(lat),
-                lon: f64::from(lon),
-            }),
-        );
-    }
-    if let Some(path) = coast.finish() {
-        pixmap.stroke_path(
-            &path,
-            &paint(palette.coastline),
-            &stroke(0.9),
-            Transform::identity(),
-            None,
-        );
-    }
-
     // The selected cell, outlined: the finest grid's cell under the point,
     // or a ring where only the smoothed preview is drawn.
     if let Some(h) = scene.highlight {
@@ -314,80 +269,277 @@ pub fn render(
         }
     }
 
-    // The path to the destination and its end.
-    let dot = |pixmap: &mut Pixmap, p: LatLon, fill: u32, halo: u32, r: f32| {
-        if let Some((x, y)) = projection.project(p) {
-            let (px, py) = view.to_pixel(x, y, s);
-            if let Some(c) = PathBuilder::from_circle(px as f32, py as f32, (r + 1.5) * line) {
-                pixmap.fill_path(
-                    &c,
-                    &paint(halo),
-                    FillRule::Winding,
-                    Transform::identity(),
-                    None,
-                );
-            }
-            if let Some(c) = PathBuilder::from_circle(px as f32, py as f32, r * line) {
-                pixmap.fill_path(
-                    &c,
-                    &paint(fill),
-                    FillRule::Winding,
-                    Transform::identity(),
-                    None,
-                );
-            }
-        }
-    };
-    if let Some(to) = scene.destination {
-        let mut pb = PathBuilder::new();
-        add_polyline(
-            &mut pb,
-            &projection,
-            view,
-            s,
-            geo::great_circle(scene.centre, to, 128).into_iter(),
-        );
-        if let Some(path) = pb.finish() {
-            pixmap.stroke_path(
-                &path,
-                &paint(palette.path_halo),
-                &stroke(4.5),
-                Transform::identity(),
-                None,
-            );
-            pixmap.stroke_path(
-                &path,
-                &paint(palette.path),
-                &stroke(2.5),
-                Transform::identity(),
-                None,
-            );
-        }
-        dot(&mut pixmap, to, palette.path, palette.path_halo, 4.5);
-    }
-    dot(
-        &mut pixmap,
-        scene.centre,
-        palette.station,
-        palette.halo,
-        5.5,
-    );
-
     pixmap.take()
 }
 
-/// Coverage cells and the night wash, pixel by pixel inside the disc.
+/// A few recent values by key, shared by every render.
+struct Recent<K, V> {
+    items: Mutex<Vec<(K, Arc<V>)>>,
+    keep: usize,
+}
+
+impl<K: PartialEq, V> Recent<K, V> {
+    const fn new(keep: usize) -> Self {
+        Recent {
+            items: Mutex::new(Vec::new()),
+            keep,
+        }
+    }
+
+    fn get_or(&self, key: K, make: impl FnOnce() -> V) -> Arc<V> {
+        {
+            let mut items = self.items.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(i) = items.iter().position(|(k, _)| *k == key) {
+                let item = items.remove(i);
+                let v = item.1.clone();
+                items.push(item);
+                return v;
+            }
+        }
+        let v = Arc::new(make());
+        let mut items = self.items.lock().unwrap_or_else(|e| e.into_inner());
+        items.push((key, v.clone()));
+        while items.len() > self.keep {
+            items.remove(0);
+        }
+        v
+    }
+}
+
+/// Where each pixel lies on the earth, compactly: latitude and longitude
+/// as 16-bit steps (0.003 degrees, finer than any grid drawn) and the
+/// point's unit vector for the night side. `u16::MAX` latitude: off the disc.
+struct Geometry {
+    lat: Vec<u16>,
+    lon: Vec<u16>,
+    unit: Vec<[i16; 3]>,
+}
+
+const OFF_DISC: u16 = u16::MAX;
+
+fn geometry(centre: LatLon, view: MapView, size: u32, threads: usize) -> Arc<Geometry> {
+    static RECENT: Recent<[u64; 6], Geometry> = Recent::new(2);
+    let key = [
+        centre.lat.to_bits(),
+        centre.lon.to_bits(),
+        view.scale.to_bits(),
+        view.cx.to_bits(),
+        view.cy.to_bits(),
+        u64::from(size),
+    ];
+    RECENT.get_or(key, || {
+        let projection = Projection::new(centre);
+        let size = size as usize;
+        let s = size as f64;
+        let (ox, oy) = view.to_pixel(0.0, 0.0, s);
+        let radius = view.to_pixel(1.0, 0.0, s).0 - ox;
+        let rows: Vec<usize> = (0..size).collect();
+        let chunks: Vec<&[usize]> = rows
+            .chunks(size.div_ceil(threads.max(1) * 4).max(1))
+            .collect();
+        let parts = crate::parallel::map(&chunks, threads, |chunk| {
+            let n = chunk.len() * size;
+            let (mut lat, mut lon, mut unit) = (
+                Vec::with_capacity(n),
+                Vec::with_capacity(n),
+                Vec::with_capacity(n),
+            );
+            for &py in chunk.iter() {
+                let dy = py as f64 + 0.5 - oy;
+                for px in 0..size {
+                    let dx = px as f64 + 0.5 - ox;
+                    // Only strictly inside the rim; the rim pixels keep the
+                    // antialiased disc edge.
+                    let p = if dx.hypot(dy) > radius - 1.0 {
+                        None
+                    } else {
+                        let (x, y) = view.to_disc(px as f64 + 0.5, py as f64 + 0.5, s);
+                        projection.invert(x, y)
+                    };
+                    match p {
+                        Some(p) => {
+                            lat.push(((p.lat + 90.0) / 180.0 * 65534.0).round() as u16);
+                            lon.push(((p.lon + 180.0) / 360.0 * 65535.0).round() as u16);
+                            unit.push(unit_vector(p).map(|c| (c * 32767.0).round() as i16));
+                        }
+                        None => {
+                            lat.push(OFF_DISC);
+                            lon.push(0);
+                            unit.push([0; 3]);
+                        }
+                    }
+                }
+            }
+            (lat, lon, unit)
+        });
+        let mut g = Geometry {
+            lat: Vec::with_capacity(size * size),
+            lon: Vec::with_capacity(size * size),
+            unit: Vec::with_capacity(size * size),
+        };
+        for (lat, lon, unit) in parts {
+            g.lat.extend(lat);
+            g.lon.extend(lon);
+            g.unit.extend(unit);
+        }
+        g
+    })
+}
+
+/// The lines over the cells: distance rings, the rim, coastlines, the path
+/// and the two ends. Kept while the view, size and colours stay.
+fn overlay(scene: &Scene, view: MapView, size: u32, line: f32, palette: &Palette) -> Arc<Pixmap> {
+    type Key = (Vec<u64>, Palette);
+    static RECENT: Recent<Key, Pixmap> = Recent::new(2);
+    let mut bits = vec![
+        scene.centre.lat.to_bits(),
+        scene.centre.lon.to_bits(),
+        view.scale.to_bits(),
+        view.cx.to_bits(),
+        view.cy.to_bits(),
+        u64::from(size),
+        u64::from(line.to_bits()),
+    ];
+    if let Some(d) = scene.destination {
+        bits.extend([d.lat.to_bits(), d.lon.to_bits()]);
+    }
+    RECENT.get_or((bits, *palette), || {
+        let mut pixmap = Pixmap::new(size, size).expect("a non-empty square");
+        let projection = Projection::new(scene.centre);
+        let s = f64::from(size);
+        let (ox, oy) = view.to_pixel(0.0, 0.0, s);
+        let radius = (view.to_pixel(1.0, 0.0, s).0 - ox) as f32;
+        let stroke = |width: f32| Stroke {
+            width: width * line,
+            line_cap: LineCap::Round,
+            line_join: LineJoin::Round,
+            ..Stroke::default()
+        };
+        // Distance rings, dashed, and the rim.
+        let mut ring_km = RING_KM;
+        while Projection::radius_of_km(ring_km) < 0.999 {
+            let r = radius * Projection::radius_of_km(ring_km) as f32;
+            if let Some(c) = PathBuilder::from_circle(ox as f32, oy as f32, r) {
+                let mut st = stroke(1.0);
+                st.dash = StrokeDash::new(vec![4.0 * line, 4.0 * line], 0.0);
+                pixmap.stroke_path(
+                    &c,
+                    &paint(palette.grid_lines),
+                    &st,
+                    Transform::identity(),
+                    None,
+                );
+            }
+            ring_km += RING_KM;
+        }
+        if let Some(c) = PathBuilder::from_circle(ox as f32, oy as f32, radius) {
+            pixmap.stroke_path(
+                &c,
+                &paint(palette.grid_lines),
+                &stroke(1.0),
+                Transform::identity(),
+                None,
+            );
+        }
+
+        // Coastlines.
+        let mut coast = PathBuilder::new();
+        for ring in land() {
+            add_polyline(
+                &mut coast,
+                &projection,
+                view,
+                s,
+                ring.iter().map(|&(lon, lat)| LatLon {
+                    lat: f64::from(lat),
+                    lon: f64::from(lon),
+                }),
+            );
+        }
+        if let Some(path) = coast.finish() {
+            pixmap.stroke_path(
+                &path,
+                &paint(palette.coastline),
+                &stroke(0.9),
+                Transform::identity(),
+                None,
+            );
+        }
+
+        // The path to the destination and its end.
+        let dot = |pixmap: &mut Pixmap, p: LatLon, fill: u32, halo: u32, r: f32| {
+            if let Some((x, y)) = projection.project(p) {
+                let (px, py) = view.to_pixel(x, y, s);
+                if let Some(c) = PathBuilder::from_circle(px as f32, py as f32, (r + 1.5) * line) {
+                    pixmap.fill_path(
+                        &c,
+                        &paint(halo),
+                        FillRule::Winding,
+                        Transform::identity(),
+                        None,
+                    );
+                }
+                if let Some(c) = PathBuilder::from_circle(px as f32, py as f32, r * line) {
+                    pixmap.fill_path(
+                        &c,
+                        &paint(fill),
+                        FillRule::Winding,
+                        Transform::identity(),
+                        None,
+                    );
+                }
+            }
+        };
+        if let Some(to) = scene.destination {
+            let mut pb = PathBuilder::new();
+            add_polyline(
+                &mut pb,
+                &projection,
+                view,
+                s,
+                geo::great_circle(scene.centre, to, 128).into_iter(),
+            );
+            if let Some(path) = pb.finish() {
+                pixmap.stroke_path(
+                    &path,
+                    &paint(palette.path_halo),
+                    &stroke(4.5),
+                    Transform::identity(),
+                    None,
+                );
+                pixmap.stroke_path(
+                    &path,
+                    &paint(palette.path),
+                    &stroke(2.5),
+                    Transform::identity(),
+                    None,
+                );
+            }
+            dot(&mut pixmap, to, palette.path, palette.path_halo, 4.5);
+        }
+        dot(
+            &mut pixmap,
+            scene.centre,
+            palette.station,
+            palette.halo,
+            5.5,
+        );
+
+        pixmap
+    })
+}
+
+/// Coverage cells and the night wash, pixel by pixel inside the disc,
+/// straight into the pixmap (rows shared out between threads).
 fn raster_cells(
     pixmap: &mut Pixmap,
     scene: &Scene,
-    projection: &Projection,
-    view: MapView,
+    geometry: &Geometry,
     palette: &Palette,
     threads: usize,
     radius: f32,
 ) {
     let size = pixmap.width() as usize;
-    let s = size as f64;
     let colours = [
         [0.0; 4],
         premultiply(argb(palette.weak)),
@@ -396,100 +548,99 @@ fn raster_cells(
     ];
     let night = premultiply(argb(palette.night));
     let nvis = premultiply(argb(palette.nvis));
-    let sun = geo::subsolar_point(scene.unix_secs);
-    let sun_v = unit_vector(sun);
-    let (ox, oy) = view.to_pixel(0.0, 0.0, s);
+    let sun = unit_vector(geo::subsolar_point(scene.unix_secs)).map(|c| c as f32);
     // A pixel's NVIS dot pattern: one dot every `pitch` pixels.
     let pitch = (6.0 * (radius / 300.0).clamp(0.6, 1.6)).round().max(4.0) as usize;
 
-    let rows: Vec<usize> = (0..size).collect();
-    let chunks: Vec<&[usize]> = rows
-        .chunks(size.div_ceil(threads.max(1) * 4).max(1))
-        .collect();
-    let bands: Vec<Vec<(usize, Vec<[f32; 4]>)>> = crate::parallel::map(&chunks, threads, |chunk| {
-        chunk
-            .iter()
-            .map(|&py| {
-                let mut row = vec![[0.0f32; 4]; size];
-                let dy = py as f64 + 0.5 - oy;
-                for (px, out) in row.iter_mut().enumerate() {
-                    let dx = px as f64 + 0.5 - ox;
-                    // Only strictly inside the rim; the rim pixels keep the
-                    // antialiased disc edge.
-                    if dx.hypot(dy) > f64::from(radius) - 1.0 {
-                        continue;
-                    }
-                    let (x, y) = view.to_disc(px as f64 + 0.5, py as f64 + 0.5, s);
-                    let Some(p) = projection.invert(x, y) else {
-                        continue;
+    let rows_each = size.div_ceil(threads.max(1) * 4).max(1);
+    let work: Mutex<Vec<(usize, &mut [PremultipliedColorU8])>> = Mutex::new(
+        pixmap
+            .pixels_mut()
+            .chunks_mut(rows_each * size)
+            .enumerate()
+            .collect(),
+    );
+    std::thread::scope(|scope| {
+        for _ in 0..threads.max(1) {
+            scope.spawn(|| {
+                loop {
+                    let Some((chunk, pixels)) =
+                        work.lock().unwrap_or_else(|e| e.into_inner()).pop()
+                    else {
+                        break;
                     };
-                    let mut colour = [0.0f32; 4];
-                    let mut steep = false;
-                    for grid in &scene.layers {
-                        if let Some(i) = grid.index_of(p.lat, p.lon) {
-                            let r = f64::from(grid.reliability_at(p.lat, p.lon).unwrap_or(0.0));
-                            let q = Quality::of(r);
-                            colour = colours[q as usize];
-                            let angle = grid.takeoff_deg[i];
-                            steep = q != Quality::Closed
-                                && !angle.is_nan()
-                                && f64::from(angle) >= NVIS_MIN_ANGLE_DEG;
+                    let first = chunk * rows_each * size;
+                    for (k, out) in pixels.iter_mut().enumerate() {
+                        let i = first + k;
+                        let lat16 = geometry.lat[i];
+                        if lat16 == OFF_DISC {
+                            continue;
+                        }
+                        let (px, py) = (i % size, i / size);
+                        let lat = f64::from(lat16) / 65534.0 * 180.0 - 90.0;
+                        let lon = f64::from(geometry.lon[i]) / 65535.0 * 360.0 - 180.0;
+                        let mut colour = [0.0f32; 4];
+                        let mut steep = false;
+                        for grid in &scene.layers {
+                            if let Some(c) = grid.index_of(lat, lon) {
+                                let r = f64::from(if grid.is_coarse() {
+                                    grid.reliability_at(lat, lon).unwrap_or(0.0)
+                                } else {
+                                    grid.reliability[c]
+                                });
+                                let q = Quality::of(r);
+                                colour = colours[q as usize];
+                                let angle = grid.takeoff_deg[c];
+                                steep = q != Quality::Closed
+                                    && !angle.is_nan()
+                                    && f64::from(angle) >= NVIS_MIN_ANGLE_DEG;
+                            }
+                        }
+                        if scene.show_nvis
+                            && steep
+                            && px % pitch == pitch / 2
+                            && py % pitch == pitch / 2
+                        {
+                            colour = over(nvis, colour);
+                        }
+                        if scene.show_night {
+                            // A soft terminator over about six degrees of twilight.
+                            let u = geometry.unit[i];
+                            let d = (f32::from(u[0]) * sun[0]
+                                + f32::from(u[1]) * sun[1]
+                                + f32::from(u[2]) * sun[2])
+                                / 32767.0;
+                            let t = ((0.05 - d) / 0.1).clamp(0.0, 1.0);
+                            if t > 0.0 {
+                                let wash = [night[0] * t, night[1] * t, night[2] * t, night[3] * t];
+                                colour = over(wash, colour);
+                            }
+                        }
+                        if colour[3] <= 0.0 {
+                            continue;
+                        }
+                        let u = [
+                            f32::from(out.red()),
+                            f32::from(out.green()),
+                            f32::from(out.blue()),
+                            f32::from(out.alpha()),
+                        ];
+                        let [r, g, b, a] = over(colour, u);
+                        let a8 = a.round().clamp(0.0, 255.0) as u8;
+                        let ch = |v: f32| (v.round().clamp(0.0, 255.0) as u8).min(a8);
+                        if let Some(p) = PremultipliedColorU8::from_rgba(ch(r), ch(g), ch(b), a8) {
+                            *out = p;
                         }
                     }
-                    if scene.show_nvis
-                        && steep
-                        && px % pitch == pitch / 2
-                        && py % pitch == pitch / 2
-                    {
-                        colour = over(nvis, colour);
-                    }
-                    if scene.show_night {
-                        // A soft terminator over about six degrees of twilight.
-                        let d = dot(unit_vector(p), sun_v);
-                        let t = ((0.05 - d) / 0.1).clamp(0.0, 1.0) as f32;
-                        if t > 0.0 {
-                            let wash = [night[0] * t, night[1] * t, night[2] * t, night[3] * t];
-                            colour = over(wash, colour);
-                        }
-                    }
-                    *out = colour;
                 }
-                (py, row)
-            })
-            .collect()
-    });
-
-    let width = size;
-    let pixels = pixmap.pixels_mut();
-    for (py, row) in bands.into_iter().flatten() {
-        for (px, c) in row.into_iter().enumerate() {
-            if c[3] <= 0.0 {
-                continue;
-            }
-            let under = pixels[py * width + px];
-            let u = [
-                f32::from(under.red()),
-                f32::from(under.green()),
-                f32::from(under.blue()),
-                f32::from(under.alpha()),
-            ];
-            let [r, g, b, a] = over(c, u);
-            let a8 = a.round().clamp(0.0, 255.0) as u8;
-            let ch = |v: f32| (v.round().clamp(0.0, 255.0) as u8).min(a8);
-            if let Some(p) = PremultipliedColorU8::from_rgba(ch(r), ch(g), ch(b), a8) {
-                pixels[py * width + px] = p;
-            }
+            });
         }
-    }
+    });
 }
 
 fn unit_vector(p: LatLon) -> [f64; 3] {
     let (lat, lon) = (p.lat.to_radians(), p.lon.to_radians());
     [lat.cos() * lon.cos(), lat.cos() * lon.sin(), lat.sin()]
-}
-
-fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
-    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 
 /// Adds a projected polyline, broken wherever it leaves the drawable disc
@@ -644,6 +795,29 @@ mod tests {
         // reliable colour.
         let at = |x: usize, y: usize| &px[(y * size as usize + x) * 4..][..4];
         assert_eq!(at(150, 60), &[0xD0, 0xBC, 0xFF, 0xFF]);
+    }
+
+    #[test]
+    fn night_covers_one_side_only() {
+        let grid = world(0.9);
+        let mut scene = Scene {
+            centre: LatLon { lat: 0.0, lon: 0.0 },
+            destination: None,
+            // 12:00 UTC: the sun over Greenwich, so the far side is night.
+            unix_secs: 20_751 * 86_400 + 12 * 3600,
+            layers: vec![&grid],
+            show_night: true,
+            show_nvis: false,
+            highlight: None,
+        };
+        let size = 200usize;
+        let lit = render(&scene, MapView::default(), size as u32, 1.0, &palette(), 2);
+        scene.show_night = false;
+        let plain = render(&scene, MapView::default(), size as u32, 1.0, &palette(), 2);
+        let at = |px: &[u8], x: usize, y: usize| px[(y * size + x) * 4..][..4].to_vec();
+        // Near the centre: day, untouched. Near the rim (the antipode): night.
+        assert_eq!(at(&lit, 110, 100), at(&plain, 110, 100));
+        assert_ne!(at(&lit, 195, 100), at(&plain, 195, 100));
     }
 
     #[test]
