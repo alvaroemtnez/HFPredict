@@ -1,0 +1,25 @@
+[workspace]
+resolver = "3"
+members = ["core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+repository = "https://code.alvaroedo.io/alvaroemtnez/HFPredict"
+rust-version = "1.99"
+
+[workspace.dependencies]
+# The propagation engine, from the owner's mirror, pinned to the commit of
+# tag v2.14.0. A git dependency builds from the checkout, so the
+# `embedded-coefficients` files (not in the crates.io package) are there.
+# See docs/decisions/0002-engine-pin.md before moving it.
+hfcast = { git = "https://code.alvaroedo.io/alvaroemtnez/hfcast-engine.git", rev = "f9782529dcd2e40d67eba6725687c69124dab1c1", features = ["embedded-coefficients"] }
+uniffi = "0.32"
+
+[profile.release]
+# The engine is nearly the whole cost of a map.
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

@@ -1,0 +1,93 @@
+HFPredict
+Copyright 2026 The HFPredict authors
+Licensed under the GNU General Public License, version 3 or later (see LICENSE).
+
+HFPredict stands on other people's work. This file records whose, and on
+what terms. The same credits are shown in the app's About screen.
+
+
+HFCAST AND THE HFCAST ENGINE
+
+The propagation engine is the HFcast engine by Jonathan McSweet,
+https://github.com/jonathanmcsweet/hfcast-engine, used unmodified as a
+library (Apache License 2.0). HFPredict builds it from a mirror pinned to
+the commit of tag v2.14.0 (f9782529dcd2e40d67eba6725687c69124dab1c1).
+Its own NOTICE travels with it and is reproduced in the app.
+
+HFPredict is a rewrite of the HFcast app by Jonathan McSweet,
+https://github.com/jonathanmcsweet/hfcast (Apache License 2.0), and keeps
+its features and structure. Parts of HFPredict's core are translated from
+HFcast's TypeScript into Rust and are therefore derived from it:
+
+  - the empirical swing and spread correction, its storm widening and the
+    map correction against daily-median lattices
+    (shared/correct.ts, shared/correctMap.ts)
+  - the coverage, patch and strip lattices (shared/coverageGrid.ts,
+    shared/coveragePatch.ts, shared/shard.ts)
+  - the direction survey (shared/survey.ts)
+  - the mode requirements, band plan and antenna definition cards
+    (shared/modes.ts, shared/bands.ts, shared/antenna.ts,
+    mobile/src/data/antennaFile.ts)
+  - quality buckets, NVIS reach, city search, coordinate parsing, the
+    space weather now-cast and the ionosonde lookup (mobile/src/data/*)
+  - the map projection and its geometry (mobile/src/data/projection.ts)
+
+Changes made: translated to Rust, restructured into one library shared by
+an Android and a GNOME app, and adapted where the platforms differ. The
+numbers and thresholds are HFcast's, unchanged. Translations of the app's
+text into German, Japanese and Arabic start from HFcast's.
+
+The data files in core/data/ come from HFcast's repository:
+cities.json (from the VOACAP distribution, NTIA/ITS) and land.json
+(Natural Earth). ssn.json has the same shape and is regenerated from NOAA
+by tools/update-ssn.py.
+
+
+VOACAP
+
+The engine is a translation of VOACAP, the Voice of America Coverage
+Analysis Program, developed by the Institute for Telecommunication
+Sciences (ITS), National Telecommunications and Information
+Administration (NTIA), US Department of Commerce, and maintained by
+Greg Hand. As a work of the United States Government it is stated to be
+not subject to copyright protection in the United States.
+
+    The NTIA/ITS makes no warranty, express or implied, as to the
+    accuracy, completeness or usefulness of this software, and assumes
+    no liability for its use. Use of this software does not imply
+    endorsement by NTIA/ITS or the United States Government.
+
+Neither NTIA/ITS nor NOAA endorses HFPredict, and neither is responsible
+for what it reports.
+
+The Unix build of VOACAP, voacapl, from which the engine was translated,
+is by J.A. Watson, https://github.com/jawatson/voacapl, released under
+CC0 1.0 Universal.
+
+
+DATA
+
+Ionospheric and noise coefficients (compiled into the engine): CCIR
+Reports 322 and 340, published by ITU-R Study Group 3,
+https://github.com/ITU-R-Study-Group-3/ITU-R-HF ("free from any
+copyright assertions" for implementers), and NTIA/ITS. See the engine's
+NOTICE and docs/licence.md for the full breakdown.
+
+City list: NTIA/ITS, from the VOACAP distribution (itshfbc/geocity).
+Coastlines: Natural Earth, https://www.naturalearthdata.com/, public domain.
+Sunspot numbers: NOAA Space Weather Prediction Center, public domain.
+
+
+ONLINE SOURCES (optional, switchable off in Preferences)
+
+Solar flux and K index: NOAA Space Weather Prediction Center,
+https://www.swpc.noaa.gov/
+Measured ionosonde soundings: UMass Lowell Global Ionosphere Radio
+Observatory (GIRO), https://giro.uml.edu/
+Place search: Open-Meteo, https://open-meteo.com/, data under CC BY 4.0.
+
+
+RUST CRATES AND ANDROID LIBRARIES
+
+Third-party libraries and their licences are listed in the app's About
+screen, generated from the build's dependency tree.

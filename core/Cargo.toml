@@ -1,0 +1,27 @@
+[package]
+name = "hfpredict-core"
+description = "HFPredict's shared logic: forecasts, coverage maps, places and the map renderer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["net"]
+# The three optional online sources (NOAA, GIRO, Open-Meteo). Off, the core
+# has no networking code at all.
+net = ["dep:ureq"]
+# UniFFI derives, for the Android bindings (crate `hfpredict-ffi`).
+ffi = ["dep:uniffi"]
+
+[dependencies]
+hfcast.workspace = true
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tiny-skia = { version = "0.12", default-features = false, features = ["std", "simd"] }
+unicode-normalization = "0.1"
+ureq = { version = "3", optional = true }
+uniffi = { workspace = true, optional = true }
+thiserror = "2"
+
+[dev-dependencies]

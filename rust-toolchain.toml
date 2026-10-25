@@ -1,0 +1,7 @@
+# One pinned toolchain for the core, the GNOME app and the Android library.
+# tools/rust.sh installs it into .tools/ (nothing system-wide).
+[toolchain]
+channel = "1.99.1"
+components = ["clippy", "rustfmt"]
+targets = ["aarch64-linux-android", "armv7-linux-androideabi", "x86_64-linux-android"]
+profile = "minimal"

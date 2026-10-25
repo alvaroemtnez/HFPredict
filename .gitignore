@@ -1,0 +1,19 @@
+# Downloaded toolchains and caches (tools/rust.sh, android/build.sh, gnome/build.sh)
+/.tools/
+/.cache/
+/target/
+/dist/
+/android/.tools/
+/android/build/
+/android/app/build/
+/android/.gradle/
+/android/.kotlin/
+/android/local.properties
+/android/app/src/main/jniLibs/
+/android/app/src/main/java/uniffi/
+/packaging/flatpak/.flatpak-builder/
+/packaging/flatpak/build-dir/
+/packaging/flatpak/repo/
+*.keystore
+*.jks
+.idea/
