@@ -183,9 +183,15 @@ fun MapSurface(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier
                     var view = latest.view
                     var moved = false
                     var travel = 0f
+                    // Once two fingers are down the map owns the gesture to
+                    // the end: a finger left behind as the other lifts does
+                    // not scroll the page.
+                    var pinch = false
                     do {
                         val event = awaitPointerEvent()
                         val down = event.changes.count { it.pressed }
+                        if (down >= 2) pinch = true
+                        if (pinch) event.changes.forEach { it.consume() }
                         if (down == 1) travel += event.calculatePan().getDistance()
                         // One finger pans only past the touch slop, so a tap still probes.
                         if (down >= 2 || (down >= fingers && travel > slop)) {
@@ -223,32 +229,50 @@ fun MapSurface(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier
                 )
             },
     ) {
-        // Every level from the whole earth down to the one that matches the
-        // screen, so a coarser tile shows wherever a finer one is not drawn
-        // yet; a gesture only moves images. Stale tiles (an earlier hour or
-        // band) first, fresh ones over them, so the newest content wins
-        // even from a coarser level. `frame.tick` redraws on each new tile.
+        // At rest the frame is exactly the screen: drawn whole, sharp and
+        // seamless. During a gesture it moves; tiles of the current content
+        // (never older) fill what it does not cover and, zoomed in past it,
+        // go over it, sharper. `frame.tick` redraws when either arrives.
         if (side <= 0 || frame.tick < 0) return@Canvas
         val view = frame.view
+        val f = vm.screenFrame
+        if (f != null && f.view == view && f.screen == screen) {
+            drawImage(f.image, dstOffset = IntOffset.Zero, dstSize = IntSize(area.width, area.height), filterQuality = FilterQuality.Medium)
+            return@Canvas
+        }
         val fresh = vm.signature
-        val levels = 0..tileLevel(view, screen).toInt()
-        val placed = levels.flatMap { z -> tilesVisible(view, screen, z.toUInt()) }
-        for (pass in 0..1) for (p in placed) {
-                val e = vm.tileCache[p.tile] ?: continue
-                if ((e.signature == fresh) != (pass == 1)) continue
+        val z = tileLevel(view, screen).toInt()
+        fun drawTiles(levels: IntRange) {
+            for (l in levels) for (p in tilesVisible(view, screen, l.toUInt())) {
+                val e = vm.tileCache[p.tile]?.takeIf { it.signature == fresh } ?: continue
                 e.used = vm.nextUse()
-                // A pixel of overlap each side hides the seams (filtering
-                // softens a tile's last row).
-                val left = kotlin.math.floor(p.left).toInt() - 1
-                val top = kotlin.math.floor(p.top).toInt() - 1
-                val size = kotlin.math.ceil(p.size).toInt() + 3
+                // A pixel of overlap hides the seams while moving.
+                val size = kotlin.math.ceil(p.size).toInt() + 2
                 drawImage(
                     e.image,
-                    dstOffset = IntOffset(left, top),
+                    dstOffset = IntOffset(kotlin.math.floor(p.left).toInt() - 1, kotlin.math.floor(p.top).toInt() - 1),
                     dstSize = IntSize(size, size),
                     filterQuality = FilterQuality.High,
                 )
             }
+        }
+        drawTiles(0..z)
+        if (f != null) {
+            // Where the frame's pixels land in the view on screen.
+            val kf = f.screen.side * f.view.scale
+            val kc = screen.side * view.scale
+            val u0 = f.view.cx - 0.5 / f.view.scale - f.screen.x0 / kf
+            val v0 = f.view.cy - 0.5 / f.view.scale - f.screen.y0 / kf
+            val left = screen.x0 + (u0 - (view.cx - 0.5 / view.scale)) * kc
+            val top = screen.y0 + (v0 - (view.cy - 0.5 / view.scale)) * kc
+            drawImage(
+                f.image,
+                dstOffset = IntOffset(left.roundToInt(), top.roundToInt()),
+                dstSize = IntSize((f.screen.width / kf * kc).roundToInt(), (f.screen.height / kf * kc).roundToInt()),
+                filterQuality = FilterQuality.Medium,
+            )
+            if (kc / kf > 1.05) drawTiles(z..z)
+        }
     }
 }
 

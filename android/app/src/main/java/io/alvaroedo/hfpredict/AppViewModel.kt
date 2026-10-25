@@ -55,6 +55,13 @@ class TileEntry(val image: ImageBitmap, val signature: Long, var used: Long)
  */
 data class MapFrame(val view: MapView, val tick: Int = 0)
 
+/**
+ * The map at rest: one image drawn for exactly [screen] (pixels) at [view],
+ * at full or (while the hour slides) half resolution. During a gesture it
+ * is moved and scaled to the view on screen until a new one is drawn.
+ */
+class ScreenFrame(val image: ImageBitmap, val view: MapView, val screen: Screen)
+
 /** Tiles kept, about 1 MB each. */
 private const val MAX_TILES = 64
 
@@ -137,6 +144,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private var lastSelect = 0L
     private var lastTouch = 0L
     private var tileBusy = false
+    private var frameBusy = false
+    private var frameAgain = false
+    /** The map at rest: one image for exactly the screen. */
+    var screenFrame: ScreenFrame? = null
+        private set
     private var settleJob: Job? = null
     private var prefetchJob: Job? = null
     private var foreground = true
@@ -210,7 +222,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             delay(SCRUB_MS)
             if (scrubbing) {
                 scrubbing = false
-                pumpTiles()
+                requestFrame()
             }
         }
         val s = _state.value
@@ -299,42 +311,39 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun setMapScreen(screen: Screen?, colors: MapColors, density: Float, full: Boolean = false) {
         if (full) fullScreen = screen else cardScreen = screen
-        if (colors != this.colors || density != this.density) {
-            this.colors = colors
-            this.density = density
-            mapChanged()
-        } else {
-            pumpTiles()
-        }
+        this.colors = colors
+        this.density = density
+        requestFrame()
     }
 
     /** The map area tiles are chosen for. */
     fun activeScreen(): Screen? = fullScreen ?: cardScreen
 
     /**
-     * A pan or zoom: the held tiles move at once and missing ones follow;
-     * once the view settles (a short pause after the last move counts),
-     * a patch is worked out for it.
+     * A pan or zoom: the last frame and the held tiles move at once (missing
+     * tiles follow); once the view settles (a short pause after the last
+     * move counts), a sharp frame and a patch are worked out for it.
      */
     fun setView(view: MapView, settled: Boolean) {
         lastTouch = android.os.SystemClock.uptimeMillis()
         _frame.update { it.copy(view = view) }
         settleJob?.cancel()
-        pumpTiles()
         if (!settled) {
+            pumpTiles()
             settleJob = viewModelScope.launch {
                 delay(SETTLE_MS)
                 setView(view, settled = true)
             }
             return
         }
+        requestFrame()
         val s = _state.value
         val generation = mapGeneration
         viewModelScope.launch {
             val patched = withContext(Dispatchers.Default) {
                 runCatching { core.patchMap(s.hour.toUInt(), s.now, view) }.getOrDefault(false)
             }
-            // A patch for this view (new or held) changes what its tiles show.
+            // A patch for this view (new or held) changes what it shows.
             if (patched && generation == mapGeneration) mapChanged()
         }
     }
@@ -370,7 +379,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val s = _state.value
         val p = s.probe ?: return
         viewModelScope.launch {
-            val full = withContext(Dispatchers.Default) { core.probeAt(s.band, s.hour.toUInt(), s.now, p.lat, p.lon) }
+            val v = view
+            val full = withContext(Dispatchers.Default) { core.probeAt(s.band, s.hour.toUInt(), s.now, v, p.lat, p.lon) }
             val now = _state.value
             if (now.probe?.grid == p.grid && now.band == s.band && now.hour == s.hour) {
                 _state.update { it.copy(probe = full) }
@@ -390,32 +400,22 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * What the map shows may have changed (data, band, hour, colours, the
-     * selection): the tiles on screen are checked against the content's
-     * fingerprint and only those that differ are drawn again.
+     * selection): a new frame is drawn, and replaces the old one whole.
      */
-    private fun mapChanged() = pumpTiles()
+    private fun mapChanged() = requestFrame()
 
     /** One tick of the use clock, stamped on each tile drawn. */
     fun nextUse(): Long = ++uses
 
-    /** The app's own part of a tile's look: colours, lines, selection, path. */
+    /** The app's own part of a picture's look: colours, lines, selection, path. */
     private fun appKey(options: MapOptions, palette: io.alvaroedo.hfpredict.core.Palette): Long =
         java.util.Objects.hash(options, palette, density).toLong()
 
-    /**
-     * Draws the next tile the screen lacks, one at a time: the one in the
-     * middle first; the whole-earth tile first when none is held at all, so
-     * zooming out never shows empty space. While the hour slides, a level
-     * coarser (a quarter of the pixels), sharpened once it stops.
-     */
-    private fun pumpTiles() {
-        if (tileBusy) return
-        val screen = activeScreen() ?: return
-        val c = colors ?: return
-        if (screen.side < 32.0) return
-        tileBusy = true
+    /** What a picture of the map is drawn from now. */
+    private class Inputs(val s: UiState, val view: MapView, val palette: io.alvaroedo.hfpredict.core.Palette, val options: MapOptions, val key: Long)
+
+    private fun inputs(c: MapColors): Inputs {
         val s = _state.value
-        val v = view
         val quality = s.probe?.let { p -> p.chance?.let { qualityOf(it) } ?: p.quality }
         val options = MapOptions(
             showNight = true, showNvis = true, showPath = true, highlight = s.probe,
@@ -425,50 +425,108 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val toCell = s.forecast?.takeIf { it.to != null }?.cells?.firstOrNull { it.band == s.band && it.hour.toInt() == s.hour }
         val palette = if (toCell == null) c.palette
         else c.palette.copy(path = semaphoreColor(qualityOf(toCell.reliability), c.dark, c.lowLight))
-        val zFull = tileLevel(v, screen).toInt()
-        val z = if (scrubbing && zFull > 0) zFull - 1 else zFull
+        return Inputs(s, view, palette, options, appKey(options, palette))
+    }
+
+    private fun bitmapOf(img: io.alvaroedo.hfpredict.core.MapImage, mipmaps: Boolean): ImageBitmap {
+        val bitmap = createBitmap(img.width.toInt(), img.height.toInt(), Bitmap.Config.ARGB_8888)
+        // Premultiplied RGBA bytes: exactly ARGB_8888's memory layout.
+        bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(img.pixels))
+        if (mipmaps) bitmap.setHasMipMap(true)
+        return bitmap.asImageBitmap()
+    }
+
+    /**
+     * Draws the map for exactly the screen, sharp and whole, and shows it
+     * in one go. One at a time; requests meanwhile fold into one more, so
+     * sliding through the hours shows the latest it can, never a mix. While
+     * the hour slides it is drawn at half the pixels, sharpened once it stops.
+     */
+    private fun requestFrame() {
+        val screen = activeScreen() ?: return
+        val c = colors ?: return
+        if (screen.side < 32.0) return
+        if (frameBusy) {
+            frameAgain = true
+            return
+        }
+        frameBusy = true
+        val i = inputs(c)
+        val k = if (scrubbing) 0.5 else 1.0
+        val drawn = Screen(screen.side * k, screen.x0 * k, screen.y0 * k, screen.width * k, screen.height * k)
+        val t0 = android.os.SystemClock.elapsedRealtime()
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.Default) {
+                runCatching {
+                    val content = core.mapSignature(i.s.band, i.s.hour.toUInt(), i.s.now, i.view).toLong()
+                    val img = core.renderScreen(i.s.band, i.s.hour.toUInt(), i.s.now, i.view, drawn, density * k.toFloat(), i.palette, i.options)
+                    Triple(content, img.detail, bitmapOf(img, mipmaps = false))
+                }.getOrNull()
+            }
+            frameBusy = false
+            if (BuildConfig.DEBUG) {
+                android.util.Log.d("HFPredict", "frame ${drawn.width.toInt()}x${drawn.height.toInt()}: ${android.os.SystemClock.elapsedRealtime() - t0} ms")
+            }
+            if (result != null) {
+                signature = result.first * 31 + i.key
+                screenFrame = ScreenFrame(result.third, i.view, screen)
+                if (_state.value.detail != result.second) _state.update { it.copy(detail = result.second) }
+                _frame.update { it.copy(tick = it.tick + 1) }
+            }
+            if (frameAgain) {
+                frameAgain = false
+                requestFrame()
+            } else {
+                // Ready tiles for the next gesture while nothing else runs.
+                pumpTiles()
+            }
+        }
+    }
+
+    /**
+     * Draws the next tile a gesture would need, one at a time and only when
+     * no frame is being drawn: the one in the middle first, the whole-earth
+     * tile first when none is held, so a pan or a zoom never shows empty
+     * space. Tiles of older content are never shown.
+     */
+    private fun pumpTiles() {
+        if (tileBusy || frameBusy) return
+        val screen = activeScreen() ?: return
+        val c = colors ?: return
+        if (screen.side < 32.0) return
+        tileBusy = true
+        val i = inputs(c)
+        val z = tileLevel(i.view, screen)
         val world = Tile(0u, 0u, 0u)
         viewModelScope.launch {
             val sig = withContext(Dispatchers.Default) {
-                runCatching { core.mapSignature(s.band, s.hour.toUInt(), s.now, v).toLong() }.getOrDefault(0L)
-            } * 31 + appKey(options, palette)
-            signature = sig
+                runCatching { core.mapSignature(i.s.band, i.s.hour.toUInt(), i.s.now, i.view).toLong() }.getOrDefault(0L)
+            } * 31 + i.key
+            if (sig != signature) {
+                // The content moved on: the next frame comes first.
+                tileBusy = false
+                requestFrame()
+                return@launch
+            }
             val wanted = buildList {
-                if (world !in tileCache) add(world)
-                tilesVisible(v, screen, z.toUInt()).forEach { add(it.tile) }
                 add(world)
+                tilesVisible(i.view, screen, z).forEach { add(it.tile) }
             }
             val tile = wanted.firstOrNull { tileCache[it]?.signature != sig }
             if (tile == null) {
                 tileBusy = false
-                _frame.update { it.copy(tick = it.tick + 1) }
                 return@launch
             }
             // Lines thicker by as much as the tile will be shrunk.
-            val lines = density * tileLineScale(v, screen, tile.z).toFloat()
-            val t0 = android.os.SystemClock.elapsedRealtime()
-            val result = withContext(Dispatchers.Default) {
+            val lines = density * tileLineScale(i.view, screen, tile.z).toFloat()
+            val image = withContext(Dispatchers.Default) {
                 runCatching {
-                    val img = core.renderTile(s.band, s.hour.toUInt(), s.now, v, tile, lines, palette, options)
-                    if (BuildConfig.DEBUG) {
-                        android.util.Log.d("HFPredict", "tile ${tile.z}/${tile.x}/${tile.y}: core ${android.os.SystemClock.elapsedRealtime() - t0} ms")
-                    }
-                    val size = img.size.toInt()
-                    val bitmap = createBitmap(size, size, Bitmap.Config.ARGB_8888)
-                    // Premultiplied RGBA bytes: exactly ARGB_8888's memory layout.
-                    bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(img.pixels))
-                    // Mipmaps keep a shrunken tile sharp when zoomed out.
-                    bitmap.setHasMipMap(true)
-                    img.detail to bitmap.asImageBitmap()
+                    bitmapOf(core.renderTile(i.s.band, i.s.hour.toUInt(), i.s.now, i.view, tile, lines, i.palette, i.options), mipmaps = true)
                 }.getOrNull()
             }
             tileBusy = false
-            if (BuildConfig.DEBUG) {
-                android.util.Log.d("HFPredict", "tile ${tile.z}/${tile.x}/${tile.y}: shown after ${android.os.SystemClock.elapsedRealtime() - t0} ms")
-            }
-            if (result != null) {
-                keepTile(tile, TileEntry(result.second, sig, nextUse()))
-                if (_state.value.detail != result.first) _state.update { it.copy(detail = result.first) }
+            if (image != null) {
+                keepTile(tile, TileEntry(image, sig, nextUse()))
                 _frame.update { it.copy(tick = it.tick + 1) }
             }
             pumpTiles()

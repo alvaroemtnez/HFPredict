@@ -25,6 +25,10 @@ Android:
   register in the developer console and upload.
 
 Linux:
+- **arm64 Flatpak and AppImage**: the release workflow has the jobs and the
+  scripts build for arm64 (docs/releasing.md, "ARM builds"); the runner's
+  host still needs QEMU registered, and the jobs have not run yet. Set up
+  after the map work settles.
 - **Flathub**: the manifest must be written by hand (Flathub's AI policy;
   docs/releasing.md, "Flathub"); the metainfo is ready.
 - **Forgejo / GitHub releases**: the Flatpak bundle and the AppImage, with the
