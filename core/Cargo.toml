@@ -25,3 +25,4 @@ uniffi = { workspace = true, optional = true }
 thiserror = "2"
 
 [dev-dependencies]
+tiny-skia = { version = "0.12", features = ["png-format"] }

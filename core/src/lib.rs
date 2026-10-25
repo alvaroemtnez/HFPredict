@@ -23,7 +23,9 @@ pub mod maps;
 pub mod modes;
 pub mod parallel;
 pub mod places;
+pub mod projection;
 pub mod quality;
+pub mod render;
 pub mod ssn;
 pub mod station;
 
