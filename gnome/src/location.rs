@@ -20,6 +20,14 @@ pub enum End {
 
 /// Asks the desktop for the device's position (the XDG location portal,
 /// GeoClue behind it). `Err` carries a reason to show.
+#[cfg(not(unix))]
+pub async fn device_position() -> Result<(f64, f64), String> {
+    Err("no location portal on this system".to_string())
+}
+
+/// Asks the desktop for the device's position (the XDG location portal,
+/// GeoClue behind it). `Err` carries a reason to show.
+#[cfg(unix)]
 pub async fn device_position() -> Result<(f64, f64), String> {
     use ashpd::desktop::location::{Accuracy, CreateSessionOptions, LocationProxy};
     let work = async {

@@ -8,10 +8,10 @@
 # GTK 4 and AppStream, libadwaita 1.7 built there) with the in-repo Rust
 # toolchain plus its Windows target. Nothing here changes a Linux build.
 #
-# Waiting on the engine: hfcast-engine v2.14.0 links its antenna files with
-# std::os::unix::fs::symlink (src/runner.rs), which Windows lacks, so the
-# build stops there. Everything before it (GTK 4, libadwaita, AppStream)
-# cross-builds; see docs/roadmap.md, "Windows and macOS".
+# The engine links files with Unix symlinks, which Windows lacks: this build
+# alone uses a private copy patched with hfcast-engine-windows.patch (a
+# copy instead of a link where there are no Unix symlinks). The engine the
+# Linux and Android builds use is never touched, and Cargo.lock is restored.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -25,7 +25,7 @@ cd "$ROOT"
 if [ "${IN_CONTAINER:-0}" != 1 ]; then
     if [ -f /.flatpak-info ]; then PODMAN=(flatpak-spawn --host podman); else PODMAN=(podman); fi
     if ! "${PODMAN[@]}" image exists "$IMAGE"; then
-        "${PODMAN[@]}" build --target windows -t "$IMAGE" -f "$ROOT/tools/containers/Containerfile" "$ROOT/tools/containers"
+        "${PODMAN[@]}" build --cpu-period 100000 --cpu-quota "$((CPUS * 100000))" --target windows -t "$IMAGE" -f "$ROOT/tools/containers/Containerfile" "$ROOT/tools/containers"
     fi
     "$ROOT/tools/rust.sh" true
     exec "${PODMAN[@]}" run --rm -i --userns=keep-id --cpus="$CPUS" -v "$ROOT:$ROOT:z" -w "$ROOT" \
@@ -43,7 +43,19 @@ export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
 export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
 export PKG_CONFIG_ALLOW_CROSS=1
 export PKG_CONFIG_x86_64_pc_windows_gnu=x86_64-w64-mingw32-pkg-config
-cargo build --release --locked --target "$TARGET" -p hfpredict
+# The pinned engine, copied out of cargo's checkout and patched.
+cargo fetch --locked >/dev/null
+ENGINE_REV=$(sed -n 's/.*hfcast-engine.git", rev = "\([0-9a-f]*\)".*/\1/p' Cargo.toml)
+ENGINE_URL=$(sed -n 's/^hfcast = { git = "\([^"]*\)".*/\1/p' Cargo.toml)
+CHECKOUT=$(ls -d "$CARGO_HOME"/git/checkouts/hfcast-engine-*/"${ENGINE_REV:0:7}" | head -n1)
+ENGINE=target/windows/hfcast-engine
+rm -rf "$ENGINE"
+cp -r "$CHECKOUT" "$ENGINE"
+patch -d "$ENGINE" -p1 --quiet <packaging/windows/hfcast-engine-windows.patch
+cp Cargo.lock target/windows/Cargo.lock.saved
+trap 'cp target/windows/Cargo.lock.saved Cargo.lock' EXIT
+cargo build --release --target "$TARGET" -p hfpredict \
+    --config "patch.\"$ENGINE_URL\".hfcast.path = \"$ENGINE\""
 
 OUT="target/windows/HFPredict"
 rm -rf "$OUT"

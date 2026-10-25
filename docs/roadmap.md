@@ -35,13 +35,13 @@ Linux:
 Linux stays first; these are by-products of the same code.
 
 - **Windows**: `packaging/windows/build.sh` cross-compiles in a Fedora
-  container (MinGW GTK 4.21, libadwaita 1.7 built there) and bundles a zip.
-  It stops at the engine: hfcast-engine v2.14.0 uses
-  `std::os::unix::fs::symlink` in `src/runner.rs` (two places). The fix
-  belongs upstream (copy the files, or `std::os::windows::fs::symlink_file`,
-  under `cfg(windows)`); then move the pin (docs/decisions/0002-engine.md).
-  The location portal (ashpd) has no Windows backend: "Use my location"
-  would say it is unavailable, and typing a place still works.
+  container (MinGW GTK 4.21, libadwaita 1.7 built there) into
+  `dist/HFPredict-<version>-windows-x86_64.zip`. The engine links files with
+  Unix symlinks, so this build alone patches a private copy of it
+  (`packaging/windows/hfcast-engine-windows.patch`: a copy where there are
+  no Unix symlinks, identical on Unix); worth offering upstream, after which
+  the patch goes. "Use my location" says it is unavailable (no portal).
+  Builds; not yet run on a real Windows machine.
 - **macOS**: the code should build as is (the engine is Unix-clean), but
   GTK and libadwaita apps need a Mac to build and bundle (Homebrew, then an
   .app made with gtk-mac-bundler or by hand) and, to open without warnings,

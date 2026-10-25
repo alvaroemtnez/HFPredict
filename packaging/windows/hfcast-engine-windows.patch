@@ -1,0 +1,49 @@
+Windows only: hfcast-engine v2.14.0 (rev f978252) links files with
+std::os::unix::fs::symlink; this copies instead where there are no Unix
+symlinks, and is identical on Unix. Applied by packaging/windows/build.sh
+to a private copy of the engine, never to the one Linux and Android use.
+Worth offering upstream.
+
+--- a/src/runner.rs
++++ b/src/runner.rs
+@@ -254,7 +254,7 @@
+     fs::create_dir(dir)?;
+     for entry in fs::read_dir(&target)? {
+         let entry = entry?;
+-        std::os::unix::fs::symlink(entry.path(), dir.join(entry.file_name()))?;
++        link_or_copy(&entry.path(), &dir.join(entry.file_name()))?;
+     }
+     Ok(())
+ }
+@@ -268,6 +268,22 @@
+     }
+ }
+ 
++/// A symbolic link where the system has them; a copy where it has not
++/// (Windows, without developer mode).
++#[cfg(unix)]
++fn link_or_copy(from: &Path, to: &Path) -> io::Result<()> {
++    std::os::unix::fs::symlink(from, to)
++}
++
++#[cfg(not(unix))]
++fn link_or_copy(from: &Path, to: &Path) -> io::Result<()> {
++    if from.is_dir() {
++        copy_dir_all(from, to)
++    } else {
++        fs::copy(from, to).map(|_| ())
++    }
++}
++
+ /// Copies a tree, keeping symbolic links as links rather than following them.
+ ///
+ /// A stock `itshfbc` is largely a symlink farm pointing into the installed
+@@ -292,7 +308,7 @@
+                     target = parent.join(target);
+                 }
+             }
+-            std::os::unix::fs::symlink(target, &to)?;
++            link_or_copy(&target, &to)?;
+         } else if file_type.is_dir() {
+             copy_dir_all(&from, &to)?;
+         } else {

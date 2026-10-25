@@ -20,7 +20,7 @@ FROM registry.fedoraproject.org/fedora:44 AS windows
 RUN dnf -y install --setopt=install_weak_deps=False \
       mingw64-gcc mingw64-gtk4 mingw64-appstream mingw64-adwaita-icon-theme \
       mingw64-librsvg2 mingw64-pkg-config mingw64-hicolor-icon-theme \
-      gcc meson ninja-build sassc gettext glib2-devel python3 curl xz zip findutils \
+      gcc meson ninja-build sassc gettext glib2-devel python3 curl xz zip findutils patch \
  && dnf clean all
 ARG ADW_VERSION=1.7.12
 ARG ADW_SHA256=94c41ab41c2d2188af8290ac0dbb906896cf75e76e69722c2ea2572531de3308
