@@ -15,6 +15,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# At most six cores (HFP_CPUS to change): a laptop running a long build
+# on every core can overheat.
+CPUS="${HFP_CPUS:-$(( $(nproc) < 6 ? $(nproc) : 6 ))}"
 VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -n1)
 IMAGE=localhost/hfpredict-windows:latest
 cd "$ROOT"
@@ -25,7 +28,7 @@ if [ "${IN_CONTAINER:-0}" != 1 ]; then
         "${PODMAN[@]}" build --target windows -t "$IMAGE" -f "$ROOT/tools/containers/Containerfile" "$ROOT/tools/containers"
     fi
     "$ROOT/tools/rust.sh" true
-    exec "${PODMAN[@]}" run --rm -i --userns=keep-id -v "$ROOT:$ROOT:z" -w "$ROOT" \
+    exec "${PODMAN[@]}" run --rm -i --userns=keep-id --cpus="$CPUS" -v "$ROOT:$ROOT:z" -w "$ROOT" \
         -e RUSTUP_HOME="$ROOT/.tools/rustup" -e CARGO_HOME="$ROOT/.tools/cargo" \
         -e CARGO_TARGET_DIR="$ROOT/target/windows" -e HOME=/tmp -e IN_CONTAINER=1 \
         -e PATH="$ROOT/.tools/cargo/bin:/usr/local/bin:/usr/bin:/bin" \

@@ -20,6 +20,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# At most six cores (HFP_CPUS to change): a laptop running a long build
+# on every core can overheat.
+CPUS="${HFP_CPUS:-$(( $(nproc) < 6 ? $(nproc) : 6 ))}"
 IMAGE=localhost/hfpredict-gnome:latest
 TARGET="$ROOT/target/gnome"
 
@@ -47,7 +50,7 @@ in_container() {
     "$ROOT/tools/rust.sh" true
     local tty=()
     [ -t 0 ] && tty=(-t)
-    "${PODMAN[@]}" run --rm -i "${tty[@]}" --userns=keep-id \
+    "${PODMAN[@]}" run --rm -i "${tty[@]}" --userns=keep-id --cpus="$CPUS" \
         -v "$ROOT:$ROOT:z" -w "$ROOT" \
         -e RUSTUP_HOME="$ROOT/.tools/rustup" -e CARGO_HOME="$ROOT/.tools/cargo" \
         -e CARGO_TARGET_DIR="$TARGET" -e PATH="$ROOT/.tools/cargo/bin:/usr/local/bin:/usr/bin:/bin" \

@@ -10,6 +10,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# At most six cores (HFP_CPUS to change): a laptop running a long build
+# on every core can overheat.
+CPUS="${HFP_CPUS:-$(( $(nproc) < 6 ? $(nproc) : 6 ))}"
 IMAGE=ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
 APP=io.alvaroedo.HFPredict
 VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -n1)
@@ -55,7 +58,7 @@ case "${1:-all}" in
             PODMAN=(podman)
             [ -f /.flatpak-info ] && PODMAN=(flatpak-spawn --host podman)
             mkdir -p .cache/flatpak-user
-            "${PODMAN[@]}" run --rm --privileged -v "$ROOT:$ROOT:z" -w "$ROOT" \
+            "${PODMAN[@]}" run --rm --privileged --cpus="$CPUS" -v "$ROOT:$ROOT:z" -w "$ROOT" \
                 -v "$ROOT/.cache/flatpak-user:/root/.local/share/flatpak:z" \
                 "$IMAGE" bash packaging/flatpak/build.sh inner
         fi
