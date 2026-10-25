@@ -18,6 +18,7 @@ use hfpredict_core::bands::Band;
 use hfpredict_core::forecast::Forecast;
 use hfpredict_core::projection::MapView;
 use hfpredict_core::quality::Quality;
+use hfpredict_core::render::Palette;
 use hfpredict_core::store::{SavedState, Settings, Theme};
 use hfpredict_core::tiles::{self, Screen, Tile};
 
@@ -125,8 +126,14 @@ pub struct TileEntry {
     pub used: Cell<u64>,
 }
 
-/// Hour changes closer than this count as sliding: coarser tiles first.
-const SCRUB_MS: i64 = 350;
+/// The map at rest: one image drawn for exactly the screen (`screen`, in
+/// device pixels) at `view`. During a gesture it is moved and scaled to the
+/// view on screen until a new one is drawn.
+pub struct MapFrame {
+    pub texture: gtk::gdk::Texture,
+    pub view: MapView,
+    pub screen: Screen,
+}
 
 /// Tiles kept as textures, about 1 MB each.
 const MAX_TILES: usize = 96;
@@ -159,9 +166,10 @@ pub struct App {
     /// until its replacement arrives.
     pub tiles: RefCell<HashMap<Tile, TileEntry>>,
     signature: Cell<u64>,
-    /// The hour is sliding (changes closer than SCRUB_MS): coarser tiles.
-    scrubbing: Cell<bool>,
-    last_select: Cell<i64>,
+    /// The map at rest: one image for exactly the screen.
+    frame: RefCell<Option<MapFrame>>,
+    frame_busy: Cell<bool>,
+    frame_again: Cell<bool>,
     tile_busy: Cell<bool>,
     uses: Cell<u64>,
     /// Redraws the map widget.
@@ -203,8 +211,9 @@ impl App {
             screen: Cell::new(None),
             tiles: RefCell::new(HashMap::new()),
             signature: Cell::new(0),
-            scrubbing: Cell::new(false),
-            last_select: Cell::new(0),
+            frame: RefCell::new(None),
+            frame_busy: Cell::new(false),
+            frame_again: Cell::new(false),
             tile_busy: Cell::new(false),
             uses: Cell::new(0),
             redraw: RefCell::new(None),
@@ -304,26 +313,6 @@ impl App {
     }
 
     pub fn select(&self, band: Band, hour: u32) {
-        // Hours changing quickly (the slider, a drag along the grid): the
-        // map shows coarser tiles until it stops.
-        let t = glib::monotonic_time() / 1000;
-        if t - self.last_select.get() < SCRUB_MS {
-            self.scrubbing.set(true);
-        }
-        self.last_select.set(t);
-        let me = Rc::downgrade(&self.rc());
-        glib::timeout_add_local_once(
-            std::time::Duration::from_millis(SCRUB_MS as u64),
-            move || {
-                if let Some(me) = me.upgrade()
-                    && me.scrubbing.get()
-                    && glib::monotonic_time() / 1000 - me.last_select.get() >= SCRUB_MS
-                {
-                    me.scrubbing.set(false);
-                    me.pump_tiles();
-                }
-            },
-        );
         let band_changed = {
             let mut v = self.view.borrow_mut();
             let changed = v.band != band;
@@ -447,12 +436,8 @@ impl App {
     /// The map area changed: `screen` in device pixels, `scale` of them
     /// per logical pixel.
     pub fn set_map_screen(&self, screen: Screen, scale: f32) {
-        let old = self.screen.replace(Some((screen, scale)));
-        if old.map(|(_, k)| k) != Some(scale) {
-            // Line widths follow the scale: every tile is redrawn.
-            self.map_changed();
-        } else {
-            self.pump_tiles();
+        if self.screen.replace(Some((screen, scale))) != Some((screen, scale)) {
+            self.request_frame();
         }
         self.request_redraw();
     }
@@ -461,16 +446,17 @@ impl App {
         self.screen.get()
     }
 
-    /// A pan or zoom: the held tiles move at once, missing ones follow, and
-    /// a patch is worked out once the view settles.
+    /// A pan or zoom: the last frame and the held tiles move at once
+    /// (missing tiles follow); once the view settles, a sharp frame for it
+    /// and a patch are worked out.
     pub fn set_map_view(&self, view: MapView, settled: bool) {
         self.view.borrow_mut().map_view = view;
         if let Some(id) = self.settle.borrow_mut().take() {
             id.remove();
         }
         self.request_redraw();
-        self.pump_tiles();
         if !settled {
+            self.pump_tiles();
             let me = Rc::downgrade(&self.rc());
             let id = glib::timeout_add_local_once(
                 std::time::Duration::from_millis(SETTLE_MS),
@@ -485,6 +471,7 @@ impl App {
             *self.settle.borrow_mut() = Some(id);
             return;
         }
+        self.request_frame();
         let (hour, now) = {
             let v = self.view.borrow();
             (v.hour, v.now)
@@ -495,7 +482,7 @@ impl App {
         spawn(
             move || core.patch_map(hour, now, view),
             move |r| {
-                // A patch for this view (new or held) changes what its tiles show.
+                // A patch for this view (new or held) changes what it shows.
                 if me.map_gen.get() == generation && r.unwrap_or(false) {
                     me.map_changed();
                     me.emit(Change::Map);
@@ -511,10 +498,9 @@ impl App {
     }
 
     /// What the map shows may have changed (data, band, hour, colours, the
-    /// selection): the tiles on screen are checked against the content's
-    /// fingerprint and only those that differ are drawn again.
+    /// selection): a new frame is drawn, and replaces the old one whole.
     pub fn map_changed(&self) {
-        self.pump_tiles();
+        self.request_frame();
     }
 
     /// The fingerprint of the newest content; tiles with another are stale.
@@ -522,12 +508,118 @@ impl App {
         self.signature.get()
     }
 
-    /// Draws the next tile the screen lacks, one at a time: the one in the
-    /// middle first; the whole-earth tile first when none is held at all,
-    /// so zooming out never shows empty space. While the hour slides, a
-    /// level coarser (a quarter of the pixels), sharpened once it stops.
+    /// The frame on screen, if one is drawn yet.
+    pub fn frame(&self) -> std::cell::Ref<'_, Option<MapFrame>> {
+        self.frame.borrow()
+    }
+
+    /// Everything a picture of the map is drawn from: the band, hour and
+    /// view, the colours (the path and the selection in their traffic-light
+    /// colours) and the app's part of the fingerprint.
+    fn map_inputs(&self) -> (Band, u32, i64, MapView, Palette, MapOptions, u64) {
+        let v = self.view.borrow();
+        let q = v
+            .probe
+            .as_ref()
+            .and_then(|p| p.chance.map(Quality::of).or(p.quality));
+        let mut palette = v.colors.map;
+        // The path in the traffic-light colour of the chance to its end.
+        if let Some(cell) = v
+            .forecast
+            .as_ref()
+            .filter(|f| f.to.is_some())
+            .and_then(|f| f.cell(v.band, v.hour))
+        {
+            palette.path = hfpredict_core::render::semaphore(
+                Some(Quality::of(cell.reliability)),
+                v.colors.dark,
+                v.colors.low_light,
+            );
+        }
+        let options = MapOptions {
+            show_night: true,
+            show_nvis: true,
+            show_path: true,
+            highlight: v.probe.clone(),
+            highlight_color: hfpredict_core::render::semaphore(
+                q,
+                v.colors.dark,
+                v.colors.low_light,
+            ),
+        };
+        let scale = self.screen.get().map_or(1.0, |(_, k)| k);
+        let app_key = {
+            use std::hash::{Hash, Hasher};
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            format!("{palette:?}{options:?}{scale}").hash(&mut h);
+            h.finish()
+        };
+        (v.band, v.hour, v.now, v.map_view, palette, options, app_key)
+    }
+
+    /// Draws the map for exactly the screen, sharp and whole, and shows it
+    /// in one go. One at a time; requests meanwhile fold into one more, so
+    /// sliding through the hours shows the latest it can, never a mix.
+    fn request_frame(&self) {
+        let Some((screen, scale)) = self.screen.get() else {
+            return;
+        };
+        if screen.side < 16.0 {
+            return;
+        }
+        if self.frame_busy.get() {
+            self.frame_again.set(true);
+            return;
+        }
+        self.frame_busy.set(true);
+        let (band, hour, now, view, palette, options, app_key) = self.map_inputs();
+        let core = self.core.clone();
+        let me = self.rc();
+        spawn(
+            move || {
+                let content = core.map_signature(band, hour, now, view);
+                let image =
+                    core.render_screen(band, hour, now, view, screen, scale, palette, options);
+                (content, image)
+            },
+            move |(content, image)| {
+                me.frame_busy.set(false);
+                let signature = content.wrapping_mul(31) ^ app_key;
+                me.signature.set(signature);
+                let changed = me.view.borrow().map_detail != image.detail;
+                me.view.borrow_mut().map_detail = image.detail;
+                if changed {
+                    me.emit(Change::Map);
+                }
+                let texture = gtk::gdk::MemoryTexture::new(
+                    image.width as i32,
+                    image.height as i32,
+                    gtk::gdk::MemoryFormat::R8g8b8a8Premultiplied,
+                    &glib::Bytes::from_owned(image.pixels),
+                    image.width as usize * 4,
+                );
+                *me.frame.borrow_mut() = Some(MapFrame {
+                    texture: gtk::prelude::Cast::upcast(texture),
+                    view,
+                    screen,
+                });
+                me.request_redraw();
+                if me.frame_again.replace(false) {
+                    me.request_frame();
+                } else {
+                    // Ready tiles for the next gesture while nothing else runs.
+                    me.pump_tiles();
+                }
+            },
+        );
+    }
+
+    /// Draws the next tile a gesture would need, one at a time, only when
+    /// no frame is being drawn: the one in the middle first, the whole-earth
+    /// tile first when none is held, so a pan or a zoom never shows empty
+    /// space and stays sharp. Tiles of older content are never shown.
     fn pump_tiles(&self) {
-        if self.tile_busy.get() {
+        if self.tile_busy.get() || self.frame_busy.get() {
             return;
         }
         let Some((screen, scale)) = self.screen.get() else {
@@ -536,58 +628,8 @@ impl App {
         if screen.side < 16.0 {
             return;
         }
-        let (band, hour, now, view, palette, options) = {
-            let v = self.view.borrow();
-            let q = v
-                .probe
-                .as_ref()
-                .and_then(|p| p.chance.map(Quality::of).or(p.quality));
-            let mut palette = v.colors.map;
-            // The path in the traffic-light colour of the chance to its end.
-            if let Some(cell) = v
-                .forecast
-                .as_ref()
-                .filter(|f| f.to.is_some())
-                .and_then(|f| f.cell(v.band, v.hour))
-            {
-                palette.path = hfpredict_core::render::semaphore(
-                    Some(Quality::of(cell.reliability)),
-                    v.colors.dark,
-                    v.colors.low_light,
-                );
-            }
-            (
-                v.band,
-                v.hour,
-                v.now,
-                v.map_view,
-                palette,
-                MapOptions {
-                    show_night: true,
-                    show_nvis: true,
-                    show_path: true,
-                    highlight: v.probe.clone(),
-                    highlight_color: hfpredict_core::render::semaphore(
-                        q,
-                        v.colors.dark,
-                        v.colors.low_light,
-                    ),
-                },
-            )
-        };
-        // The app's part of a tile's look.
-        let app_key = {
-            use std::hash::{Hash, Hasher};
-            let mut h = std::collections::hash_map::DefaultHasher::new();
-            format!("{palette:?}{options:?}{scale}").hash(&mut h);
-            h.finish()
-        };
-        let full = tiles::level_for(view, &screen);
-        let z = if self.scrubbing.get() {
-            full.saturating_sub(1)
-        } else {
-            full
-        };
+        let (band, hour, now, view, palette, options, app_key) = self.map_inputs();
+        let z = tiles::level_for(view, &screen);
         self.tile_busy.set(true);
         let core = self.core.clone();
         let me = self.rc();
@@ -595,21 +637,24 @@ impl App {
             move || core.map_signature(band, hour, now, view),
             move |content| {
                 let signature = content.wrapping_mul(31) ^ app_key;
-                me.signature.set(signature);
+                if signature != me.signature.get() {
+                    // The content moved on: the next frame comes first.
+                    me.tile_busy.set(false);
+                    me.request_frame();
+                    return;
+                }
                 let next = {
                     let held = me.tiles.borrow();
                     let fresh = |t: &Tile| held.get(t).is_some_and(|e| e.signature == signature);
                     let mut wanted = vec![];
-                    if !held.contains_key(&Tile::WORLD) {
+                    if !fresh(&Tile::WORLD) {
                         wanted.push(Tile::WORLD);
                     }
                     wanted.extend(tiles::visible(view, &screen, z).into_iter().map(|p| p.tile));
-                    wanted.push(Tile::WORLD);
                     wanted.into_iter().find(|t| !fresh(t))
                 };
                 let Some(tile) = next else {
                     me.tile_busy.set(false);
-                    me.request_redraw();
                     return;
                 };
                 let core = me.core.clone();
@@ -621,11 +666,6 @@ impl App {
                     move |image| {
                         let me = me2;
                         me.tile_busy.set(false);
-                        let changed = me.view.borrow().map_detail != image.detail;
-                        me.view.borrow_mut().map_detail = image.detail;
-                        if changed {
-                            me.emit(Change::Map);
-                        }
                         let size = image.size as i32;
                         let texture = gtk::gdk::MemoryTexture::new(
                             size,
@@ -710,14 +750,14 @@ impl App {
         else {
             return;
         };
-        let (band, hour, now) = {
+        let (band, hour, now, view) = {
             let v = self.view.borrow();
-            (v.band, v.hour, v.now)
+            (v.band, v.hour, v.now, v.map_view)
         };
         let core = self.core.clone();
         let me = self.rc();
         spawn(
-            move || core.probe_at(band, hour, now, lat, lon),
+            move || core.probe_at(band, hour, now, view, lat, lon),
             move |full| {
                 let current = {
                     let v = me.view.borrow();

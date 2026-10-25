@@ -275,32 +275,73 @@ impl ReachCard {
             }
             if let Some((screen, scale)) = app.screen() {
                 let view = app.view.borrow().map_view;
-                let held = app.tiles.borrow();
                 let k = f64::from(scale);
-                let fresh = app.signature();
-                let placed: Vec<_> = (0..=tiles::level_for(view, &screen))
-                    .flat_map(|z| tiles::visible(view, &screen, z))
-                    .collect();
-                // Stale tiles (an earlier hour or band) first, fresh ones
-                // over them: the newest content wins even from a coarser level.
-                for pass in [false, true] {
-                    for p in &placed {
-                        let Some(e) = held.get(&p.tile) else {
-                            continue;
-                        };
-                        if (e.signature == fresh) != pass {
-                            continue;
-                        }
-                        e.used.set(app.next_use());
-                        // A pixel of overlap each side hides the seams
-                        // (filtering softens a tile's last row).
-                        let r = canvas::rect(
-                            (p.left / k) as f32 - 1.0,
-                            (p.top / k) as f32 - 1.0,
-                            (p.size / k) as f32 + 2.0,
-                            (p.size / k) as f32 + 2.0,
+                let frame = app.frame();
+                // At rest the frame is exactly the screen: drawn 1:1, sharp
+                // and seamless, and nothing else is needed.
+                let exact = frame
+                    .as_ref()
+                    .is_some_and(|f| f.view == view && f.screen == screen);
+                if exact {
+                    if let Some(f) = frame.as_ref() {
+                        s.append_texture(
+                            &f.texture,
+                            &canvas::rect(
+                                0.0,
+                                0.0,
+                                (screen.width / k) as f32,
+                                (screen.height / k) as f32,
+                            ),
                         );
-                        s.append_scaled_texture(&e.texture, gtk::gsk::ScalingFilter::Trilinear, &r);
+                    }
+                } else {
+                    // A gesture: tiles of the current content (never older)
+                    // under the moving frame fill what it does not cover;
+                    // zoomed in past it, the finest ones go over it, sharper.
+                    let held = app.tiles.borrow();
+                    let fresh = app.signature();
+                    let z = tiles::level_for(view, &screen);
+                    let draw_tiles = |levels: std::ops::RangeInclusive<u32>| {
+                        for p in levels.flat_map(|l| tiles::visible(view, &screen, l)) {
+                            let Some(e) = held.get(&p.tile).filter(|e| e.signature == fresh) else {
+                                continue;
+                            };
+                            e.used.set(app.next_use());
+                            // Half a pixel of overlap hides the seams while moving.
+                            let r = canvas::rect(
+                                (p.left / k) as f32 - 0.5,
+                                (p.top / k) as f32 - 0.5,
+                                (p.size / k) as f32 + 1.0,
+                                (p.size / k) as f32 + 1.0,
+                            );
+                            s.append_scaled_texture(
+                                &e.texture,
+                                gtk::gsk::ScalingFilter::Linear,
+                                &r,
+                            );
+                        }
+                    };
+                    draw_tiles(0..=z);
+                    let mut stretched = false;
+                    if let Some(f) = frame.as_ref() {
+                        // Where the frame's pixels land in the view on screen.
+                        let kf = f.screen.side * f.view.scale;
+                        let kc = screen.side * view.scale;
+                        let u0 = f.view.cx - 0.5 / f.view.scale - f.screen.x0 / kf;
+                        let v0 = f.view.cy - 0.5 / f.view.scale - f.screen.y0 / kf;
+                        let left = screen.x0 + (u0 - (view.cx - 0.5 / view.scale)) * kc;
+                        let top = screen.y0 + (v0 - (view.cy - 0.5 / view.scale)) * kc;
+                        let r = canvas::rect(
+                            (left / k) as f32,
+                            (top / k) as f32,
+                            (f.screen.width / kf * kc / k) as f32,
+                            (f.screen.height / kf * kc / k) as f32,
+                        );
+                        s.append_scaled_texture(&f.texture, gtk::gsk::ScalingFilter::Linear, &r);
+                        stretched = kc / kf > 1.05;
+                    }
+                    if stretched {
+                        draw_tiles(z..=z);
                     }
                 }
             }
@@ -310,7 +351,15 @@ impl ReachCard {
         self.map.set_on_resize(move |c, w, h| {
             if let Some(app) = a.upgrade() {
                 let (side, x0, y0) = square(c);
-                let k = f64::from(c.scale_factor().max(1));
+                // The surface's own scale, fractional (1.25, 1.5…) where the
+                // desktop scales so: the frame then has exactly the screen's
+                // pixels. The widget's whole-number factor would be resampled.
+                let k = c
+                    .native()
+                    .and_then(|n| n.surface())
+                    .map(|surface| surface.scale())
+                    .filter(|k| *k > 0.0)
+                    .unwrap_or_else(|| f64::from(c.scale_factor().max(1)));
                 app.set_map_screen(
                     Screen {
                         side: side * k,
@@ -323,6 +372,8 @@ impl ReachCard {
                 );
             }
         });
+        // Moved to a screen of another scale: measure (and draw) again.
+        self.map.connect_scale_factor_notify(|c| c.queue_resize());
         let map = self.map.clone();
         *app.redraw.borrow_mut() = Some(Box::new(move || map.queue_draw()));
 

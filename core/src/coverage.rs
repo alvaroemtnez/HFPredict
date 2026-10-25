@@ -106,21 +106,28 @@ impl Grid {
         self.lat_step >= LAT_STEP - 1e-9 && self.is_whole_world()
     }
 
-    /// The reliability shown at a point. The coarse preview blends its four
-    /// nearest centres (bilinear, wrapping in longitude), so it reads as a
-    /// soft first guess instead of 15-degree blocks; every finer grid gives
-    /// its cell's own value.
+    /// The reliability shown at a point: a bilinear blend of the four
+    /// nearest cell centres (wrapping in longitude on a whole-world grid,
+    /// held at the edges of a regional one), so the map draws smooth
+    /// contours rather than cells, and a point's value is the one painted
+    /// there. `None` outside the grid.
     pub fn reliability_at(&self, lat: f64, lon: f64) -> Option<f32> {
-        if !self.is_coarse() || self.nx < 2 || self.ny < 2 {
+        self.index_of(lat, lon)?;
+        if self.nx < 2 || self.ny < 2 {
             return self.index_of(lat, lon).map(|i| self.reliability[i]);
         }
         let fy = ((lat - self.lat_min) / self.lat_step).clamp(0.0, (self.ny - 1) as f64);
         let r0 = (fy.floor() as usize).min(self.ny - 2);
         let ty = (fy - r0 as f64) as f32;
-        let fx = ((lon - self.lon_min) / self.lon_step).rem_euclid(self.nx as f64);
-        let c0 = (fx.floor() as usize) % self.nx;
-        let c1 = (c0 + 1) % self.nx;
-        let tx = (fx - fx.floor()) as f32;
+        let (c0, c1, tx) = if self.is_whole_world() {
+            let fx = ((lon - self.lon_min) / self.lon_step).rem_euclid(self.nx as f64);
+            let c0 = (fx.floor() as usize) % self.nx;
+            (c0, (c0 + 1) % self.nx, (fx - fx.floor()) as f32)
+        } else {
+            let fx = ((lon - self.lon_min) / self.lon_step).clamp(0.0, (self.nx - 1) as f64);
+            let c0 = (fx.floor() as usize).min(self.nx - 2);
+            (c0, c0 + 1, (fx - c0 as f64) as f32)
+        };
         let v = |r: usize, c: usize| self.reliability[r * self.nx + c];
         let row = |r: usize| v(r, c0) * (1.0 - tx) + v(r, c1) * tx;
         Some(row(r0) * (1.0 - ty) + row(r0 + 1) * ty)
@@ -355,12 +362,24 @@ mod tests {
     }
 
     #[test]
-    fn finer_grids_keep_their_cells() {
+    fn finer_grids_blend_too() {
         let mut g = coarse_world();
         g.lat_step = FINE_LAT_STEP;
         assert!(!g.is_coarse());
-        let i = g.index_of(-80.0, 0.0).unwrap();
-        assert_eq!(g.reliability_at(-80.0, 0.0), Some(g.reliability[i]));
+        // At a centre, its own value; between two, their mean.
+        let i = g.index_of(-82.5, 11.25).unwrap();
+        assert_eq!(g.reliability_at(-82.5, 11.25), Some(g.reliability[i]));
+        let mid = g.reliability_at(-82.5, 0.0).unwrap();
+        assert!((mid - (g.reliability[i] + g.reliability[i - 1]) / 2.0).abs() < 1e-6);
+        // A regional grid holds its edge instead of wrapping, and has no
+        // value outside itself.
+        let mut r = g.clone();
+        r.nx = 4;
+        r.reliability = r.reliability[..r.nx * r.ny].to_vec();
+        r.takeoff_deg = r.takeoff_deg[..r.nx * r.ny].to_vec();
+        assert!(!r.is_whole_world());
+        assert!(r.reliability_at(-82.5, -168.75).is_some());
+        assert!(r.reliability_at(-82.5, 100.0).is_none());
         let b = g.cell_bounds(i);
         assert!((b.lat_max - b.lat_min - FINE_LAT_STEP).abs() < 1e-9);
     }

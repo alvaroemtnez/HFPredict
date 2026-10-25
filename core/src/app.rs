@@ -67,7 +67,11 @@ pub struct MapStatus {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Record))]
 pub struct MapImage {
+    /// The side of a square image (a tile, a square map); the width of a
+    /// screen-sized one.
     pub size: u32,
+    pub width: u32,
+    pub height: u32,
     pub pixels: Vec<u8>,
     pub detail: MapDetail,
 }
@@ -94,8 +98,6 @@ struct Caches {
     fine_centres: Lru<Option<CentreField>>,
     fine: Lru<Grid>,
     patch: Lru<BandGrids>,
-    /// Whole-day path forecasts to probed points.
-    points: Lru<Forecast>,
 }
 
 #[cfg_attr(feature = "ffi", derive(uniffi::Object))]
@@ -128,7 +130,6 @@ impl Core {
                 fine_centres: Lru::new(12),
                 fine: Lru::new(36),
                 patch: Lru::new(8),
-                points: Lru::new(8),
             }),
             disk: DiskCache::new(cache_dir.join("maps"), MAP_BUDGET_BYTES),
             threads: crate::parallel::cores(),
@@ -368,8 +369,8 @@ impl Core {
         }
         (layers, detail, keys)
     }
-    /// The map for `frame` (a whole view or one tile), with the layers the
-    /// screen's `view` calls for.
+    /// The map for `frame` (a whole view or one tile) into `area`, with the
+    /// layers the screen's `view` calls for.
     #[allow(clippy::too_many_arguments)]
     fn render_view(
         &self,
@@ -378,7 +379,7 @@ impl Core {
         now: i64,
         view: MapView,
         frame: MapView,
-        size: u32,
+        area: render::Area,
         density: f32,
         palette: Palette,
         options: MapOptions,
@@ -407,12 +408,14 @@ impl Core {
             highlight_color: options.highlight_color,
         };
         MapImage {
-            size,
+            size: area.width,
+            width: area.width,
+            height: area.height,
             // All cores but one: the app's own UI thread keeps one.
-            pixels: render::render(
+            pixels: render::render_area(
                 &scene,
                 frame,
-                size,
+                area,
                 density,
                 &palette,
                 self.threads.saturating_sub(1).max(1),
@@ -629,7 +632,34 @@ impl Core {
         palette: Palette,
         options: MapOptions,
     ) -> MapImage {
-        self.render_view(band, hour, now, view, view, size, density, palette, options)
+        let area = render::Area::square(size.max(16));
+        self.render_view(band, hour, now, view, view, area, density, palette, options)
+    }
+
+    /// Draws the map for exactly the screen's map area (`screen` in device
+    /// pixels, see `tiles::Screen`): every pixel shown is drawn once, at
+    /// its own size, so the picture is sharp and has no seams. The apps
+    /// show this whenever the map is at rest.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_screen(
+        &self,
+        band: Band,
+        hour: u32,
+        now: i64,
+        view: MapView,
+        screen: crate::tiles::Screen,
+        density: f32,
+        palette: Palette,
+        options: MapOptions,
+    ) -> MapImage {
+        let area = render::Area {
+            width: screen.width.round().max(1.0) as u32,
+            height: screen.height.round().max(1.0) as u32,
+            side: screen.side,
+            x0: screen.x0,
+            y0: screen.y0,
+        };
+        self.render_view(band, hour, now, view, view, area, density, palette, options)
     }
 
     /// A fingerprint of everything the core puts in a map for this band,
@@ -669,7 +699,7 @@ impl Core {
             now,
             view,
             tile.view(),
-            TILE_PX,
+            render::Area::square(TILE_PX),
             density,
             palette,
             options,
@@ -713,38 +743,57 @@ impl Core {
             distance_km: geo::distance_km(from.lat_lon(), point),
             bearing_deg: geo::bearing_deg(from.lat_lon(), point),
             quality: reliability.map(Quality::of),
-            chance: None,
+            chance: reliability,
         })
     }
 
-    /// A point on the map in full: the map's quality there and the chance
-    /// of contact from a path forecast to it. The forecast covers every band
-    /// and hour and is kept, so moving through the day or the bands with a
-    /// point selected costs nothing more. Call it off the UI thread.
-    pub fn probe_at(&self, band: Band, hour: u32, now: i64, lat: f64, lon: f64) -> Probe {
+    /// The value the map paints at a point (0..1) for a view (which decides
+    /// the zoom patch), from the finest grid held there; `None` where
+    /// nothing is computed yet.
+    #[allow(clippy::too_many_arguments)]
+    pub fn map_value(
+        &self,
+        band: Band,
+        hour: u32,
+        now: i64,
+        view: MapView,
+        lat: f64,
+        lon: f64,
+    ) -> Option<f64> {
         let (ctx, from, _) = self.context(now);
-        let point = LatLon { lat, lon };
-        let (layers, _) = self.layers(&ctx, &from, band, hour, MapView::default());
-        let reliability = layers
+        let (layers, _) = self.layers(&ctx, &from, band, hour, view);
+        layers
             .iter()
             .rev()
-            .find_map(|g| g.reliability_at(lat, lon).map(f64::from));
-        let key = Self::key("point", &ctx, &from, &format!("{lat:.4},{lon:.4}"));
-        let cached = lock(&self.caches).points.get(&key);
-        let forecast = cached.or_else(|| {
-            let to = Place::at(geo::lat_lon_to_grid(lat, lon), "", lat, lon);
-            let f = Arc::new(forecast::path(&self.engine, &ctx, &from, &to).ok()?);
-            lock(&self.caches).points.put(key, f.clone());
-            Some(f)
-        });
+            .find_map(|g| g.reliability_at(lat, lon).map(f64::from))
+    }
+
+    /// A point on the map in full, for the band and hour shown: where it
+    /// is and the chance of contact the map paints there (blended between
+    /// cell centres, the same value the colour comes from, so the number
+    /// and the colour always agree). For a point's own path forecast, make
+    /// it the destination.
+    #[allow(clippy::too_many_arguments)]
+    pub fn probe_at(
+        &self,
+        band: Band,
+        hour: u32,
+        now: i64,
+        view: MapView,
+        lat: f64,
+        lon: f64,
+    ) -> Probe {
+        let (_, from, _) = self.context(now);
+        let point = LatLon { lat, lon };
+        let value = self.map_value(band, hour, now, view, lat, lon);
         Probe {
             lat,
             lon,
             grid: geo::lat_lon_to_grid(lat, lon),
             distance_km: geo::distance_km(from.lat_lon(), point),
             bearing_deg: geo::bearing_deg(from.lat_lon(), point),
-            quality: reliability.map(Quality::of),
-            chance: forecast.and_then(|f| f.cell(band, hour).map(|c| c.reliability)),
+            quality: value.map(Quality::of),
+            chance: value,
         }
     }
 
@@ -861,8 +910,8 @@ pub struct Probe {
     pub bearing_deg: f64,
     /// The map's quality band under the point.
     pub quality: Option<Quality>,
-    /// The chance of contact there from a path forecast to that very point
-    /// (`Core::probe_at`), 0..1; `None` until it is worked out.
+    /// The chance of contact the map paints there, 0..1 (the same value its
+    /// colour comes from); `None` where nothing is computed yet.
     pub chance: Option<f64>,
 }
 
@@ -952,7 +1001,7 @@ mod tests {
         assert_ne!(a, c.map_signature(Band::M20, 13, NOW, MapView::default()));
         assert_ne!(a, c.map_signature(Band::M40, 12, NOW, MapView::default()));
         // In full, a point gets its own chance of contact.
-        let tokyo = c.probe_at(Band::M20, 12, NOW, 35.7, 139.7);
+        let tokyo = c.probe_at(Band::M20, 12, NOW, MapView::default(), 35.7, 139.7);
         assert!(
             tokyo.chance.is_some_and(|c| (0.0..=1.0).contains(&c)),
             "{tokyo:?}"

@@ -173,6 +173,52 @@ fn paint(c: u32) -> Paint<'static> {
     p
 }
 
+/// The pixels a map is drawn into: a `width` by `height` area in which the
+/// disc's bounding square is `side` pixels with its corner at (`x0`, `y0`).
+/// A square render is the square itself; a screen-sized one (a phone held
+/// upright, a wide window) cuts its own rectangle from a larger square and
+/// draws nothing it would not show.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Record))]
+pub struct Area {
+    pub width: u32,
+    pub height: u32,
+    pub side: f64,
+    pub x0: f64,
+    pub y0: f64,
+}
+
+impl Area {
+    pub fn square(size: u32) -> Area {
+        Area {
+            width: size,
+            height: size,
+            side: f64::from(size),
+            x0: 0.0,
+            y0: 0.0,
+        }
+    }
+
+    fn pixel_of(&self, view: &MapView, x: f64, y: f64) -> (f64, f64) {
+        let (px, py) = view.to_pixel(x, y, self.side);
+        (px + self.x0, py + self.y0)
+    }
+
+    fn disc_of(&self, view: &MapView, px: f64, py: f64) -> (f64, f64) {
+        view.to_disc(px - self.x0, py - self.y0, self.side)
+    }
+
+    fn key(&self) -> [u64; 5] {
+        [
+            u64::from(self.width),
+            u64::from(self.height),
+            self.side.to_bits(),
+            self.x0.to_bits(),
+            self.y0.to_bits(),
+        ]
+    }
+}
+
 /// Draws the map into a `size` by `size` square of premultiplied RGBA, the
 /// byte order Android's `ARGB_8888` and GDK's `R8g8b8a8Premultiplied` take.
 /// `density` scales line widths (device pixels per dp / logical pixel).
@@ -188,14 +234,31 @@ pub fn render(
     palette: &Palette,
     threads: usize,
 ) -> Vec<u8> {
-    let size = size.max(16);
-    let Some(mut pixmap) = Pixmap::new(size, size) else {
+    render_area(
+        scene,
+        view,
+        Area::square(size.max(16)),
+        density,
+        palette,
+        threads,
+    )
+}
+
+/// [`render`] into any [`Area`]: `area.width` by `area.height` pixels.
+pub fn render_area(
+    scene: &Scene,
+    view: MapView,
+    area: Area,
+    density: f32,
+    palette: &Palette,
+    threads: usize,
+) -> Vec<u8> {
+    let Some(mut pixmap) = Pixmap::new(area.width.max(1), area.height.max(1)) else {
         return vec![];
     };
     let projection = Projection::new(scene.centre);
-    let s = f64::from(size);
-    let (ox, oy) = view.to_pixel(0.0, 0.0, s);
-    let radius = (view.to_pixel(1.0, 0.0, s).0 - ox) as f32;
+    let (ox, oy) = area.pixel_of(&view, 0.0, 0.0);
+    let radius = (area.pixel_of(&view, 1.0, 0.0).0 - ox) as f32;
 
     // The disc, antialiased at its rim.
     if let Some(circle) = PathBuilder::from_circle(ox as f32, oy as f32, radius) {
@@ -208,11 +271,11 @@ pub fn render(
         );
     }
 
-    let geometry = geometry(scene.centre, view, size, threads);
+    let geometry = geometry(scene.centre, view, area, threads);
     raster_cells(&mut pixmap, scene, &geometry, palette, threads, radius);
 
     let line = density.max(0.5);
-    let lines = overlay(scene, view, size, line, palette);
+    let lines = overlay(scene, view, area, line, palette);
     pixmap.draw_pixmap(
         0,
         0,
@@ -248,7 +311,7 @@ pub fn render(
                     .chain((0..n).map(|k| (b.lat_max, along(b.lon_max, b.lon_min, k))))
                     .chain((0..=n).map(|k| (along(b.lat_max, b.lat_min, k), b.lon_min)))
                     .map(|(lat, lon)| LatLon { lat, lon });
-                add_polyline(&mut pb, &projection, view, s, outline);
+                add_polyline(&mut pb, &projection, view, &area, outline);
                 // A cell a few pixels wide at this zoom gets a ring round
                 // it too, so the eye finds it.
                 let corners: Vec<(f64, f64)> = [
@@ -259,7 +322,7 @@ pub fn render(
                 ]
                 .iter()
                 .filter_map(|&(lat, lon)| projection.project(LatLon { lat, lon }))
-                .map(|(x, y)| view.to_pixel(x, y, s))
+                .map(|(x, y)| area.pixel_of(&view, x, y))
                 .collect();
                 let extent = corners
                     .iter()
@@ -268,13 +331,13 @@ pub fn render(
                 if extent < 16.0 * line
                     && let Some((x, y)) = projection.project(h)
                 {
-                    let (px, py) = view.to_pixel(x, y, s);
+                    let (px, py) = area.pixel_of(&view, x, y);
                     pb.push_circle(px as f32, py as f32, 11.0 * line);
                 }
             }
             _ => {
                 if let Some((x, y)) = projection.project(h) {
-                    let (px, py) = view.to_pixel(x, y, s);
+                    let (px, py) = area.pixel_of(&view, x, y);
                     pb.push_circle(px as f32, py as f32, 7.0 * line);
                 }
             }
@@ -346,29 +409,33 @@ struct Geometry {
 
 const OFF_DISC: u16 = u16::MAX;
 
-fn geometry(centre: LatLon, view: MapView, size: u32, threads: usize) -> Arc<Geometry> {
+fn geometry(centre: LatLon, view: MapView, area: Area, threads: usize) -> Arc<Geometry> {
     // A screenful of tiles (or a couple of whole maps).
-    static RECENT: Recent<[u64; 6], Geometry> = Recent::new(24);
+    static RECENT: Recent<[u64; 10], Geometry> = Recent::new(24);
+    let a = area.key();
     let key = [
         centre.lat.to_bits(),
         centre.lon.to_bits(),
         view.scale.to_bits(),
         view.cx.to_bits(),
         view.cy.to_bits(),
-        u64::from(size),
+        a[0],
+        a[1],
+        a[2],
+        a[3],
+        a[4],
     ];
     RECENT.get_or(key, || {
         let projection = Projection::new(centre);
-        let size = size as usize;
-        let s = size as f64;
-        let (ox, oy) = view.to_pixel(0.0, 0.0, s);
-        let radius = view.to_pixel(1.0, 0.0, s).0 - ox;
-        let rows: Vec<usize> = (0..size).collect();
+        let (width, height) = (area.width as usize, area.height as usize);
+        let (ox, oy) = area.pixel_of(&view, 0.0, 0.0);
+        let radius = area.pixel_of(&view, 1.0, 0.0).0 - ox;
+        let rows: Vec<usize> = (0..height).collect();
         let chunks: Vec<&[usize]> = rows
-            .chunks(size.div_ceil(threads.max(1) * 4).max(1))
+            .chunks(height.div_ceil(threads.max(1) * 4).max(1))
             .collect();
         let parts = crate::parallel::map(&chunks, threads, |chunk| {
-            let n = chunk.len() * size;
+            let n = chunk.len() * width;
             let (mut lat, mut lon, mut unit) = (
                 Vec::with_capacity(n),
                 Vec::with_capacity(n),
@@ -376,14 +443,14 @@ fn geometry(centre: LatLon, view: MapView, size: u32, threads: usize) -> Arc<Geo
             );
             for &py in chunk.iter() {
                 let dy = py as f64 + 0.5 - oy;
-                for px in 0..size {
+                for px in 0..width {
                     let dx = px as f64 + 0.5 - ox;
                     // Only strictly inside the rim; the rim pixels keep the
                     // antialiased disc edge.
                     let p = if dx.hypot(dy) > radius - 1.0 {
                         None
                     } else {
-                        let (x, y) = view.to_disc(px as f64 + 0.5, py as f64 + 0.5, s);
+                        let (x, y) = area.disc_of(&view, px as f64 + 0.5, py as f64 + 0.5);
                         projection.invert(x, y)
                     };
                     match p {
@@ -403,9 +470,9 @@ fn geometry(centre: LatLon, view: MapView, size: u32, threads: usize) -> Arc<Geo
             (lat, lon, unit)
         });
         let mut g = Geometry {
-            lat: Vec::with_capacity(size * size),
-            lon: Vec::with_capacity(size * size),
-            unit: Vec::with_capacity(size * size),
+            lat: Vec::with_capacity(width * height),
+            lon: Vec::with_capacity(width * height),
+            unit: Vec::with_capacity(width * height),
         };
         for (lat, lon, unit) in parts {
             g.lat.extend(lat);
@@ -418,7 +485,7 @@ fn geometry(centre: LatLon, view: MapView, size: u32, threads: usize) -> Arc<Geo
 
 /// The lines over the cells: distance rings, the rim, coastlines, the path
 /// and the two ends. Kept while the view, size and colours stay.
-fn overlay(scene: &Scene, view: MapView, size: u32, line: f32, palette: &Palette) -> Arc<Pixmap> {
+fn overlay(scene: &Scene, view: MapView, area: Area, line: f32, palette: &Palette) -> Arc<Pixmap> {
     type Key = (Vec<u64>, Palette);
     static RECENT: Recent<Key, Pixmap> = Recent::new(24);
     let mut bits = vec![
@@ -427,18 +494,18 @@ fn overlay(scene: &Scene, view: MapView, size: u32, line: f32, palette: &Palette
         view.scale.to_bits(),
         view.cx.to_bits(),
         view.cy.to_bits(),
-        u64::from(size),
         u64::from(line.to_bits()),
     ];
+    bits.extend(area.key());
     if let Some(d) = scene.destination {
         bits.extend([d.lat.to_bits(), d.lon.to_bits()]);
     }
     RECENT.get_or((bits, *palette), || {
-        let mut pixmap = Pixmap::new(size, size).expect("a non-empty square");
+        let mut pixmap =
+            Pixmap::new(area.width.max(1), area.height.max(1)).expect("a non-empty area");
         let projection = Projection::new(scene.centre);
-        let s = f64::from(size);
-        let (ox, oy) = view.to_pixel(0.0, 0.0, s);
-        let radius = (view.to_pixel(1.0, 0.0, s).0 - ox) as f32;
+        let (ox, oy) = area.pixel_of(&view, 0.0, 0.0);
+        let radius = (area.pixel_of(&view, 1.0, 0.0).0 - ox) as f32;
         let stroke = |width: f32| Stroke {
             width: width * line,
             line_cap: LineCap::Round,
@@ -495,7 +562,7 @@ fn overlay(scene: &Scene, view: MapView, size: u32, line: f32, palette: &Palette
                 match p {
                     Some(p) => run.push(p),
                     None => {
-                        add_polyline(&mut coast, &projection, view, s, run.drain(..));
+                        add_polyline(&mut coast, &projection, view, &area, run.drain(..));
                     }
                 }
             }
@@ -513,7 +580,7 @@ fn overlay(scene: &Scene, view: MapView, size: u32, line: f32, palette: &Palette
         // The path to the destination and its end.
         let dot = |pixmap: &mut Pixmap, p: LatLon, fill: u32, halo: u32, r: f32| {
             if let Some((x, y)) = projection.project(p) {
-                let (px, py) = view.to_pixel(x, y, s);
+                let (px, py) = area.pixel_of(&view, x, y);
                 if let Some(c) = PathBuilder::from_circle(px as f32, py as f32, (r + 1.5) * line) {
                     pixmap.fill_path(
                         &c,
@@ -540,7 +607,7 @@ fn overlay(scene: &Scene, view: MapView, size: u32, line: f32, palette: &Palette
                 &mut pb,
                 &projection,
                 view,
-                s,
+                &area,
                 geo::great_circle(scene.centre, to, 128).into_iter(),
             );
             if let Some(path) = pb.finish() {
@@ -627,11 +694,8 @@ fn raster_cells(
                         let mut steep = false;
                         for grid in &scene.layers {
                             if let Some(c) = grid.index_of(lat, lon) {
-                                let r = f64::from(if grid.is_coarse() {
-                                    grid.reliability_at(lat, lon).unwrap_or(0.0)
-                                } else {
-                                    grid.reliability[c]
-                                });
+                                // Blended between cell centres: smooth contours.
+                                let r = f64::from(grid.reliability_at(lat, lon).unwrap_or(0.0));
                                 let q = Quality::of(r);
                                 colour = colours[q as usize];
                                 let angle = grid.takeoff_deg[c];
@@ -693,7 +757,7 @@ fn add_polyline(
     pb: &mut PathBuilder,
     projection: &Projection,
     view: MapView,
-    size: f64,
+    area: &Area,
     points: impl Iterator<Item = LatLon>,
 ) {
     let mut last: Option<(f64, f64)> = None;
@@ -702,7 +766,7 @@ fn add_polyline(
             None => last = None,
             Some((x, y)) => {
                 let jump = last.is_some_and(|(lx, ly)| (x - lx).hypot(y - ly) > 0.08);
-                let (px, py) = view.to_pixel(x, y, size);
+                let (px, py) = area.pixel_of(&view, x, y);
                 if last.is_none() || jump {
                     pb.move_to(px as f32, py as f32);
                 } else {
@@ -864,6 +928,51 @@ mod tests {
         // Near the centre: day, untouched. Near the rim (the antipode): night.
         assert_eq!(at(&lit, 110, 100), at(&plain, 110, 100));
         assert_ne!(at(&lit, 195, 100), at(&plain, 195, 100));
+    }
+
+    #[test]
+    fn a_cut_area_is_the_same_pixels_as_the_square() {
+        let grid = world(0.9);
+        let scene = Scene {
+            centre: LatLon {
+                lat: 20.0,
+                lon: 10.0,
+            },
+            destination: Some(LatLon {
+                lat: 35.7,
+                lon: 139.7,
+            }),
+            unix_secs: 1_793_000_000,
+            layers: vec![&grid],
+            show_night: true,
+            show_nvis: false,
+            highlight: None,
+            highlight_color: 0xFF00DDFF,
+        };
+        let square = render(&scene, MapView::default(), 200, 1.0, &palette(), 2);
+        // The middle 100 columns of the square, as a portrait screen sees it.
+        let area = Area {
+            width: 100,
+            height: 200,
+            side: 200.0,
+            x0: -50.0,
+            y0: 0.0,
+        };
+        let cut = render_area(&scene, MapView::default(), area, 1.0, &palette(), 2);
+        // Identical inside the disc. Antialiasing is smoothed a little
+        // differently where a curve or line meets the image's own edge (the
+        // rim, the two outermost columns), so those are left out.
+        for y in 0..200usize {
+            for x in 2..98usize {
+                let (dx, dy) = (x as f64 + 50.5 - 100.0, y as f64 + 0.5 - 100.0);
+                if dx.hypot(dy) > 96.0 {
+                    continue;
+                }
+                let a = &cut[(y * 100 + x) * 4..][..4];
+                let b = &square[(y * 200 + x + 50) * 4..][..4];
+                assert_eq!(a, b, "({x}, {y})");
+            }
+        }
     }
 
     #[test]
