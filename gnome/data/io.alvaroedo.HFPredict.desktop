@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=HFPredict
+GenericName=HF Propagation Forecast
+Comment=Which amateur radio bands reach where, hour by hour
+Comment[es]=Qué bandas de radioaficionado llegan a dónde, hora a hora
+Comment[ca]=Quines bandes de radioaficionat arriben a on, hora a hora
+Comment[de]=Welche Amateurfunkbänder wohin reichen, Stunde für Stunde
+Exec=hfpredict
+Icon=io.alvaroedo.HFPredict
+Terminal=false
+Type=Application
+Categories=Science;Geoscience;HamRadio;Utility;
+Keywords=ham;amateur;radio;HF;propagation;VOACAP;MUF;band;forecast;shortwave;
+StartupNotify=true
+X-GNOME-UsesNotifications=false

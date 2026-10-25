@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Álvaro Edo Martínez -->
+<component type="desktop-application">
+  <id>io.alvaroedo.HFPredict</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>HFPredict</name>
+  <summary>HF propagation forecasts for amateur radio</summary>
+  <developer id="io.alvaroedo">
+    <name>Álvaro Edo Martínez</name>
+  </developer>
+  <description>
+    <p>
+      HFPredict tells you which amateur radio bands will reach a place, hour by hour, and how
+      likely a contact is on each. Pick a place, pick a band, describe your radio, and get a
+      forecast worked out on your own computer.
+    </p>
+    <p>What it shows:</p>
+    <ul>
+      <li>A map of where the selected band reaches this hour, in every direction</li>
+      <li>Every band at every hour of the day, as a chance of contact</li>
+      <li>The usable window, from the lowest to the highest usable frequency</li>
+      <li>Your own station: mode, power and an antenna with height and direction</li>
+      <li>Today's solar readings and the nearest ionosonde measurement, when online</li>
+    </ul>
+    <p>
+      Forecasts come from the HFcast engine: a faithful Rust translation of VOACAP, the model
+      the US Institute for Telecommunication Sciences has maintained for decades, and
+      Truecast, which tunes the same physics to the day. Both run with no network at all.
+      Online, the app reads current solar conditions from NOAA; you can switch the network
+      off entirely in Preferences.
+    </p>
+    <p>No account, no tracking, no ads.</p>
+  </description>
+  <launchable type="desktop-id">io.alvaroedo.HFPredict.desktop</launchable>
+  <url type="homepage">https://code.alvaroedo.io/alvaroemtnez/HFPredict</url>
+  <url type="bugtracker">https://code.alvaroedo.io/alvaroemtnez/HFPredict/issues</url>
+  <url type="vcs-browser">https://code.alvaroedo.io/alvaroemtnez/HFPredict</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>The coverage map and every band, every hour</caption>
+      <image>https://code.alvaroedo.io/alvaroemtnez/HFPredict/raw/branch/main/docs/screenshots/gnome-wide-dark.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Light style, narrow window</caption>
+      <image>https://code.alvaroedo.io/alvaroemtnez/HFPredict/raw/branch/main/docs/screenshots/gnome-phone-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Your radio: mode, power and antenna</caption>
+      <image>https://code.alvaroedo.io/alvaroemtnez/HFPredict/raw/branch/main/docs/screenshots/gnome-station.png</image>
+    </screenshot>
+  </screenshots>
+  <branding>
+    <color type="primary" scheme_preference="light">#86DDEB</color>
+    <color type="primary" scheme_preference="dark">#0F2B3A</color>
+  </branding>
+  <content_rating type="oars-1.1"/>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <categories>
+    <category>Science</category>
+    <category>HamRadio</category>
+  </categories>
+  <keywords>
+    <keyword>ham radio</keyword>
+    <keyword>propagation</keyword>
+    <keyword>VOACAP</keyword>
+    <keyword>HF</keyword>
+    <keyword>shortwave</keyword>
+  </keywords>
+  <releases>
+    <release version="0.1.0" date="2026-10-25">
+      <description>
+        <p>First release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

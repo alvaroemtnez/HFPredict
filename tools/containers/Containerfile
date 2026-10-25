@@ -1,0 +1,14 @@
+# Build environments for HFPredict. The host only needs podman; the Rust
+# toolchain itself comes from .tools/ (tools/rust.sh), mounted in.
+
+# GNOME app development: GTK 4.18 and libadwaita 1.7 (the oldest versions
+# the app supports, and what the AppImage bundles), plus a headless Wayland
+# compositor and fonts for screenshots.
+FROM docker.io/library/debian:trixie-slim AS gnome
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      build-essential pkg-config ca-certificates curl git \
+      libgtk-4-dev libadwaita-1-dev librsvg2-common \
+      weston dbus dbus-x11 fonts-cantarell fonts-noto-core fonts-noto-cjk adwaita-icon-theme \
+      librsvg2-bin python3 desktop-file-utils appstream \
+ && rm -rf /var/lib/apt/lists/*
