@@ -56,8 +56,8 @@
     <string name="window_explainNoFloor">Per damunt de {ceiling} el senyal travessa la ionosfera cap a l\'espai: és la MUF. Cap freqüència no és prou fiable a esta hora per a marcar un sòl.</string>
     <string name="grid_readoutNow">Ara · {hour} · {band}</string>
     <string name="grid_readoutAt">{band} a les {hour}</string>
-    <string name="grid_unitChance">Probabilitat de contacte, %</string>
-    <string name="grid_unitDirections">Direccions abastables, %</string>
+    <string name="grid_unitChance" formatted="false">Probabilitat de contacte, %</string>
+    <string name="grid_unitDirections" formatted="false">Direccions abastables, %</string>
     <string name="grid_showAsTable">Mostra com a taula</string>
     <string name="grid_showAsGrid">Mostra com a quadrícula</string>
     <string name="grid_bandColumn">Banda</string>
@@ -155,7 +155,7 @@
     <string name="station_apexHeight">Altura del vèrtex</string>
     <string name="station_heightRange">Qualsevol valor de {min} a {max}.</string>
     <string name="station_heightNote">L\'altura decidix quasi tota la resposta. En 20 metres, un dipol a una longitud d\'ona supera en uns 9 dB un a un quart d\'ona en un trajecte llarg.</string>
-    <string name="station_invertedVNote">Es calcula com un dipol a {height}, el {percent} % del vèrtex. L\'ajuda explica per què.</string>
+    <string name="station_invertedVNote" formatted="false">Es calcula com un dipol a {height}, el {percent} % del vèrtex. L\'ajuda explica per què.</string>
     <string name="station_isotropicNote">El mateix senyal en totes les direccions. No és una antena real, però no suposa res de la teua.</string>
     <string name="station_verticalNote">Una vertical és igual en totes les direccions, així que no hi ha res a orientar.</string>
     <string name="station_gain">Guany sobre un dipol</string>
@@ -237,7 +237,7 @@
     <string name="preferences_forgotten">S\'han esborrat els mapes guardats.</string>
     <string name="help_title">Com es fa la previsió</string>
     <string name="help_engine_heading">D\'on ixen els números</string>
-    <string name="help_engine_body">Cada previsió es calcula en este dispositiu amb la física de VOACAP, un model de propagació que s\'usa des de fa dècades. Res de la teua estació ni del teu trajecte ix del dispositiu.\n\nHi ha dos models, amb la mateixa física davall:\n\nVOACAP, escrit per l\'Institut de Ciències de Telecomunicació dels EUA i reproduït fidelment ací, defectes inclosos. Descriu un dia típic del mes, així que les 4 de la vesprada d\'este dimarts són iguals que les d\'este dijous.\n\nTruecast, el model per defecte, partix del que fa la ionosfera eixe dia. Comparat dia a dia amb mesures reals des de 2015, va encertar més que VOACAP el 77 % dels dies.</string>
+    <string name="help_engine_body" formatted="false">Cada previsió es calcula en este dispositiu amb la física de VOACAP, un model de propagació que s\'usa des de fa dècades. Res de la teua estació ni del teu trajecte ix del dispositiu.\n\nHi ha dos models, amb la mateixa física davall:\n\nVOACAP, escrit per l\'Institut de Ciències de Telecomunicació dels EUA i reproduït fidelment ací, defectes inclosos. Descriu un dia típic del mes, així que les 4 de la vesprada d\'este dimarts són iguals que les d\'este dijous.\n\nTruecast, el model per defecte, partix del que fa la ionosfera eixe dia. Comparat dia a dia amb mesures reals des de 2015, va encertar més que VOACAP el 77 % dels dies.</string>
     <string name="help_truecast_heading">Truecast</string>
     <string name="help_truecast_body">Truecast aplica la física de VOACAP a un nombre de taques diari calculat a partir d\'ionosondes, una taula de tempestes magnètiques i una millor estimació de l\'altura on rebota el senyal.\n\nEs va construir i comprovar amb lectures d\'ionosondes d\'un cicle solar complet i després es va puntuar en huit mesos que no havia vist. Va eliminar el biaix de mes a mes de VOACAP i es va acostar més a les mesures en set d\'ells.\n\nSense xarxa usa una correcció incorporada per a l\'època de l\'any, que continua millorant la mitjana mensual. Pots canviar a VOACAP en Preferències quan vulgues.</string>
     <string name="help_ssn_heading">El nombre de taques solars</string>
@@ -249,7 +249,7 @@
     <string name="help_nvis_heading">Incidència quasi vertical</string>
     <string name="help_nvis_body">Per davall d\'uns centenars de quilòmetres, les bandes baixes funcionen d\'una altra manera. El senyal puja quasi en vertical, baixa prop d\'on va eixir i no hi ha zona de salt. Els operadors ho anomenen NVIS.\n\nHFPredict no ho endevina per la distància. El motor calcula l\'angle d\'eixida del senyal, i un trajecte compta com a quasi vertical quan eixe angle és de {degrees} graus o més i la banda funciona. El mapa marca eixa zona amb punts.</string>
     <string name="help_invertedV_heading">Una nota sobre la V invertida</string>
-    <string name="help_invertedV_body">VOACAP no té V invertida. HFPredict la calcula com un dipol al {percent} % de l\'altura del vèrtex: un vèrtex a 10 m es modela com un dipol a 8 m.\n\nÉs una aproximació, no una mesura. Una V amb les branques molt caigudes es comporta més baixa, i una oberta, més alta. Tria el dipol si el teu fil està horitzontal.</string>
+    <string name="help_invertedV_body" formatted="false">VOACAP no té V invertida. HFPredict la calcula com un dipol al {percent} % de l\'altura del vèrtex: un vèrtex a 10 m es modela com un dipol a 8 m.\n\nÉs una aproximació, no una mesura. Una V amb les branques molt caigudes es comporta més baixa, i una oberta, més alta. Tria el dipol si el teu fil està horitzontal.</string>
     <string name="help_privacy_heading">Privadesa</string>
     <string name="help_privacy_body">La previsió es calcula en este dispositiu. La teua estació, la teua antena i el teu trajecte no s\'envien enlloc.\n\nAmb la xarxa activada, tres servicis veuen la teua adreça IP: NOAA per a les lectures solars, GIRO per a les mesures d\'ionosondes i Open-Meteo quan la llista inclosa troba poc en buscar un lloc (també veu el que has escrit). Les quadrícules i coordenades es calculen en el dispositiu. Desactiva la xarxa en Preferències i no ix res.</string>
     <string name="about_title">Quant a HFPredict</string>

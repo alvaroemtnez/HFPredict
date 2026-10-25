@@ -57,8 +57,8 @@
     <string name="window_explainNoFloor">Above {ceiling} the signal passes through the ionosphere into space, which is the MUF. No frequency was reliable enough this hour to set a floor.</string>
     <string name="grid_readoutNow">Now · {hour} · {band}</string>
     <string name="grid_readoutAt">{band} at {hour}</string>
-    <string name="grid_unitChance">Chance of contact, %</string>
-    <string name="grid_unitDirections">Directions reachable, %</string>
+    <string name="grid_unitChance" formatted="false">Chance of contact, %</string>
+    <string name="grid_unitDirections" formatted="false">Directions reachable, %</string>
     <string name="grid_showAsTable">Show as table</string>
     <string name="grid_showAsGrid">Show as grid</string>
     <string name="grid_bandColumn">Band</string>
@@ -156,7 +156,7 @@
     <string name="station_apexHeight">Apex height</string>
     <string name="station_heightRange">Anything from {min} to {max}.</string>
     <string name="station_heightNote">Height decides most of the answer. On 20 meters, a dipole a wavelength up beats one a quarter wave up by about 9 dB on a long path.</string>
-    <string name="station_invertedVNote">Worked out as a dipole at {height}, which is {percent}% of the apex. Help explains why.</string>
+    <string name="station_invertedVNote" formatted="false">Worked out as a dipole at {height}, which is {percent}% of the apex. Help explains why.</string>
     <string name="station_isotropicNote">An equal signal in every direction. Not a real antenna, but it assumes nothing about yours.</string>
     <string name="station_verticalNote">A vertical is the same in every direction, so there is nothing to point.</string>
     <string name="station_gain">Gain over a dipole</string>
@@ -238,7 +238,7 @@
     <string name="preferences_forgotten">Stored maps deleted.</string>
     <string name="help_title">How the forecast is made</string>
     <string name="help_engine_heading">Where the numbers come from</string>
-    <string name="help_engine_body">Every forecast is worked out on this device by the physics behind VOACAP, a propagation model in use for decades. Nothing about your station or your path leaves the device.\n\nTwo models are offered, and the physics underneath is the same:\n\nVOACAP, written by the US Institute for Telecommunication Sciences and reproduced faithfully here, defects included. It describes a typical day of the month, so 4 pm this Tuesday looks the same as 4 pm this Thursday.\n\nTruecast, the default, works from what the ionosphere is doing on the day. Scored day by day against real measurements since 2015, it was closer than VOACAP on 77% of days.</string>
+    <string name="help_engine_body" formatted="false">Every forecast is worked out on this device by the physics behind VOACAP, a propagation model in use for decades. Nothing about your station or your path leaves the device.\n\nTwo models are offered, and the physics underneath is the same:\n\nVOACAP, written by the US Institute for Telecommunication Sciences and reproduced faithfully here, defects included. It describes a typical day of the month, so 4 pm this Tuesday looks the same as 4 pm this Thursday.\n\nTruecast, the default, works from what the ionosphere is doing on the day. Scored day by day against real measurements since 2015, it was closer than VOACAP on 77% of days.</string>
     <string name="help_truecast_heading">Truecast</string>
     <string name="help_truecast_body">Truecast runs VOACAP\'s physics against a daily sunspot figure worked out from ionosonde stations, a table of magnetic storms and a better estimate of the height a signal bounces from.\n\nIt was built and checked against ionosonde readings covering a whole solar cycle, then scored on eight months it had never seen. It removed the month-to-month bias VOACAP carries and was closer to the measured values in seven of them.\n\nWith no network it uses a built-in correction for the time of year, which still beats the monthly average. You can switch to VOACAP in Preferences at any time.</string>
     <string name="help_ssn_heading">The sunspot number</string>
@@ -250,7 +250,7 @@
     <string name="help_nvis_heading">Near-vertical incidence</string>
     <string name="help_nvis_body">Below a few hundred kilometres, the low bands work differently. The signal goes up steeply, comes back down near where it started, and there is no skip zone. Operators call this NVIS.\n\nHFPredict does not guess it from the distance. The engine works out the angle the signal leaves at, and a path counts as near-vertical when that angle is {degrees} degrees or more and the band works. The map marks that area with dots.</string>
     <string name="help_invertedV_heading">A note on the inverted V</string>
-    <string name="help_invertedV_body">VOACAP has no inverted V. HFPredict works one out as a dipole at {percent}% of the apex height, so a 10 m apex is modelled as a dipole 8 m up.\n\nThis is an approximation, not a measurement. A V with steep legs behaves lower than this, a shallow one higher. Choose the dipole if your wire is level.</string>
+    <string name="help_invertedV_body" formatted="false">VOACAP has no inverted V. HFPredict works one out as a dipole at {percent}% of the apex height, so a 10 m apex is modelled as a dipole 8 m up.\n\nThis is an approximation, not a measurement. A V with steep legs behaves lower than this, a shallow one higher. Choose the dipole if your wire is level.</string>
     <string name="help_privacy_heading">Privacy</string>
     <string name="help_privacy_body">The forecast is worked out on this device. Your station, antenna and path are never sent anywhere.\n\nWith the network on, three services see your IP address: NOAA for solar readings, GIRO for ionosonde measurements, and Open-Meteo when a place search finds too little in the built-in list (it also sees what you typed). Grid squares and coordinates are worked out on the device. Turn the network off in Preferences and nothing leaves at all.</string>
     <string name="about_title">About HFPredict</string>

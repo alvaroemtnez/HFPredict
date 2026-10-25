@@ -56,8 +56,8 @@
     <string name="window_explainNoFloor">{ceiling} より上では、信号は電離層を突き抜けて宇宙へ出ます。これが MUF です。この時刻は下限を決められるほど信頼できる周波数がありませんでした。</string>
     <string name="grid_readoutNow">現在 · {hour} · {band}</string>
     <string name="grid_readoutAt">{hour} の {band}</string>
-    <string name="grid_unitChance">交信できる可能性、%</string>
-    <string name="grid_unitDirections">届く方向、%</string>
+    <string name="grid_unitChance" formatted="false">交信できる可能性、%</string>
+    <string name="grid_unitDirections" formatted="false">届く方向、%</string>
     <string name="grid_showAsTable">表で表示</string>
     <string name="grid_showAsGrid">グリッドで表示</string>
     <string name="grid_bandColumn">バンド</string>
@@ -155,7 +155,7 @@
     <string name="station_apexHeight">頂点の高さ</string>
     <string name="station_heightRange">{min} から {max} まで。</string>
     <string name="station_heightNote">高さが答えのほとんどを決めます。20 m バンドでは、1 波長の高さのダイポールは 4 分の 1 波長のものより長距離で約 9 dB 有利です。</string>
-    <string name="station_invertedVNote">頂点の {percent}% の高さ {height} のダイポールとして計算します。理由はヘルプにあります。</string>
+    <string name="station_invertedVNote" formatted="false">頂点の {percent}% の高さ {height} のダイポールとして計算します。理由はヘルプにあります。</string>
     <string name="station_isotropicNote">全方向に同じ信号。実在のアンテナではありませんが、あなたのアンテナについて何も仮定しません。</string>
     <string name="station_verticalNote">バーチカルは全方向に同じなので、向ける必要はありません。</string>
     <string name="station_gain">ダイポール比の利得</string>
@@ -237,7 +237,7 @@
     <string name="preferences_forgotten">保存した地図を削除しました。</string>
     <string name="help_title">予報の作り方</string>
     <string name="help_engine_heading">数値の出どころ</string>
-    <string name="help_engine_body">すべての予報は、数十年使われてきた伝搬モデル VOACAP の物理を使ってこの端末で計算します。あなたの局や経路の情報は端末の外に出ません。\n\nモデルは二つあり、中の物理は同じです:\n\nVOACAP は米国電気通信科学研究所が作成したもので、欠陥も含めて忠実に再現しています。月の典型的な一日を表すため、今週火曜の午後 4 時は木曜の午後 4 時と同じに見えます。\n\nTruecast (既定) は、その日の電離層の状態から出発します。2015 年からの実測値と毎日比べると、77% の日で VOACAP より正確でした。</string>
+    <string name="help_engine_body" formatted="false">すべての予報は、数十年使われてきた伝搬モデル VOACAP の物理を使ってこの端末で計算します。あなたの局や経路の情報は端末の外に出ません。\n\nモデルは二つあり、中の物理は同じです:\n\nVOACAP は米国電気通信科学研究所が作成したもので、欠陥も含めて忠実に再現しています。月の典型的な一日を表すため、今週火曜の午後 4 時は木曜の午後 4 時と同じに見えます。\n\nTruecast (既定) は、その日の電離層の状態から出発します。2015 年からの実測値と毎日比べると、77% の日で VOACAP より正確でした。</string>
     <string name="help_truecast_heading">Truecast</string>
     <string name="help_truecast_body">Truecast は、イオノゾンデから求めた日ごとの太陽黒点数、磁気嵐の表、信号が反射する高さのより良い推定値に VOACAP の物理を適用します。\n\n太陽周期一周分のイオノゾンデの観測値で作成と検証を行い、見たことのない 8 か月で採点しました。VOACAP の月ごとの偏りを取り除き、そのうち 7 か月で実測値により近くなりました。\n\nネットワークがないときは季節の内蔵補正を使い、それでも月平均より優れています。設定でいつでも VOACAP に切り替えられます。</string>
     <string name="help_ssn_heading">太陽黒点数</string>
@@ -249,7 +249,7 @@
     <string name="help_nvis_heading">近垂直入射 (NVIS)</string>
     <string name="help_nvis_body">数百キロメートル以内では、低いバンドは別の仕組みで働きます。信号はほぼ真上に上がり、出発点の近くに戻り、スキップゾーンがありません。これを NVIS と呼びます。\n\nHFPredict は距離から推測しません。エンジンが信号の打ち上げ角を計算し、その角度が {degrees} 度以上でバンドが使えるとき、経路を近垂直とみなします。地図ではその範囲を点で示します。</string>
     <string name="help_invertedV_heading">逆 V について</string>
-    <string name="help_invertedV_body">VOACAP には逆 V がありません。HFPredict は頂点の高さの {percent}% にあるダイポールとして計算するので、頂点 10 m は 8 m のダイポールとしてモデル化されます。\n\nこれは近似で、測定値ではありません。脚の角度が急な V はより低く、浅い V はより高くふるまいます。線が水平ならダイポールを選んでください。</string>
+    <string name="help_invertedV_body" formatted="false">VOACAP には逆 V がありません。HFPredict は頂点の高さの {percent}% にあるダイポールとして計算するので、頂点 10 m は 8 m のダイポールとしてモデル化されます。\n\nこれは近似で、測定値ではありません。脚の角度が急な V はより低く、浅い V はより高くふるまいます。線が水平ならダイポールを選んでください。</string>
     <string name="help_privacy_heading">プライバシー</string>
     <string name="help_privacy_body">予報はこの端末で計算します。あなたの局、アンテナ、経路はどこにも送信しません。\n\nネットワークがオンのとき、三つのサービスがあなたの IP アドレスを見ます。太陽観測値の NOAA、イオノゾンデ測定の GIRO、そして内蔵リストで地名がほとんど見つからないときの Open-Meteo (入力した文字も見ます) です。グリッドロケーターと座標は端末で計算します。設定でネットワークをオフにすれば、何も外に出ません。</string>
     <string name="about_title">HFPredict について</string>

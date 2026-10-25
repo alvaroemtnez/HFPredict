@@ -56,8 +56,8 @@
     <string name="window_explainNoFloor">Oberhalb von {ceiling} durchdringt das Signal die Ionosphäre ins All, das ist die MUF. Keine Frequenz war zu dieser Stunde zuverlässig genug für eine Untergrenze.</string>
     <string name="grid_readoutNow">Jetzt · {hour} · {band}</string>
     <string name="grid_readoutAt">{band} um {hour}</string>
-    <string name="grid_unitChance">Verbindungswahrscheinlichkeit, %</string>
-    <string name="grid_unitDirections">Erreichbare Richtungen, %</string>
+    <string name="grid_unitChance" formatted="false">Verbindungswahrscheinlichkeit, %</string>
+    <string name="grid_unitDirections" formatted="false">Erreichbare Richtungen, %</string>
     <string name="grid_showAsTable">Als Tabelle zeigen</string>
     <string name="grid_showAsGrid">Als Raster zeigen</string>
     <string name="grid_bandColumn">Band</string>
@@ -155,7 +155,7 @@
     <string name="station_apexHeight">Höhe der Spitze</string>
     <string name="station_heightRange">Alles von {min} bis {max}.</string>
     <string name="station_heightNote">Die Höhe entscheidet das meiste. Auf 20 Metern ist ein Dipol in einer Wellenlänge Höhe auf langen Strecken etwa 9 dB besser als einer in einer Viertelwellenlänge.</string>
-    <string name="station_invertedVNote">Berechnet als Dipol in {height}, {percent} % der Spitzenhöhe. Die Hilfe erklärt, warum.</string>
+    <string name="station_invertedVNote" formatted="false">Berechnet als Dipol in {height}, {percent} % der Spitzenhöhe. Die Hilfe erklärt, warum.</string>
     <string name="station_isotropicNote">Ein gleiches Signal in alle Richtungen. Keine echte Antenne, aber sie setzt nichts über Ihre voraus.</string>
     <string name="station_verticalNote">Eine Vertikalantenne strahlt in alle Richtungen gleich, es gibt also nichts auszurichten.</string>
     <string name="station_gain">Gewinn gegenüber einem Dipol</string>
@@ -237,7 +237,7 @@
     <string name="preferences_forgotten">Gespeicherte Karten gelöscht.</string>
     <string name="help_title">Wie die Vorhersage entsteht</string>
     <string name="help_engine_heading">Woher die Zahlen kommen</string>
-    <string name="help_engine_body">Jede Vorhersage wird auf diesem Gerät mit der Physik von VOACAP berechnet, einem seit Jahrzehnten genutzten Ausbreitungsmodell. Nichts über Ihre Station oder Ihre Strecke verlässt das Gerät.\n\nZwei Modelle stehen zur Wahl, mit derselben Physik darunter:\n\nVOACAP, geschrieben vom US-Institut für Telekommunikationswissenschaften und hier originalgetreu nachgebildet, Fehler eingeschlossen. Es beschreibt einen typischen Tag des Monats, 16 Uhr an diesem Dienstag sieht also aus wie 16 Uhr an diesem Donnerstag.\n\nTruecast, die Voreinstellung, geht davon aus, was die Ionosphäre an diesem Tag tut. Tag für Tag mit echten Messungen seit 2015 verglichen, lag es an 77 % der Tage näher als VOACAP.</string>
+    <string name="help_engine_body" formatted="false">Jede Vorhersage wird auf diesem Gerät mit der Physik von VOACAP berechnet, einem seit Jahrzehnten genutzten Ausbreitungsmodell. Nichts über Ihre Station oder Ihre Strecke verlässt das Gerät.\n\nZwei Modelle stehen zur Wahl, mit derselben Physik darunter:\n\nVOACAP, geschrieben vom US-Institut für Telekommunikationswissenschaften und hier originalgetreu nachgebildet, Fehler eingeschlossen. Es beschreibt einen typischen Tag des Monats, 16 Uhr an diesem Dienstag sieht also aus wie 16 Uhr an diesem Donnerstag.\n\nTruecast, die Voreinstellung, geht davon aus, was die Ionosphäre an diesem Tag tut. Tag für Tag mit echten Messungen seit 2015 verglichen, lag es an 77 % der Tage näher als VOACAP.</string>
     <string name="help_truecast_heading">Truecast</string>
     <string name="help_truecast_body">Truecast wendet die Physik von VOACAP auf eine tägliche Sonnenfleckenzahl aus Ionosondendaten an, dazu eine Tabelle magnetischer Stürme und eine bessere Schätzung der Höhe, an der das Signal reflektiert wird.\n\nEs wurde mit Ionosondendaten eines ganzen Sonnenzyklus gebaut und geprüft und dann an acht Monaten bewertet, die es nie gesehen hatte. Es beseitigte die monatliche Verzerrung von VOACAP und lag in sieben davon näher an den Messwerten.\n\nOhne Netzwerk verwendet es eine eingebaute Korrektur für die Jahreszeit, die das Monatsmittel immer noch schlägt. Sie können jederzeit in den Einstellungen zu VOACAP wechseln.</string>
     <string name="help_ssn_heading">Die Sonnenfleckenzahl</string>
@@ -249,7 +249,7 @@
     <string name="help_nvis_heading">Steilstrahlung (NVIS)</string>
     <string name="help_nvis_body">Unter einigen hundert Kilometern funktionieren die unteren Bänder anders. Das Signal geht steil nach oben, kommt nahe dem Ausgangspunkt wieder herunter, und es gibt keine tote Zone. Funker nennen das NVIS.\n\nHFPredict schätzt das nicht aus der Entfernung. Der Rechenkern berechnet den Abstrahlwinkel, und eine Strecke gilt als Steilstrahlung, wenn dieser {degrees} Grad oder mehr beträgt und das Band funktioniert. Die Karte markiert diesen Bereich mit Punkten.</string>
     <string name="help_invertedV_heading">Ein Hinweis zur Inverted-V</string>
-    <string name="help_invertedV_body">VOACAP kennt keine Inverted-V. HFPredict berechnet sie als Dipol in {percent} % der Spitzenhöhe; eine Spitze in 10 m wird also als Dipol in 8 m modelliert.\n\nDas ist eine Näherung, keine Messung. Eine V mit steilen Schenkeln verhält sich niedriger, eine flache höher. Wählen Sie den Dipol, wenn Ihr Draht waagerecht ist.</string>
+    <string name="help_invertedV_body" formatted="false">VOACAP kennt keine Inverted-V. HFPredict berechnet sie als Dipol in {percent} % der Spitzenhöhe; eine Spitze in 10 m wird also als Dipol in 8 m modelliert.\n\nDas ist eine Näherung, keine Messung. Eine V mit steilen Schenkeln verhält sich niedriger, eine flache höher. Wählen Sie den Dipol, wenn Ihr Draht waagerecht ist.</string>
     <string name="help_privacy_heading">Datenschutz</string>
     <string name="help_privacy_body">Die Vorhersage wird auf diesem Gerät berechnet. Ihre Station, Antenne und Strecke werden nirgendwohin gesendet.\n\nMit eingeschaltetem Netzwerk sehen drei Dienste Ihre IP-Adresse: NOAA für Sonnenmesswerte, GIRO für Ionosondenmessungen und Open-Meteo, wenn die eingebaute Liste bei einer Ortssuche zu wenig findet (es sieht auch, was Sie eingegeben haben). Locatoren und Koordinaten werden auf dem Gerät berechnet. Schalten Sie das Netzwerk in den Einstellungen aus, und nichts verlässt das Gerät.</string>
     <string name="about_title">Info zu HFPredict</string>

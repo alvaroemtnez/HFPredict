@@ -66,6 +66,9 @@ def main():
             if k not in english:
                 continue
             attrs = ' translatable="false"' if k == "app.name" else ""
+            # Placeholders are {named}; a literal % is never a printf format.
+            if "%" in v:
+                attrs += ' formatted="false"'
             if k == "app.name" and lang != "en":
                 continue
             lines.append(f'    <string name="{name(k)}"{attrs}>{escape(v)}</string>')

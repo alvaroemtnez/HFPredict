@@ -56,8 +56,8 @@
     <string name="window_explainNoFloor">Por encima de {ceiling} la señal atraviesa la ionosfera hacia el espacio: es la MUF. Ninguna frecuencia es lo bastante fiable a esta hora para marcar un suelo.</string>
     <string name="grid_readoutNow">Ahora · {hour} · {band}</string>
     <string name="grid_readoutAt">{band} a las {hour}</string>
-    <string name="grid_unitChance">Probabilidad de contacto, %</string>
-    <string name="grid_unitDirections">Direcciones alcanzables, %</string>
+    <string name="grid_unitChance" formatted="false">Probabilidad de contacto, %</string>
+    <string name="grid_unitDirections" formatted="false">Direcciones alcanzables, %</string>
     <string name="grid_showAsTable">Ver como tabla</string>
     <string name="grid_showAsGrid">Ver como cuadrícula</string>
     <string name="grid_bandColumn">Banda</string>
@@ -155,7 +155,7 @@
     <string name="station_apexHeight">Altura del vértice</string>
     <string name="station_heightRange">Cualquier valor de {min} a {max}.</string>
     <string name="station_heightNote">La altura decide casi toda la respuesta. En 20 metros, un dipolo a una longitud de onda supera en unos 9 dB a uno a un cuarto de onda en un trayecto largo.</string>
-    <string name="station_invertedVNote">Se calcula como un dipolo a {height}, el {percent} % del vértice. La ayuda explica por qué.</string>
+    <string name="station_invertedVNote" formatted="false">Se calcula como un dipolo a {height}, el {percent} % del vértice. La ayuda explica por qué.</string>
     <string name="station_isotropicNote">La misma señal en todas las direcciones. No es una antena real, pero no supone nada sobre la tuya.</string>
     <string name="station_verticalNote">Una vertical es igual en todas las direcciones, así que no hay nada que orientar.</string>
     <string name="station_gain">Ganancia sobre un dipolo</string>
@@ -237,7 +237,7 @@
     <string name="preferences_forgotten">Mapas guardados borrados.</string>
     <string name="help_title">Cómo se hace la previsión</string>
     <string name="help_engine_heading">De dónde salen los números</string>
-    <string name="help_engine_body">Cada previsión se calcula en este dispositivo con la física de VOACAP, un modelo de propagación que se usa desde hace décadas. Nada sobre tu estación ni tu trayecto sale del dispositivo.\n\nHay dos modelos, con la misma física debajo:\n\nVOACAP, escrito por el Instituto de Ciencias de Telecomunicación de EE. UU. y reproducido fielmente aquí, defectos incluidos. Describe un día típico del mes, así que las 4 de la tarde de este martes son iguales que las de este jueves.\n\nTruecast, el modelo por defecto, parte de lo que hace la ionosfera ese día. Comparado día a día con medidas reales desde 2015, acertó más que VOACAP el 77 % de los días.</string>
+    <string name="help_engine_body" formatted="false">Cada previsión se calcula en este dispositivo con la física de VOACAP, un modelo de propagación que se usa desde hace décadas. Nada sobre tu estación ni tu trayecto sale del dispositivo.\n\nHay dos modelos, con la misma física debajo:\n\nVOACAP, escrito por el Instituto de Ciencias de Telecomunicación de EE. UU. y reproducido fielmente aquí, defectos incluidos. Describe un día típico del mes, así que las 4 de la tarde de este martes son iguales que las de este jueves.\n\nTruecast, el modelo por defecto, parte de lo que hace la ionosfera ese día. Comparado día a día con medidas reales desde 2015, acertó más que VOACAP el 77 % de los días.</string>
     <string name="help_truecast_heading">Truecast</string>
     <string name="help_truecast_body">Truecast aplica la física de VOACAP a un número de manchas diario calculado a partir de ionosondas, una tabla de tormentas magnéticas y una mejor estimación de la altura a la que rebota la señal.\n\nSe construyó y comprobó con lecturas de ionosondas de un ciclo solar completo y luego se puntuó en ocho meses que no había visto. Eliminó el sesgo de mes a mes de VOACAP y se acercó más a las medidas en siete de ellos.\n\nSin red usa una corrección incorporada para la época del año, que sigue mejorando el promedio mensual. Puedes cambiar a VOACAP en Preferencias cuando quieras.</string>
     <string name="help_ssn_heading">El número de manchas solares</string>
@@ -249,7 +249,7 @@
     <string name="help_nvis_heading">Incidencia casi vertical</string>
     <string name="help_nvis_body">Por debajo de unos cientos de kilómetros, las bandas bajas funcionan de otra forma. La señal sube casi en vertical, baja cerca de donde salió y no hay zona de salto. Los operadores lo llaman NVIS.\n\nHFPredict no lo adivina por la distancia. El motor calcula el ángulo de salida de la señal, y un trayecto cuenta como casi vertical cuando ese ángulo es de {degrees} grados o más y la banda funciona. El mapa marca esa zona con puntos.</string>
     <string name="help_invertedV_heading">Una nota sobre la V invertida</string>
-    <string name="help_invertedV_body">VOACAP no tiene V invertida. HFPredict la calcula como un dipolo al {percent} % de la altura del vértice: un vértice a 10 m se modela como un dipolo a 8 m.\n\nEs una aproximación, no una medida. Una V con las ramas muy caídas se comporta más baja, y una abierta, más alta. Elige el dipolo si tu hilo está horizontal.</string>
+    <string name="help_invertedV_body" formatted="false">VOACAP no tiene V invertida. HFPredict la calcula como un dipolo al {percent} % de la altura del vértice: un vértice a 10 m se modela como un dipolo a 8 m.\n\nEs una aproximación, no una medida. Una V con las ramas muy caídas se comporta más baja, y una abierta, más alta. Elige el dipolo si tu hilo está horizontal.</string>
     <string name="help_privacy_heading">Privacidad</string>
     <string name="help_privacy_body">La previsión se calcula en este dispositivo. Tu estación, tu antena y tu trayecto no se envían a ninguna parte.\n\nCon la red activada, tres servicios ven tu dirección IP: NOAA para las lecturas solares, GIRO para las medidas de ionosondas y Open-Meteo cuando la lista incluida encuentra poco al buscar un lugar (también ve lo que escribiste). Las cuadrículas y coordenadas se calculan en el dispositivo. Desactiva la red en Preferencias y no sale nada.</string>
     <string name="about_title">Acerca de HFPredict</string>
