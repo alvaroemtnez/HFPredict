@@ -16,8 +16,6 @@ from pathlib import Path
 
 ICONS = [
     ("ic_add", "add", False),
-    ("ic_arrow_back", "arrow_back", True),
-    ("ic_check", "check", False),
     ("ic_close", "close", False),
     ("ic_delete", "delete", False),
     ("ic_expand_more", "expand_more", False),
@@ -26,7 +24,6 @@ ICONS = [
     ("ic_fit_screen", "fit_screen", False),
     ("ic_globe", "public", False),
     ("ic_help", "help", False),
-    ("ic_history", "history", False),
     ("ic_info", "info", False),
     ("ic_more_vert", "more_vert", False),
     ("ic_my_location", "my_location", False),
@@ -36,12 +33,9 @@ ICONS = [
     ("ic_search", "search", False),
     ("ic_settings", "settings", False),
     ("ic_swap_vert", "swap_vert", False),
-    ("ic_table", "table_rows", False),
-    ("ic_grid", "grid_on", False),
     ("ic_bolt", "bolt", False),
     ("ic_cell_tower", "cell_tower", False),
     ("ic_settings_input_antenna", "settings_input_antenna", False),
-    ("ic_sunny", "sunny", False),
     ("ic_travel_explore", "travel_explore", False),
 ]
 

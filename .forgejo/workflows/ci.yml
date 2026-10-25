@@ -1,0 +1,56 @@
+# Checks every push. Forgejo Actions, on a runner with the `docker` label:
+# each job brings its own image, so nothing depends on the runner host.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  rust:
+    runs-on: docker
+    container:
+      image: docker.io/library/debian:trixie
+    steps:
+      - name: System packages
+        run: |
+          apt-get update -q
+          apt-get install -y -q --no-install-recommends git curl ca-certificates nodejs build-essential pkg-config \
+            libgtk-4-dev libadwaita-1-dev python3 appstream desktop-file-utils
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - uses: https://code.forgejo.org/actions/cache@v4
+        with:
+          path: |
+            .tools
+            target
+          key: rust-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: rust-
+      - run: tools/rust.sh cargo fmt --all --check
+      - run: tools/rust.sh cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: tools/rust.sh cargo test --workspace --locked
+      - name: String tables agree
+        run: python3 tools/gen-strings.py --check
+      - name: Desktop metadata
+        run: |
+          desktop-file-validate gnome/data/io.alvaroedo.HFPredict.desktop
+          appstreamcli validate --no-net gnome/data/io.alvaroedo.HFPredict.metainfo.xml
+
+  android:
+    runs-on: docker
+    container:
+      image: docker.io/library/debian:trixie
+    steps:
+      - name: System packages
+        run: |
+          apt-get update -q
+          apt-get install -y -q --no-install-recommends git curl ca-certificates nodejs unzip build-essential python3
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - uses: https://code.forgejo.org/actions/cache@v4
+        with:
+          path: |
+            .tools
+            android/.tools
+          key: android-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'android/gradle/libs.versions.toml', 'android/app/build.gradle.kts') }}
+          restore-keys: android-
+      # Unit tests and lint on the x86_64 library only, to keep CI quick.
+      - run: HFP_ABIS=x86_64 android/build.sh test

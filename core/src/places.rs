@@ -217,9 +217,10 @@ pub fn parse_query(query: &str) -> Parsed {
     let text = query.trim();
     if let Some(p) = geo::grid_to_lat_lon(text) {
         let grid = text.to_string();
+        // The locator is the name; the coordinates say where it is.
         return Parsed::Grid(Place {
             name: format_grid(&grid),
-            detail: String::new(),
+            detail: format_lat_lon(p),
             lat: p.lat,
             lon: p.lon,
             grid: geo::lat_lon_to_grid(p.lat, p.lon),

@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -72,7 +73,8 @@ private fun <T> Choice(options: List<Pair<T, String>>, selected: T, hint: (T) ->
 
 @Composable
 fun PreferencesScreen(state: UiState, vm: AppViewModel, compact: Boolean, onDismiss: () -> Unit) {
-    val ctx = LocalContext.current
+    val ctx = LocalResources.current
+    val context = LocalContext.current
     val s = state.saved.settings
     var stored by remember { mutableLongStateOf(vm.core.storedMapsBytes().toLong()) }
     FullScreenDialog(tr(R.string.preferences_title), onDismiss, compact) { mod ->
@@ -90,11 +92,11 @@ fun PreferencesScreen(state: UiState, vm: AppViewModel, compact: Boolean, onDism
             ) { vm.setSettings(s.copy(theme = it)) }
 
             Group(tr(R.string.preferences_language))
-            val current = Languages.current(ctx)
+            val current = Languages.current(context)
             Choice(
                 listOf(null to tr(R.string.preferences_language_system)) + Languages.ALL.map { it.first to it.second },
                 current,
-            ) { Languages.set(ctx, it); vm.setSettings(s.copy(language = it)) }
+            ) { Languages.set(context, it); vm.setSettings(s.copy(language = it)) }
 
             Group(tr(R.string.preferences_units))
             Choice(

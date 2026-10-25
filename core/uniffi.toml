@@ -1,3 +1,6 @@
 [bindings.kotlin]
 package_name = "io.alvaroedo.hfpredict.core"
 cdylib_name = "hfpredict_ffi"
+# Android-specific code: an API-level check around java.lang.ref.Cleaner.
+android = true
+android_cleaner = true

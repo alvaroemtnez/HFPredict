@@ -41,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -62,7 +63,7 @@ import kotlinx.coroutines.withContext
  *  online after a pause when those find little. */
 @Composable
 private fun PlaceSearch(vm: AppViewModel, network: Boolean, query: String, onPick: (Place) -> Unit) {
-    val language = LocalContext.current.resources.configuration.locales[0].language
+    val language = LocalConfiguration.current.locales[0].language
     var results by remember { mutableStateOf<List<Place>>(emptyList()) }
     var status by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(query) {

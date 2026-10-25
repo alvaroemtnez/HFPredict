@@ -1,6 +1,6 @@
 package io.alvaroedo.hfpredict
 
-import android.content.Context
+import android.content.res.Resources
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
@@ -25,7 +25,7 @@ fun fill(text: String, args: Array<out Pair<String, Any>>): String =
 @Composable
 fun tr(@StringRes id: Int, vararg args: Pair<String, Any>): String = fill(stringResource(id), args)
 
-fun Context.tr(@StringRes id: Int, vararg args: Pair<String, Any>): String = fill(getString(id), args)
+fun Resources.tr(@StringRes id: Int, vararg args: Pair<String, Any>): String = fill(getString(id), args)
 
 @StringRes
 fun Mode.label(): Int = when (this) {
@@ -85,7 +85,7 @@ class Format(private val locale: Locale, val imperial: Boolean) {
     fun degrees(d: Double): String = int(((d % 360) + 360) % 360)
 
     /** Rounded to what a reader can hold: fives below 100, tens below 1,000. */
-    fun distance(ctx: Context, km: Double): String {
+    fun distance(ctx: Resources, km: Double): String {
         val v = if (imperial) km / 1.609344 else km
         val r = when {
             v < 100 -> (v / 5).roundToInt() * 5.0
@@ -95,16 +95,16 @@ class Format(private val locale: Locale, val imperial: Boolean) {
         return ctx.tr(if (imperial) R.string.units_miles else R.string.units_kilometres, "value" to int(r))
     }
 
-    fun height(ctx: Context, m: Double): String =
+    fun height(ctx: Resources, m: Double): String =
         if (imperial) ctx.tr(R.string.units_feet, "value" to int(m / 0.3048))
         else ctx.tr(R.string.units_metres, "value" to int(m))
 
-    fun watts(ctx: Context, w: Double): String {
+    fun watts(ctx: Resources, w: Double): String {
         val v = if (w < 1 || (w < 10 && abs(w - w.roundToInt()) > 1e-9)) dec(w, 1) else int(w)
         return ctx.tr(R.string.units_watts, "value" to v)
     }
 
-    fun mhz(ctx: Context, v: Double): String = ctx.tr(R.string.units_megahertz, "value" to dec(v, 1))
+    fun mhz(ctx: Resources, v: Double): String = ctx.tr(R.string.units_megahertz, "value" to dec(v, 1))
 }
 
 @Composable

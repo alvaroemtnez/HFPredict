@@ -114,11 +114,12 @@ def android_vector(monochrome=False):
     by_level = {0: [], 1: [], 2: []}
     for x, y, level in cells():
         by_level[level].append(rounded_rect_path(t(x), t(y), CELL * k, CELL * k, 1.6 * k))
+    # One short path per cell: lint (rightly) objects to long vector paths.
     for level in (0, 1, 2):
         if monochrome and level == 0:
             continue
-        colour = "#FFFFFFFF" if monochrome else RAMP[level]
-        paths.append(("".join(by_level[level]), colour if not monochrome else ("#99FFFFFF" if level == 1 else "#FFFFFFFF")))
+        colour = RAMP[level] if not monochrome else ("#99FFFFFF" if level == 1 else "#FFFFFFFF")
+        paths.extend((d, colour) for d in by_level[level])
     sx, sy = STATION_XY
     if not monochrome:
         r = 6.2 * k

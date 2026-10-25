@@ -4,6 +4,7 @@ import android.app.Application
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.createBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.alvaroedo.hfpredict.core.Band
@@ -241,7 +242,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     MapOptions(showNight = true, showNvis = true, showPath = true),
                 )
                 val size = img.size.toInt()
-                val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+                val bitmap = createBitmap(size, size, Bitmap.Config.ARGB_8888)
                 // Premultiplied RGBA bytes: exactly ARGB_8888's memory layout.
                 bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(img.pixels))
                 img.detail to bitmap.asImageBitmap()

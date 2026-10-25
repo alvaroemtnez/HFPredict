@@ -41,7 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -129,7 +129,7 @@ fun MainScreen(state: UiState, vm: AppViewModel, fmt: Format, open: (Overlay) ->
 
 @Composable
 private fun PathTitle(state: UiState, fmt: Format, onClick: () -> Unit) {
-    val ctx = LocalContext.current
+    val ctx = LocalResources.current
     val from = state.saved.from?.name ?: "Greenwich"
     val to = state.saved.to
     val forecast = state.forecast?.takeIf { it.to != null }
@@ -224,7 +224,7 @@ private fun Menu(open: (Overlay) -> Unit, refresh: () -> Unit) {
 /** The station as chips; each opens the editor. */
 @Composable
 private fun StationStrip(state: UiState, fmt: Format, onClick: () -> Unit) {
-    val ctx = LocalContext.current
+    val ctx = LocalResources.current
     val saved = state.saved
     val st = saved.stations.firstOrNull { it.id == saved.activeStation } ?: saved.stations.first()
     val chips = buildList {

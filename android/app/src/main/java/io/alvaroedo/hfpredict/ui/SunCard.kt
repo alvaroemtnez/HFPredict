@@ -17,7 +17,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,7 +31,7 @@ import io.alvaroedo.hfpredict.tr
 /** The sun today: live readings and the nearest ionosonde, collapsible. */
 @Composable
 fun SunCard(state: UiState, fmt: Format, modifier: Modifier = Modifier) {
-    val ctx = LocalContext.current
+    val ctx = LocalResources.current
     var open by rememberSaveable { mutableStateOf(false) }
     val sw = state.saved.spaceWeather
     val fresh = sw != null && state.now - sw.observedAt <= 24 * 3600

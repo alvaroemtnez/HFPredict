@@ -233,7 +233,7 @@ build_release() {
         [ -n "${HFPREDICT_KEY_PASS:-}" ] && args+=(--key-pass env:HFPREDICT_KEY_PASS)
         "$tools/zipalign" -f -p 4 "$unsigned" "$out.aligned"
         "$tools/apksigner" "${args[@]}" "$out.aligned"
-        rm -f "$out.aligned" "$out.aligned.idsig"
+        rm -f "$out.aligned" "$out.aligned.idsig" "$out.idsig"
         "$tools/apksigner" verify "$out" >/dev/null
     done
     [ -z "${HFPREDICT_KEYSTORE:-}" ] && info "HFPREDICT_KEYSTORE not set: APKs left unsigned in $DIST_DIR"

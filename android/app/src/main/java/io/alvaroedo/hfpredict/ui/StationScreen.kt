@@ -40,7 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -82,7 +82,7 @@ private const val FOOT = 0.3048
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun StationScreen(state: UiState, vm: AppViewModel, fmt: Format, compact: Boolean, onDismiss: () -> Unit) {
-    val ctx = LocalContext.current
+    val ctx = LocalResources.current
     val saved = state.saved
     val active = saved.stations.firstOrNull { it.id == saved.activeStation } ?: saved.stations.first()
     var original by remember(active.id) { mutableStateOf(active) }

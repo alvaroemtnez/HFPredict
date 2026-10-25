@@ -71,6 +71,12 @@ android {
         generateLocaleConfig = true
     }
 
+    // Every language in every build: the language can be changed in the
+    // app, with no Play Store to download it from.
+    bundle {
+        language { enableSplit = false }
+    }
+
     // No Google-only signing block in the APK (F-Droid and reproducibility).
     dependenciesInfo {
         includeInApk = false

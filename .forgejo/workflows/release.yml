@@ -1,0 +1,110 @@
+# Builds and publishes a release when a v* tag is pushed: signed APKs, the
+# Flatpak bundle, the AppImage, SHA256SUMS (and its signature), with the
+# CHANGELOG.md entry as the notes, on Forgejo and on the GitHub mirror.
+# Secrets and runner set-up: docs/releasing.md.
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  android:
+    runs-on: docker
+    container:
+      image: docker.io/library/debian:trixie
+    steps:
+      - name: System packages
+        run: |
+          apt-get update -q
+          apt-get install -y -q --no-install-recommends git curl ca-certificates nodejs unzip build-essential python3
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - name: Tag matches the version
+        run: test "v$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)" = "${GITHUB_REF_NAME}"
+      - name: Release APKs
+        env:
+          HFPREDICT_KEYSTORE_B64: ${{ secrets.HFPREDICT_KEYSTORE_B64 }}
+          HFPREDICT_KEYSTORE_PASS: ${{ secrets.HFPREDICT_KEYSTORE_PASS }}
+          HFPREDICT_KEY_ALIAS: ${{ secrets.HFPREDICT_KEY_ALIAS }}
+          HFPREDICT_KEY_PASS: ${{ secrets.HFPREDICT_KEY_PASS }}
+        run: |
+          if [ -n "$HFPREDICT_KEYSTORE_B64" ]; then
+            echo "$HFPREDICT_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            export HFPREDICT_KEYSTORE="$RUNNER_TEMP/release.keystore"
+          fi
+          android/build.sh release
+          rm -f "$RUNNER_TEMP/release.keystore"
+          mkdir -p out && cp android/dist/HFPredict-*.apk out/
+      - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: android
+          path: out/
+
+  flatpak:
+    runs-on: docker
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      # flatpak-builder sandboxes each step with bubblewrap.
+      options: --privileged
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - run: FLATPAK_IN_CONTAINER=1 packaging/flatpak/build.sh
+      - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: flatpak
+          path: dist/*.flatpak
+
+  appimage:
+    runs-on: docker
+    container:
+      image: docker.io/library/debian:trixie
+    steps:
+      - name: System packages
+        run: |
+          apt-get update -q
+          apt-get install -y -q --no-install-recommends git curl ca-certificates nodejs build-essential pkg-config \
+            libgtk-4-dev libadwaita-1-dev librsvg2-common adwaita-icon-theme file python3 appstream
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - run: IN_CONTAINER=1 CARGO_TARGET_DIR=target packaging/appimage/build.sh
+      - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: appimage
+          path: dist/*.AppImage
+
+  publish:
+    needs: [android, flatpak, appimage]
+    runs-on: docker
+    container:
+      image: docker.io/library/debian:trixie
+    steps:
+      - name: System packages
+        run: |
+          apt-get update -q
+          apt-get install -y -q --no-install-recommends git curl ca-certificates nodejs python3 gnupg
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - uses: https://code.forgejo.org/forgejo/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Checksums and signature
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name '*.apk' -o -name '*.flatpak' -o -name '*.AppImage' \) -exec cp {} release/ \;
+          (cd release && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+          if [ -n "$GPG_PRIVATE_KEY" ]; then
+            export GNUPGHOME="$(mktemp -d)"
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+            gpg --batch --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" \
+              --armor --detach-sign --output release/SHA256SUMS.asc release/SHA256SUMS
+            rm -rf "$GNUPGHOME"
+          fi
+      - name: Publish
+        env:
+          FORGEJO_URL: ${{ github.server_url }}
+          FORGEJO_REPO: ${{ github.repository }}
+          FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+          GITHUB_REPO: alvaroemtnez/HFPredict
+          GITHUB_TOKEN: ${{ secrets.MIRROR_GITHUB_TOKEN }}
+          TARGET_SHA: ${{ github.sha }}
+        run: tools/publish-release.sh "${GITHUB_REF_NAME}" release

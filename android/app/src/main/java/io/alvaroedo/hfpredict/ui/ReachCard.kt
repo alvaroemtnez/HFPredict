@@ -43,7 +43,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -71,7 +71,7 @@ import kotlin.math.roundToInt
 
 @Composable
 fun ReachCard(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier = Modifier) {
-    val ctx = LocalContext.current
+    val ctx = LocalResources.current
     val band = bandLabel(state.band)
     SectionCard(modifier) {
         // The headline: the chance to the destination, or the share of
@@ -207,7 +207,7 @@ private fun MapBox(state: UiState, vm: AppViewModel, fmt: Format) {
             CircularProgressIndicator(Modifier.align(Alignment.BottomEnd).padding(14.dp).size(22.dp), strokeWidth = 2.5.dp)
         }
         state.probe?.let { p ->
-            val ctx = LocalContext.current
+            val ctx = LocalResources.current
             val text = buildString {
                 append(p.grid).append(" · ").append(fmt.distance(ctx, p.distanceKm)).append(" · ").append(fmt.degrees(p.bearingDeg)).append("°")
                 p.quality?.let { append(" · ").append(ctx.getString(it.label())) }
