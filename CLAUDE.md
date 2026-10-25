@@ -1,6 +1,7 @@
 # HFPredict
 
-HF propagation forecasts for amateur radio, for Android and GNOME. A rewrite of
+HF propagation forecasts for amateur radio, for Android and Linux (a GNOME-style
+GTK app that runs on any desktop; user-facing text says Linux). A rewrite of
 HFcast (Jonathan McSweet) on his HFcast engine (Rust VOACAP + Truecast).
 App id `io.alvaroedo.HFPredict` everywhere. Owner: Álvaro Edo Martínez (licensed
 ham, Spain). GPL-3.0-or-later. Read `docs/architecture.md` first, then

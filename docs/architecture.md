@@ -18,6 +18,12 @@
 
 ## One core, two thin apps
 
+The desktop app lives in `gnome/` and is called the GNOME app throughout the
+code and these notes: GNOME's design (GTK 4, libadwaita, the HIG) is what it is
+built and judged against. It is not GNOME-only: the Flatpak and the AppImage
+carry their own GTK and libadwaita, so it runs on any Linux desktop, and what
+the user reads (README, store listings) says Linux.
+
 Everything that decides a number lives in `core/`: requests to the engine, the
 correction HFcast fitted against WSPR reports, the survey of directions, the
 coverage lattices, the patch arithmetic, place search, the online readings, the

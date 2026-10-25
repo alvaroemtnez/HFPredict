@@ -2,7 +2,7 @@
   <img src="gnome/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg" width="112" alt="">
   <h1>HFPredict</h1>
   <p><strong>Which amateur radio bands reach where, hour by hour, worked out on your own device.</strong><br>
-  For Android and for the GNOME desktop. No account, no tracking, no ads; works with no network at all.</p>
+  For Android and the Linux desktop. No account, no tracking, no ads; works with no network at all.</p>
 
   <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/alvaroemtnez/HFPredict"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="56" alt="Get it on Obtainium"></a>
   &nbsp;
@@ -42,7 +42,7 @@ Fortran. Both run on the device with no network; live readings, when allowed, tu
 forecast into a now-cast.
 
 Light, dark and **low-light** (dim red on black, for your night vision) themes follow the
-system's colours: Material You on Android, the accent colour on GNOME. Phones stay in
+system's colours: Material You on Android, the desktop's accent colour on Linux. Phones stay in
 portrait; tablets and desktop windows get a two-column layout when there is room. English,
 Spanish, Valencian, German, Japanese and Arabic.
 
@@ -53,7 +53,10 @@ Spanish, Valencian, German, Japanese and Arabic.
   (`arm64-v8a` fits nearly every phone; `universal` fits all). No Google services needed:
   GrapheneOS, LineageOS and other de-Googled systems are first-class.
 - **Linux**: the `.flatpak` bundle (`flatpak install --user HFPredict-*.flatpak`) or the
-  `.AppImage` (make it executable and run it) from the releases. Flathub is planned.
+  `.AppImage` (make it executable and run it) from the releases. Flathub is planned. Any
+  desktop works (GNOME, KDE Plasma, Xfce, Cinnamon, a tiling window manager…): the app is
+  built with GTK 4 and libadwaita, so it looks most at home on GNOME and carries its own
+  styling everywhere else.
 
 Every release carries a `SHA256SUMS` file, signed (`SHA256SUMS.asc`); the APKs are signed with
 the same key on every release. See [docs/verifying.md](docs/verifying.md).
