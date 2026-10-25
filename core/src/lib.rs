@@ -34,6 +34,7 @@ pub mod render;
 pub mod ssn;
 pub mod station;
 pub mod store;
+pub mod tiles;
 
 /// Every way a core call can fail (Kotlin: `CoreException`).
 #[derive(Debug, thiserror::Error)]

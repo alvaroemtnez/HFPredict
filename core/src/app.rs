@@ -24,6 +24,7 @@ use crate::quality::Quality;
 use crate::render::{self, Palette, Scene};
 use crate::station::Station;
 use crate::store::{SavedState, Settings, Store};
+use crate::tiles::{TILE_PX, Tile};
 
 /// Room allowed for maps on disk.
 pub const MAP_BUDGET_BYTES: u64 = 128 * 1024 * 1024;
@@ -80,6 +81,8 @@ pub struct MapOptions {
     pub show_path: bool,
     /// The probed point, whose cell is outlined.
     pub highlight: Option<Probe>,
+    /// The outline's colour, 0xAARRGGBB (`semaphore_color` of its chance).
+    pub highlight_color: u32,
 }
 
 type BandGrids = Vec<(Band, Grid)>;
@@ -91,6 +94,8 @@ struct Caches {
     fine_centres: Lru<Option<CentreField>>,
     fine: Lru<Grid>,
     patch: Lru<BandGrids>,
+    /// Whole-day path forecasts to probed points.
+    points: Lru<Forecast>,
 }
 
 #[cfg_attr(feature = "ffi", derive(uniffi::Object))]
@@ -123,6 +128,7 @@ impl Core {
                 fine_centres: Lru::new(12),
                 fine: Lru::new(36),
                 patch: Lru::new(8),
+                points: Lru::new(8),
             }),
             disk: DiskCache::new(cache_dir.join("maps"), MAP_BUDGET_BYTES),
             threads: crate::parallel::cores(),
@@ -339,6 +345,50 @@ impl Core {
         }
         (layers, detail)
     }
+    /// The map for `frame` (a whole view or one tile), with the layers the
+    /// screen's `view` calls for.
+    #[allow(clippy::too_many_arguments)]
+    fn render_view(
+        &self,
+        band: Band,
+        hour: u32,
+        now: i64,
+        view: MapView,
+        frame: MapView,
+        size: u32,
+        density: f32,
+        palette: Palette,
+        options: MapOptions,
+    ) -> MapImage {
+        let (ctx, from, to) = self.context(now);
+        let (layers, detail) = self.layers(&ctx, &from, band, hour, view);
+        let date = UtcDate::of(now);
+        let at = geo::days_from_civil(date.year, date.month, date.day) * 86_400
+            + i64::from(hour) * 3600
+            + 1800;
+        let scene = Scene {
+            centre: from.lat_lon(),
+            destination: if options.show_path {
+                to.map(|t| t.lat_lon())
+            } else {
+                None
+            },
+            unix_secs: at,
+            layers: layers.iter().map(|g| g.as_ref()).collect(),
+            show_night: options.show_night,
+            show_nvis: options.show_nvis,
+            highlight: options.highlight.map(|p| LatLon {
+                lat: p.lat,
+                lon: p.lon,
+            }),
+            highlight_color: options.highlight_color,
+        };
+        MapImage {
+            size,
+            pixels: render::render(&scene, frame, size, density, &palette, self.threads),
+            detail,
+        }
+    }
 }
 
 #[cfg_attr(feature = "ffi", uniffi::export)]
@@ -548,33 +598,35 @@ impl Core {
         palette: Palette,
         options: MapOptions,
     ) -> MapImage {
-        let (ctx, from, to) = self.context(now);
-        let (layers, detail) = self.layers(&ctx, &from, band, hour, view);
-        let date = UtcDate::of(now);
-        let at = geo::days_from_civil(date.year, date.month, date.day) * 86_400
-            + i64::from(hour) * 3600
-            + 1800;
-        let scene = Scene {
-            centre: from.lat_lon(),
-            destination: if options.show_path {
-                to.map(|t| t.lat_lon())
-            } else {
-                None
-            },
-            unix_secs: at,
-            layers: layers.iter().map(|g| g.as_ref()).collect(),
-            show_night: options.show_night,
-            show_nvis: options.show_nvis,
-            highlight: options.highlight.map(|p| LatLon {
-                lat: p.lat,
-                lon: p.lon,
-            }),
-        };
-        MapImage {
-            size,
-            pixels: render::render(&scene, view, size, density, &palette, self.threads),
-            detail,
-        }
+        self.render_view(band, hour, now, view, view, size, density, palette, options)
+    }
+
+    /// Draws one tile of the map (see `tiles`). `view` is the view on
+    /// screen, which decides the zoom patch drawn; the tile is drawn at
+    /// `TILE_PX` whatever the view.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_tile(
+        &self,
+        band: Band,
+        hour: u32,
+        now: i64,
+        view: MapView,
+        tile: Tile,
+        density: f32,
+        palette: Palette,
+        options: MapOptions,
+    ) -> MapImage {
+        self.render_view(
+            band,
+            hour,
+            now,
+            view,
+            tile.view(),
+            TILE_PX,
+            density,
+            palette,
+            options,
+        )
     }
 
     /// Frames where the band reaches, from the finest grid held.
@@ -614,7 +666,39 @@ impl Core {
             distance_km: geo::distance_km(from.lat_lon(), point),
             bearing_deg: geo::bearing_deg(from.lat_lon(), point),
             quality: reliability.map(Quality::of),
+            chance: None,
         })
+    }
+
+    /// A point on the map in full: the map's quality there and the chance
+    /// of contact from a path forecast to it. The forecast covers every band
+    /// and hour and is kept, so moving through the day or the bands with a
+    /// point selected costs nothing more. Call it off the UI thread.
+    pub fn probe_at(&self, band: Band, hour: u32, now: i64, lat: f64, lon: f64) -> Probe {
+        let (ctx, from, _) = self.context(now);
+        let point = LatLon { lat, lon };
+        let (layers, _) = self.layers(&ctx, &from, band, hour, MapView::default());
+        let reliability = layers
+            .iter()
+            .rev()
+            .find_map(|g| g.reliability_at(lat, lon).map(f64::from));
+        let key = Self::key("point", &ctx, &from, &format!("{lat:.4},{lon:.4}"));
+        let cached = lock(&self.caches).points.get(&key);
+        let forecast = cached.or_else(|| {
+            let to = Place::at(geo::lat_lon_to_grid(lat, lon), "", lat, lon);
+            let f = Arc::new(forecast::path(&self.engine, &ctx, &from, &to).ok()?);
+            lock(&self.caches).points.put(key, f.clone());
+            Some(f)
+        });
+        Probe {
+            lat,
+            lon,
+            grid: geo::lat_lon_to_grid(lat, lon),
+            distance_km: geo::distance_km(from.lat_lon(), point),
+            bearing_deg: geo::bearing_deg(from.lat_lon(), point),
+            quality: reliability.map(Quality::of),
+            chance: forecast.and_then(|f| f.cell(band, hour).map(|c| c.reliability)),
+        }
     }
 
     /// Room the stored maps take, bytes.
@@ -728,7 +812,11 @@ pub struct Probe {
     pub grid: String,
     pub distance_km: f64,
     pub bearing_deg: f64,
+    /// The map's quality band under the point.
     pub quality: Option<Quality>,
+    /// The chance of contact there from a path forecast to that very point
+    /// (`Core::probe_at`), 0..1; `None` until it is worked out.
+    pub chance: Option<f64>,
 }
 
 #[cfg(test)]
@@ -782,6 +870,7 @@ mod tests {
             show_nvis: true,
             show_path: true,
             highlight: None,
+            highlight_color: 0xFFFFFF00,
         };
         let img = c.render_map(
             Band::M20,
@@ -810,6 +899,13 @@ mod tests {
         );
         let probe = c.probe(Band::M20, 12, NOW, view, 32.0, 32.0, 64.0).unwrap();
         assert!(probe.distance_km < 50.0, "{probe:?}");
+        // In full, a point gets its own chance of contact.
+        let tokyo = c.probe_at(Band::M20, 12, NOW, 35.7, 139.7);
+        assert!(
+            tokyo.chance.is_some_and(|c| (0.0..=1.0).contains(&c)),
+            "{tokyo:?}"
+        );
+        assert_eq!(tokyo.grid, "PM95uq");
 
         // A fresh core reads the map from disk.
         let again = Core::open(

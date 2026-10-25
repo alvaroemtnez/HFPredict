@@ -186,6 +186,34 @@ pub fn local_clock(lat: f64, lon: f64, unix: i64) -> String {
     crate::localtime::clock(lat, lon, unix)
 }
 
+/// A quality as a traffic-light colour, 0xAARRGGBB (see render::semaphore).
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn semaphore_color(quality: Option<Quality>, dark: bool, low_light: bool) -> u32 {
+    crate::render::semaphore(quality, dark, low_light)
+}
+
+/// The tile level that matches the screen for a view (see `tiles`).
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn tile_level(view: crate::projection::MapView, screen: crate::tiles::Screen) -> u32 {
+    crate::tiles::level_for(view, &screen)
+}
+
+/// The tiles of level `z` on screen, nearest the middle first.
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn tiles_visible(
+    view: crate::projection::MapView,
+    screen: crate::tiles::Screen,
+    z: u32,
+) -> Vec<crate::tiles::TilePlace> {
+    crate::tiles::visible(view, &screen, z)
+}
+
+/// Side of a rendered tile, pixels.
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn tile_px() -> u32 {
+    crate::tiles::TILE_PX
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

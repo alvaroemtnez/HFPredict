@@ -88,6 +88,7 @@ fn main() {
         show_night: true,
         show_nvis: true,
         highlight: None,
+        highlight_color: 0xFFF6D32D,
     };
     let size = 900;
     let t = Instant::now();

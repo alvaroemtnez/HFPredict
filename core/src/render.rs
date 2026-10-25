@@ -61,8 +61,10 @@ pub struct Scene<'a> {
     pub layers: Vec<&'a Grid>,
     pub show_night: bool,
     pub show_nvis: bool,
-    /// The point the reader tapped: its cell is outlined.
+    /// The point the reader tapped: its cell is outlined in
+    /// `highlight_color`.
     pub highlight: Option<LatLon>,
+    pub highlight_color: u32,
 }
 
 /// The highlight colours ([`Palette::path`] and [`Palette::path_halo`]).
@@ -108,6 +110,32 @@ pub fn highlight(accent: u32, dark: bool, low_light: bool) -> Highlight {
         halo: if dark { 0xE0000000 } else { 0xC0202020 },
     }
 }
+
+/// A quality as a traffic light, for the selected cell and the band
+/// table's numbers: green reliable, yellow patchy, orange weak, red closed,
+/// grey unknown. Darker on a light background so it reads as text; in low
+/// light, five steps of the dim red.
+pub fn semaphore(quality: Option<Quality>, dark: bool, low_light: bool) -> u32 {
+    let i = match quality {
+        Some(Quality::Reliable) => 0,
+        Some(Quality::Patchy) => 1,
+        Some(Quality::Weak) => 2,
+        Some(Quality::Closed) => 3,
+        None => 4,
+    };
+    let table: [u32; 5] = if low_light {
+        [0xFFFF8A65, 0xFFE0563F, 0xFFB0331F, 0xFF7A1D12, 0xFF5A1A12]
+    } else if dark {
+        [0xFF57E389, 0xFFF8E45C, 0xFFFFA348, 0xFFF66151, 0xFF9A9996]
+    } else {
+        [0xFF1F8A4C, 0xFF9C6E00, 0xFFC64600, 0xFFC01C28, 0xFF77767B]
+    };
+    table[i]
+}
+
+/// Coastlines end this far out on the disc (about 18,000 km), where the
+/// projection already stretches them nine times across.
+const COAST_MAX_RADIUS: f64 = 0.9;
 
 /// Distance rings every 5,000 km.
 pub const RING_KM: f64 = 5000.0;
@@ -261,7 +289,7 @@ pub fn render(
             );
             pixmap.stroke_path(
                 &path,
-                &paint(palette.path),
+                &paint(scene.highlight_color),
                 &stroke(2.5),
                 Transform::identity(),
                 None,
@@ -306,19 +334,21 @@ impl<K: PartialEq, V> Recent<K, V> {
     }
 }
 
-/// Where each pixel lies on the earth, compactly: latitude and longitude
-/// as 16-bit steps (0.003 degrees, finer than any grid drawn) and the
-/// point's unit vector for the night side. `u16::MAX` latitude: off the disc.
+/// Where each pixel lies on the earth, compactly (7 bytes): latitude and
+/// longitude as 16-bit steps (0.003 degrees, finer than any grid drawn) and
+/// the point's unit vector in 8 bits, plenty for the soft terminator.
+/// `u16::MAX` latitude: off the disc.
 struct Geometry {
     lat: Vec<u16>,
     lon: Vec<u16>,
-    unit: Vec<[i16; 3]>,
+    unit: Vec<[i8; 3]>,
 }
 
 const OFF_DISC: u16 = u16::MAX;
 
 fn geometry(centre: LatLon, view: MapView, size: u32, threads: usize) -> Arc<Geometry> {
-    static RECENT: Recent<[u64; 6], Geometry> = Recent::new(2);
+    // A screenful of tiles (or a couple of whole maps).
+    static RECENT: Recent<[u64; 6], Geometry> = Recent::new(24);
     let key = [
         centre.lat.to_bits(),
         centre.lon.to_bits(),
@@ -360,7 +390,7 @@ fn geometry(centre: LatLon, view: MapView, size: u32, threads: usize) -> Arc<Geo
                         Some(p) => {
                             lat.push(((p.lat + 90.0) / 180.0 * 65534.0).round() as u16);
                             lon.push(((p.lon + 180.0) / 360.0 * 65535.0).round() as u16);
-                            unit.push(unit_vector(p).map(|c| (c * 32767.0).round() as i16));
+                            unit.push(unit_vector(p).map(|c| (c * 127.0).round() as i8));
                         }
                         None => {
                             lat.push(OFF_DISC);
@@ -390,7 +420,7 @@ fn geometry(centre: LatLon, view: MapView, size: u32, threads: usize) -> Arc<Geo
 /// and the two ends. Kept while the view, size and colours stay.
 fn overlay(scene: &Scene, view: MapView, size: u32, line: f32, palette: &Palette) -> Arc<Pixmap> {
     type Key = (Vec<u64>, Palette);
-    static RECENT: Recent<Key, Pixmap> = Recent::new(2);
+    static RECENT: Recent<Key, Pixmap> = Recent::new(24);
     let mut bits = vec![
         scene.centre.lat.to_bits(),
         scene.centre.lon.to_bits(),
@@ -442,19 +472,33 @@ fn overlay(scene: &Scene, view: MapView, size: u32, line: f32, palette: &Palette
             );
         }
 
-        // Coastlines.
+        // Coastlines, stopping short of the rim: next to the antipode the
+        // projection stretches them round the edge into smears.
         let mut coast = PathBuilder::new();
+        let centre = scene.centre;
+        let far = Projection::km_of_radius(COAST_MAX_RADIUS);
         for ring in land() {
-            add_polyline(
-                &mut coast,
-                &projection,
-                view,
-                s,
-                ring.iter().map(|&(lon, lat)| LatLon {
+            let mut run: Vec<LatLon> = vec![];
+            for p in ring
+                .iter()
+                .map(|&(lon, lat)| LatLon {
                     lat: f64::from(lat),
                     lon: f64::from(lon),
-                }),
-            );
+                })
+                .map(|p| {
+                    // South of 85 degrees is only the edge that closes
+                    // Antarctica's outline, not a coast.
+                    (p.lat > -85.0 && geo::distance_km(centre, p) < far).then_some(p)
+                })
+                .chain(std::iter::once(None))
+            {
+                match p {
+                    Some(p) => run.push(p),
+                    None => {
+                        add_polyline(&mut coast, &projection, view, s, run.drain(..));
+                    }
+                }
+            }
         }
         if let Some(path) = coast.finish() {
             pixmap.stroke_path(
@@ -609,7 +653,7 @@ fn raster_cells(
                             let d = (f32::from(u[0]) * sun[0]
                                 + f32::from(u[1]) * sun[1]
                                 + f32::from(u[2]) * sun[2])
-                                / 32767.0;
+                                / 127.0;
                             let t = ((0.05 - d) / 0.1).clamp(0.0, 1.0);
                             if t > 0.0 {
                                 let wash = [night[0] * t, night[1] * t, night[2] * t, night[3] * t];
@@ -785,6 +829,7 @@ mod tests {
             show_night: false,
             show_nvis: false,
             highlight: None,
+            highlight_color: 0xFF00DDFF,
         };
         let size = 200;
         let px = render(&scene, MapView::default(), size, 1.0, &palette(), 4);
@@ -809,6 +854,7 @@ mod tests {
             show_night: true,
             show_nvis: false,
             highlight: None,
+            highlight_color: 0xFF00DDFF,
         };
         let size = 200usize;
         let lit = render(&scene, MapView::default(), size as u32, 1.0, &palette(), 2);
@@ -853,6 +899,7 @@ mod tests {
             show_night: false,
             show_nvis: false,
             highlight: None,
+            highlight_color: 0xFF00DDFF,
         };
         let plain = render(&scene, MapView::default(), 600, 1.0, &palette(), 2);
         scene.highlight = Some(LatLon {

@@ -67,6 +67,7 @@ fn main() {
         show_nvis: true,
         show_path: true,
         highlight: None,
+        highlight_color: 0xFFF6D32D,
     };
     for size in [540u32, 1080, 1440] {
         for (name, view) in [("globe", MapView::default()), ("zoom", zoom)] {
