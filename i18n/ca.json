@@ -100,6 +100,7 @@
   "quality.patchy": "Irregular",
   "quality.weak": "Feble",
   "quality.closed": "Tancada",
+
   "qualityDescription.reliable": "Hauries d'aconseguir-ho",
   "qualityDescription.patchy": "Va i ve",
   "qualityDescription.weak": "Només amb paciència",
@@ -294,5 +295,30 @@
   "a11y.pinBand": "Mostra {band}",
   "a11y.windowRail": "Finestra útil: sòl {floor}, sostre {ceiling}.",
   "a11y.nvis": "Arriba per incidència quasi vertical, així que no hi ha zona de salt.",
-  "a11y.mapLegend": "Llegenda del mapa. Els tons són l'abast previst, de més feble a més fort. El vel gris és la nit."
+  "a11y.mapLegend": "Llegenda del mapa. Els tons són l'abast previst, de més feble a més fort. El vel gris és la nit.",
+
+  "map.fullscreen": "Mapa a pantalla completa",
+  "map.exitFullscreen": "Eixir de la pantalla completa",
+  "map.clearSelection": "Toca la cel·la una altra volta per a llevar-la.",
+
+  "status.liveExplain": "En directe: la previsió s'ajusta al sol i a l'activitat geomagnètica mesurats hui (NOAA). Sense connexió, usa les condicions típiques del mes.",
+
+  "compass.open": "Orientar l'antena amb la brúixola",
+  "compass.title": "Orientar l'antena",
+  "compass.measureTitle": "Mesurar la direcció",
+  "compass.heading": "Rumb",
+  "compass.target": "Objectiu",
+  "compass.turnLeft": "Gira {degrees}° a l'esquerra",
+  "compass.turnRight": "Gira {degrees}° a la dreta",
+  "compass.onTarget": "En l'objectiu",
+  "compass.shortPath": "Camí curt",
+  "compass.longPath": "Camí llarg",
+  "compass.holdBoom": "Sostín el telèfon pla amb la vora superior al llarg del boom, lluny de metalls i de l'equip.",
+  "compass.holdWire": "Sostín el telèfon pla amb la vora superior al llarg del fil, lluny de metalls i de l'equip.",
+  "compass.calibrate": "La brúixola no és fiable ara. Mou el telèfon dibuixant un huit per a calibrar-la.",
+  "compass.declination": "Els rumbs són al nord geogràfic; ací es corregixen {degrees}° de declinació magnètica.",
+  "compass.measure": "Mesurar amb la brúixola",
+  "compass.use": "Usar {degrees}°",
+  "compass.lobes": "Lòbuls de la teua antena",
+  "compass.pointHere": "Apuntar ací"
 }

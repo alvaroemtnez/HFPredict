@@ -275,4 +275,26 @@
     <string name="a11y_windowRail">使用可能な範囲: 下限 {floor}、上限 {ceiling}。</string>
     <string name="a11y_nvis">近垂直入射で届くため、スキップゾーンがありません。</string>
     <string name="a11y_mapLegend">地図の凡例。色合いは予測される到達範囲で、弱いものから強いものへ。灰色のベールは夜です。</string>
+    <string name="map_fullscreen">地図を全画面表示</string>
+    <string name="map_exitFullscreen">全画面表示を終了</string>
+    <string name="map_clearSelection">もう一度タップすると選択を解除します。</string>
+    <string name="status_liveExplain">ライブ：予報は本日観測された太陽活動と地磁気活動（NOAA）に合わせています。オフラインでは、その月の典型的な状態を使います。</string>
+    <string name="compass_open">コンパスでアンテナを向ける</string>
+    <string name="compass_title">アンテナを向ける</string>
+    <string name="compass_measureTitle">方向を測る</string>
+    <string name="compass_heading">方位</string>
+    <string name="compass_target">目標</string>
+    <string name="compass_turnLeft">左へ{degrees}°</string>
+    <string name="compass_turnRight">右へ{degrees}°</string>
+    <string name="compass_onTarget">目標方向です</string>
+    <string name="compass_shortPath">ショートパス</string>
+    <string name="compass_longPath">ロングパス</string>
+    <string name="compass_holdBoom">電話を水平に持ち、上端をブームに沿わせてください。金属や無線機から離してください。</string>
+    <string name="compass_holdWire">電話を水平に持ち、上端をエレメント（ワイヤー）に沿わせてください。金属や無線機から離してください。</string>
+    <string name="compass_calibrate">コンパスの精度が低下しています。電話を8の字に動かして補正してください。</string>
+    <string name="compass_declination">方位は真北基準です。この場所の磁気偏角{degrees}°を補正しています。</string>
+    <string name="compass_measure">コンパスで測る</string>
+    <string name="compass_use">{degrees}°を使う</string>
+    <string name="compass_lobes">アンテナのローブ</string>
+    <string name="compass_pointHere">ここへ向ける</string>
 </resources>

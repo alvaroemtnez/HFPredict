@@ -100,6 +100,7 @@
   "quality.patchy": "不安定",
   "quality.weak": "微弱",
   "quality.closed": "不通",
+
   "qualityDescription.reliable": "交信できるはずです",
   "qualityDescription.patchy": "つながったり切れたり",
   "qualityDescription.weak": "根気があれば",
@@ -294,5 +295,30 @@
   "a11y.pinBand": "{band} を表示",
   "a11y.windowRail": "使用可能な範囲: 下限 {floor}、上限 {ceiling}。",
   "a11y.nvis": "近垂直入射で届くため、スキップゾーンがありません。",
-  "a11y.mapLegend": "地図の凡例。色合いは予測される到達範囲で、弱いものから強いものへ。灰色のベールは夜です。"
+  "a11y.mapLegend": "地図の凡例。色合いは予測される到達範囲で、弱いものから強いものへ。灰色のベールは夜です。",
+
+  "map.fullscreen": "地図を全画面表示",
+  "map.exitFullscreen": "全画面表示を終了",
+  "map.clearSelection": "もう一度タップすると選択を解除します。",
+
+  "status.liveExplain": "ライブ：予報は本日観測された太陽活動と地磁気活動（NOAA）に合わせています。オフラインでは、その月の典型的な状態を使います。",
+
+  "compass.open": "コンパスでアンテナを向ける",
+  "compass.title": "アンテナを向ける",
+  "compass.measureTitle": "方向を測る",
+  "compass.heading": "方位",
+  "compass.target": "目標",
+  "compass.turnLeft": "左へ{degrees}°",
+  "compass.turnRight": "右へ{degrees}°",
+  "compass.onTarget": "目標方向です",
+  "compass.shortPath": "ショートパス",
+  "compass.longPath": "ロングパス",
+  "compass.holdBoom": "電話を水平に持ち、上端をブームに沿わせてください。金属や無線機から離してください。",
+  "compass.holdWire": "電話を水平に持ち、上端をエレメント（ワイヤー）に沿わせてください。金属や無線機から離してください。",
+  "compass.calibrate": "コンパスの精度が低下しています。電話を8の字に動かして補正してください。",
+  "compass.declination": "方位は真北基準です。この場所の磁気偏角{degrees}°を補正しています。",
+  "compass.measure": "コンパスで測る",
+  "compass.use": "{degrees}°を使う",
+  "compass.lobes": "アンテナのローブ",
+  "compass.pointHere": "ここへ向ける"
 }

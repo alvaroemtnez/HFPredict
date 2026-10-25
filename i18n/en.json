@@ -101,6 +101,7 @@
   "quality.patchy": "Patchy",
   "quality.weak": "Weak",
   "quality.closed": "Closed",
+
   "qualityDescription.reliable": "You should get through",
   "qualityDescription.patchy": "Comes and goes",
   "qualityDescription.weak": "Only with patience",
@@ -295,5 +296,30 @@
   "a11y.pinBand": "Show {band}",
   "a11y.windowRail": "Usable window: floor {floor}, ceiling {ceiling}.",
   "a11y.nvis": "Reaches by near-vertical incidence, so there is no skip zone.",
-  "a11y.mapLegend": "Map key. The shades are predicted reach, weakest to strongest. The grey wash is night."
+  "a11y.mapLegend": "Map key. The shades are predicted reach, weakest to strongest. The grey wash is night.",
+
+  "map.fullscreen": "Full-screen map",
+  "map.exitFullscreen": "Leave full screen",
+  "map.clearSelection": "Tap the cell again to clear it.",
+
+  "status.liveExplain": "Live: the forecast is tuned to today's measured sun and geomagnetic activity (NOAA). Offline, it uses typical conditions for the month.",
+
+  "compass.open": "Point the antenna with the compass",
+  "compass.title": "Point the antenna",
+  "compass.measureTitle": "Measure the direction",
+  "compass.heading": "Heading",
+  "compass.target": "Target",
+  "compass.turnLeft": "Turn {degrees}° left",
+  "compass.turnRight": "Turn {degrees}° right",
+  "compass.onTarget": "On target",
+  "compass.shortPath": "Short path",
+  "compass.longPath": "Long path",
+  "compass.holdBoom": "Hold the phone flat with its top edge along the boom, away from metal and the rig.",
+  "compass.holdWire": "Hold the phone flat with its top edge along the wire, away from metal and the rig.",
+  "compass.calibrate": "The compass is unsure. Move the phone in a figure of eight to calibrate it.",
+  "compass.declination": "Bearings are true north; {degrees}° of magnetic declination is corrected for here.",
+  "compass.measure": "Measure with the compass",
+  "compass.use": "Use {degrees}°",
+  "compass.lobes": "Your antenna's lobes",
+  "compass.pointHere": "Point here"
 }

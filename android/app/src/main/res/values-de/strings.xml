@@ -275,4 +275,26 @@
     <string name="a11y_windowRail">Nutzbarer Bereich: Untergrenze {floor}, Obergrenze {ceiling}.</string>
     <string name="a11y_nvis">Erreicht per Steilstrahlung, daher ohne tote Zone.</string>
     <string name="a11y_mapLegend">Kartenlegende. Die Farbtöne zeigen die vorhergesagte Reichweite von schwach bis stark. Der graue Schleier ist die Nacht.</string>
+    <string name="map_fullscreen">Karte im Vollbild</string>
+    <string name="map_exitFullscreen">Vollbild verlassen</string>
+    <string name="map_clearSelection">Tippe erneut auf die Zelle, um sie abzuwählen.</string>
+    <string name="status_liveExplain">Live: Die Vorhersage ist auf die heute gemessene Sonnen- und geomagnetische Aktivität abgestimmt (NOAA). Offline nutzt sie die typischen Bedingungen des Monats.</string>
+    <string name="compass_open">Antenne mit dem Kompass ausrichten</string>
+    <string name="compass_title">Antenne ausrichten</string>
+    <string name="compass_measureTitle">Richtung messen</string>
+    <string name="compass_heading">Kurs</string>
+    <string name="compass_target">Ziel</string>
+    <string name="compass_turnLeft">{degrees}° nach links drehen</string>
+    <string name="compass_turnRight">{degrees}° nach rechts drehen</string>
+    <string name="compass_onTarget">Auf Ziel</string>
+    <string name="compass_shortPath">Kurzer Weg</string>
+    <string name="compass_longPath">Langer Weg</string>
+    <string name="compass_holdBoom">Halte das Telefon flach, die Oberkante entlang des Booms, fern von Metall und dem Funkgerät.</string>
+    <string name="compass_holdWire">Halte das Telefon flach, die Oberkante entlang des Drahts, fern von Metall und dem Funkgerät.</string>
+    <string name="compass_calibrate">Der Kompass ist unsicher. Bewege das Telefon in einer Acht, um ihn zu kalibrieren.</string>
+    <string name="compass_declination">Richtungen beziehen sich auf geografisch Nord; hier werden {degrees}° Missweisung ausgeglichen.</string>
+    <string name="compass_measure">Mit dem Kompass messen</string>
+    <string name="compass_use">{degrees}° übernehmen</string>
+    <string name="compass_lobes">Keulen deiner Antenne</string>
+    <string name="compass_pointHere">Hierhin ausrichten</string>
 </resources>

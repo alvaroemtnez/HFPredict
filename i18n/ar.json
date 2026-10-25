@@ -1,5 +1,6 @@
 {
   "app.summary": "توقعات انتشار الموجات القصيرة لهواة الراديو",
+
   "common.back": "رجوع",
   "common.close": "إغلاق",
   "common.cancel": "إلغاء",
@@ -7,11 +8,13 @@
   "common.delete": "حذف",
   "common.retry": "إعادة المحاولة",
   "common.continue": "متابعة",
+
   "menu.refresh": "تحديث القراءات",
   "menu.preferences": "التفضيلات",
   "menu.help": "كيف تُحسب التوقعات",
   "menu.about": "عن HFPredict",
   "menu.open": "القائمة الرئيسية",
+
   "status.live": "مباشر",
   "status.offline": "دون اتصال",
   "status.liveHint": "يستخدم القراءات الشمسية من الساعة {time} بالتوقيت العالمي.",
@@ -20,12 +23,15 @@
   "status.errorTitle": "لا توجد توقعات",
   "status.errorBody": "تعذّر حساب التوقعات.",
   "status.openStation": "إعداد جهازك",
+
   "path.everyDirection": "كل الاتجاهات",
   "path.to": "إلى {place}",
   "path.summary": "{distance} · الاتجاه {bearing}° · {hops} قفزات",
   "path.summaryOneHop": "{distance} · الاتجاه {bearing}° · قفزة واحدة",
   "path.change": "تغيير",
+
   "bands.label": "النطاق",
+
   "reach.answer": "يصل {band} إلى {place} في الساعة {hour} بالتوقيت العالمي، واحتمال الاتصال نحو {percent}.",
   "reach.answerAnywhere": "يصل {band} في الساعة {hour} بالتوقيت العالمي إلى نحو {percent} من الاتجاهات المفحوصة.",
   "reach.mapLoading": "جارٍ حساب مدى وصول هذا النطاق",
@@ -41,17 +47,20 @@
   "reach.detailNear": "تفاصيل إضافية حول هذا العرض.",
   "reach.probe": "{grid} · {distance} · {bearing}°",
   "reach.probeQuality": "{grid} · {distance} · {bearing}° · {quality}",
+
   "map.zoomIn": "تكبير",
   "map.zoomOut": "تصغير",
   "map.fitReach": "تأطير المنطقة التي يصل إليها هذا النطاق",
   "map.wholeGlobe": "عرض الكرة الأرضية كاملة",
   "map.description": "خريطة التغطية. يصل {band} إلى نحو {percent} من العالم في هذه الساعة.",
+
   "window.label": "النافذة الصالحة",
   "window.floorCeiling": "الحد الأدنى {floor} · الحد الأعلى {ceiling}",
   "window.ceilingOnly": "الحد الأعلى {ceiling} · بلا حد أدنى",
   "window.none": "لا توجد نافذة صالحة في هذه الساعة",
   "window.explain": "فوق {ceiling} تخترق الإشارة الأيونوسفير إلى الفضاء. وتحت {floor} تُمتص في طريقها إلى الأعلى. هذان هما MUF وLUF.",
   "window.explainNoFloor": "فوق {ceiling} تخترق الإشارة الأيونوسفير إلى الفضاء، وهذا هو MUF. لم يكن أي تردد موثوقًا بما يكفي في هذه الساعة لتحديد حد أدنى.",
+
   "grid.readoutNow": "الآن · {hour} · {band}",
   "grid.readoutAt": "{band} في الساعة {hour}",
   "grid.unitChance": "احتمال الاتصال، ٪",
@@ -62,11 +71,13 @@
   "grid.footnoteHours": "الساعات بالتوقيت العالمي. التوقيت المحلي في {place} تحت شريط الساعات.",
   "grid.footnoteSaved": "لا توجد قراءات مباشرة، لذا لا يظهر هنا أي تغيير منذ آخر جلب لها.",
   "grid.cell": "{band}، {hour} بالتوقيت العالمي، {percent}، {quality}",
+
   "sections.allBandsTo": "كل النطاقات إلى {place}",
   "sections.allBandsAnywhere": "كل النطاقات، كل الاتجاهات",
   "sections.noneReach": "لا يصل أي نطاق إلى {place} في أي ساعة اليوم.",
   "sections.noneReachAnywhere": "لا يصل أي نطاق إلى أي مكان في أي ساعة اليوم.",
   "sections.sun": "الشمس اليوم",
+
   "spaceWeather.flux": "التدفق الشمسي",
   "spaceWeather.fluxHint": "كلما ارتفع ارتفعت الترددات الصالحة",
   "spaceWeather.kp": "مؤشر K",
@@ -84,19 +95,23 @@
   "spaceWeather.measuredTitle": "أقرب جهاز سبر أيونوسفيري · foF2 {value}",
   "spaceWeather.measuredSub": "{station}، على بعد {distance} · قيس الساعة {time} بالتوقيت العالمي",
   "spaceWeather.measuredNote": "قياس حقيقي للأيونوسفير فوق المحطة، وليس جزءًا من التوقعات.",
+
   "quality.reliable": "موثوق",
   "quality.patchy": "متقطع",
   "quality.weak": "ضعيف",
   "quality.closed": "مغلق",
+
   "qualityDescription.reliable": "يُفترض أن تنجح",
   "qualityDescription.patchy": "يأتي ويذهب",
   "qualityDescription.weak": "بالصبر فقط",
   "qualityDescription.closed": "ليس هذا النطاق، وليس الآن",
+
   "time.now": "الآن",
   "time.utc": "التوقيت العالمي",
   "time.localAt": "التوقيت المحلي في {place}",
   "time.utcAt": "التوقيت العالمي",
   "time.hourSlider": "ساعة اليوم بالتوقيت العالمي",
+
   "basis.truecastNowcast.title": "ظروف اليوم",
   "basis.truecastNowcast.body": "Truecast مضبوطًا على قراءات اليوم الماضي (عدد البقع الشمسية الفعّال {ssn}). قراءة واحدة تحكم الساعات الأربع والعشرين، لذا لن تظهر عاصفة تصل لاحقًا اليوم.",
   "basis.truecastOffline.title": "يوم نموذجي لهذا التاريخ",
@@ -108,6 +123,7 @@
   "basis.voacapNowcast.title": "ظروف اليوم، النموذج الشهري",
   "basis.voacapNowcast.body": "متوسطات شهرية، مع عدد البقع الشمسية المأخوذ من قراءات اليوم الماضي ({ssn}). هذه القراءة الواحدة تحكم الساعات الأربع والعشرين، فلا ترى عاصفة تصل لاحقًا اليوم.",
   "basis.caveat": "التوقع احتمال، مثل احتمال المطر: يقول ما يحدث عادةً على مسار مثل مسارك، لا ما سيحدث بعد ظهر اليوم.",
+
   "location.title": "اختر مسارًا",
   "location.from": "من",
   "location.to": "إلى",
@@ -126,6 +142,7 @@
   "location.everyDirectionHint": "دون وجهة: كم من العالم يسمعك",
   "location.swap": "تبديل طرفي المسار",
   "location.recognised": "تم التعرف",
+
   "firstRun.kicker": "موقعك",
   "firstRun.title": "من أين ترسل؟",
   "firstRun.subtitle": "تُحسب كل التوقعات من هنا. يمكنك تغييره في أي وقت.",
@@ -135,6 +152,7 @@
   "firstRun.formatsHint": "انقر على مثال لترى كيف يُقرأ.",
   "firstRun.footnote": "مربع شبكي من أربعة أحرف دقيق بما يكفي للموجات القصيرة. إن تخطيت، يعمل HFPredict من غرينتش حتى تحدد موقعك.",
   "firstRun.skip": "تخطٍّ الآن",
+
   "station.title": "جهازك",
   "station.pickSection": "المحطة",
   "station.nameSection": "الاسم",
@@ -196,6 +214,7 @@
   "station.compass.e": "شرق",
   "station.compass.s": "جنوب",
   "station.compass.w": "غرب",
+
   "units.metres": "{value} م",
   "units.feet": "{value} قدم",
   "units.kilometres": "{value} كم",
@@ -203,6 +222,7 @@
   "units.watts": "{value} واط",
   "units.megahertz": "{value} ميغاهرتز",
   "units.decibelsDbd": "{value} dBd",
+
   "preferences.title": "التفضيلات",
   "preferences.appearance": "المظهر",
   "preferences.theme": "السمة",
@@ -233,6 +253,7 @@
   "preferences.stored": "{size} محفوظة",
   "preferences.forget": "حذف الخرائط المحفوظة",
   "preferences.forgotten": "حُذفت الخرائط المحفوظة.",
+
   "help.title": "كيف تُحسب التوقعات",
   "help.engine.heading": "من أين تأتي الأرقام",
   "help.engine.body": "تُحسب كل التوقعات على هذا الجهاز بفيزياء VOACAP، وهو نموذج انتشار مستخدم منذ عقود. لا يغادر الجهاز شيء عن محطتك أو مسارك.\n\nيتوفر نموذجان بالفيزياء نفسها:\n\nVOACAP، الذي كتبه معهد علوم الاتصالات الأمريكي، مستنسخ هنا بأمانة بما فيه من عيوب. يصف يومًا نموذجيًا من الشهر، فتبدو الساعة الرابعة عصر هذا الثلاثاء مثل الرابعة عصر هذا الخميس.\n\nTruecast، الافتراضي، ينطلق مما يفعله الأيونوسفير في ذلك اليوم. عند مقارنته يومًا بيوم بقياسات حقيقية منذ 2015، كان أدق من VOACAP في 77٪ من الأيام.",
@@ -250,6 +271,7 @@
   "help.invertedV.body": "لا يحتوي VOACAP على V مقلوب. يحسبه HFPredict كثنائي قطب على {percent}٪ من ارتفاع القمة، فقمة على 10 م تُنمذج كثنائي قطب على 8 م.\n\nهذا تقريب وليس قياسًا. الـV ذو الساقين الحادتين يتصرف أخفض، والمنبسط أعلى. اختر ثنائي القطب إن كان سلكك أفقيًا.",
   "help.privacy.heading": "الخصوصية",
   "help.privacy.body": "تُحسب التوقعات على هذا الجهاز. لا تُرسل محطتك ولا هوائيك ولا مسارك إلى أي مكان.\n\nعند تشغيل الشبكة ترى ثلاث خدمات عنوان IP الخاص بك: NOAA للقراءات الشمسية، وGIRO لقياسات السبر الأيونوسفيري، وOpen-Meteo حين لا تجد القائمة المدمجة ما يكفي عند البحث عن مكان (وترى أيضًا ما كتبته). تُحسب المربعات الشبكية والإحداثيات على الجهاز. أوقف الشبكة في التفضيلات ولن يغادر شيء.",
+
   "about.title": "عن HFPredict",
   "about.description": "توقعات خاصة لانتشار الموجات القصيرة تعمل دون اتصال، لهواة الراديو. إعادة كتابة لتطبيق HFcast مبنية على محرك HFcast.",
   "about.version": "الإصدار {version}",
@@ -268,9 +290,35 @@
   "about.credit.giro": "قياسات السبر الأيونوسفيري",
   "about.credit.openMeteo": "البحث عن الأماكن عند الاتصال",
   "about.endorsement": "لا تؤيد NTIA/ITS ولا NOAA تطبيق HFPredict، ولا تتحمل أي منهما مسؤولية ما يعرضه.",
+
   "a11y.changeLocation": "الإرسال من {place}. فعّل للتغيير.",
   "a11y.pinBand": "عرض {band}",
   "a11y.windowRail": "النافذة الصالحة: الحد الأدنى {floor}، الحد الأعلى {ceiling}.",
   "a11y.nvis": "يصل بالسقوط شبه العمودي، لذا لا توجد منطقة صامتة.",
-  "a11y.mapLegend": "مفتاح الخريطة. الدرجات هي الوصول المتوقع من الأضعف إلى الأقوى. والغشاوة الرمادية هي الليل."
+  "a11y.mapLegend": "مفتاح الخريطة. الدرجات هي الوصول المتوقع من الأضعف إلى الأقوى. والغشاوة الرمادية هي الليل.",
+
+  "map.fullscreen": "الخريطة بملء الشاشة",
+  "map.exitFullscreen": "الخروج من ملء الشاشة",
+  "map.clearSelection": "انقر على الخلية مرة أخرى لإلغاء تحديدها.",
+
+  "status.liveExplain": "مباشر: التنبؤ مضبوط على نشاط الشمس والنشاط المغنطيسي الأرضي المقيسين اليوم (NOAA). دون اتصال، يستخدم الظروف المعتادة للشهر.",
+
+  "compass.open": "توجيه الهوائي بالبوصلة",
+  "compass.title": "توجيه الهوائي",
+  "compass.measureTitle": "قياس الاتجاه",
+  "compass.heading": "الاتجاه",
+  "compass.target": "الهدف",
+  "compass.turnLeft": "استدر {degrees}° لليسار",
+  "compass.turnRight": "استدر {degrees}° لليمين",
+  "compass.onTarget": "على الهدف",
+  "compass.shortPath": "المسار القصير",
+  "compass.longPath": "المسار الطويل",
+  "compass.holdBoom": "أمسك الهاتف أفقيًا وحافته العليا على امتداد ذراع الهوائي، بعيدًا عن المعادن وجهاز الإرسال.",
+  "compass.holdWire": "أمسك الهاتف أفقيًا وحافته العليا على امتداد السلك، بعيدًا عن المعادن وجهاز الإرسال.",
+  "compass.calibrate": "البوصلة غير دقيقة. حرّك الهاتف على شكل الرقم ثمانية لمعايرتها.",
+  "compass.declination": "الاتجاهات بالنسبة إلى الشمال الحقيقي؛ ويُصحَّح هنا انحراف مغناطيسي قدره {degrees}°.",
+  "compass.measure": "القياس بالبوصلة",
+  "compass.use": "استخدم {degrees}°",
+  "compass.lobes": "فصوص هوائيك",
+  "compass.pointHere": "وجّه إلى هنا"
 }

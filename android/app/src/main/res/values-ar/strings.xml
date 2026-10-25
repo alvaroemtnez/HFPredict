@@ -275,4 +275,26 @@
     <string name="a11y_windowRail">النافذة الصالحة: الحد الأدنى {floor}، الحد الأعلى {ceiling}.</string>
     <string name="a11y_nvis">يصل بالسقوط شبه العمودي، لذا لا توجد منطقة صامتة.</string>
     <string name="a11y_mapLegend">مفتاح الخريطة. الدرجات هي الوصول المتوقع من الأضعف إلى الأقوى. والغشاوة الرمادية هي الليل.</string>
+    <string name="map_fullscreen">الخريطة بملء الشاشة</string>
+    <string name="map_exitFullscreen">الخروج من ملء الشاشة</string>
+    <string name="map_clearSelection">انقر على الخلية مرة أخرى لإلغاء تحديدها.</string>
+    <string name="status_liveExplain">مباشر: التنبؤ مضبوط على نشاط الشمس والنشاط المغنطيسي الأرضي المقيسين اليوم (NOAA). دون اتصال، يستخدم الظروف المعتادة للشهر.</string>
+    <string name="compass_open">توجيه الهوائي بالبوصلة</string>
+    <string name="compass_title">توجيه الهوائي</string>
+    <string name="compass_measureTitle">قياس الاتجاه</string>
+    <string name="compass_heading">الاتجاه</string>
+    <string name="compass_target">الهدف</string>
+    <string name="compass_turnLeft">استدر {degrees}° لليسار</string>
+    <string name="compass_turnRight">استدر {degrees}° لليمين</string>
+    <string name="compass_onTarget">على الهدف</string>
+    <string name="compass_shortPath">المسار القصير</string>
+    <string name="compass_longPath">المسار الطويل</string>
+    <string name="compass_holdBoom">أمسك الهاتف أفقيًا وحافته العليا على امتداد ذراع الهوائي، بعيدًا عن المعادن وجهاز الإرسال.</string>
+    <string name="compass_holdWire">أمسك الهاتف أفقيًا وحافته العليا على امتداد السلك، بعيدًا عن المعادن وجهاز الإرسال.</string>
+    <string name="compass_calibrate">البوصلة غير دقيقة. حرّك الهاتف على شكل الرقم ثمانية لمعايرتها.</string>
+    <string name="compass_declination">الاتجاهات بالنسبة إلى الشمال الحقيقي؛ ويُصحَّح هنا انحراف مغناطيسي قدره {degrees}°.</string>
+    <string name="compass_measure">القياس بالبوصلة</string>
+    <string name="compass_use">استخدم {degrees}°</string>
+    <string name="compass_lobes">فصوص هوائيك</string>
+    <string name="compass_pointHere">وجّه إلى هنا</string>
 </resources>

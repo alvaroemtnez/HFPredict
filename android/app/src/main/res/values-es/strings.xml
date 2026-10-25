@@ -275,4 +275,26 @@
     <string name="a11y_windowRail">Ventana útil: suelo {floor}, techo {ceiling}.</string>
     <string name="a11y_nvis">Llega por incidencia casi vertical, así que no hay zona de salto.</string>
     <string name="a11y_mapLegend">Leyenda del mapa. Los tonos son el alcance previsto, de más débil a más fuerte. El velo gris es la noche.</string>
+    <string name="map_fullscreen">Mapa a pantalla completa</string>
+    <string name="map_exitFullscreen">Salir de pantalla completa</string>
+    <string name="map_clearSelection">Toca la celda otra vez para quitarla.</string>
+    <string name="status_liveExplain">En directo: la previsión se ajusta al sol y a la actividad geomagnética medidos hoy (NOAA). Sin conexión, usa las condiciones típicas del mes.</string>
+    <string name="compass_open">Orientar la antena con la brújula</string>
+    <string name="compass_title">Orientar la antena</string>
+    <string name="compass_measureTitle">Medir la dirección</string>
+    <string name="compass_heading">Rumbo</string>
+    <string name="compass_target">Objetivo</string>
+    <string name="compass_turnLeft">Gira {degrees}° a la izquierda</string>
+    <string name="compass_turnRight">Gira {degrees}° a la derecha</string>
+    <string name="compass_onTarget">En el objetivo</string>
+    <string name="compass_shortPath">Camino corto</string>
+    <string name="compass_longPath">Camino largo</string>
+    <string name="compass_holdBoom">Sostén el teléfono plano con el borde superior a lo largo del boom, lejos de metales y del equipo.</string>
+    <string name="compass_holdWire">Sostén el teléfono plano con el borde superior a lo largo del hilo, lejos de metales y del equipo.</string>
+    <string name="compass_calibrate">La brújula no es fiable ahora. Mueve el teléfono dibujando un ocho para calibrarla.</string>
+    <string name="compass_declination">Los rumbos son al norte geográfico; aquí se corrigen {degrees}° de declinación magnética.</string>
+    <string name="compass_measure">Medir con la brújula</string>
+    <string name="compass_use">Usar {degrees}°</string>
+    <string name="compass_lobes">Lóbulos de tu antena</string>
+    <string name="compass_pointHere">Apuntar aquí</string>
 </resources>

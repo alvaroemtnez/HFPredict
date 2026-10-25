@@ -100,6 +100,7 @@
   "quality.patchy": "Wechselhaft",
   "quality.weak": "Schwach",
   "quality.closed": "Geschlossen",
+
   "qualityDescription.reliable": "Sie sollten durchkommen",
   "qualityDescription.patchy": "Kommt und geht",
   "qualityDescription.weak": "Nur mit Geduld",
@@ -294,5 +295,30 @@
   "a11y.pinBand": "{band} zeigen",
   "a11y.windowRail": "Nutzbarer Bereich: Untergrenze {floor}, Obergrenze {ceiling}.",
   "a11y.nvis": "Erreicht per Steilstrahlung, daher ohne tote Zone.",
-  "a11y.mapLegend": "Kartenlegende. Die Farbtöne zeigen die vorhergesagte Reichweite von schwach bis stark. Der graue Schleier ist die Nacht."
+  "a11y.mapLegend": "Kartenlegende. Die Farbtöne zeigen die vorhergesagte Reichweite von schwach bis stark. Der graue Schleier ist die Nacht.",
+
+  "map.fullscreen": "Karte im Vollbild",
+  "map.exitFullscreen": "Vollbild verlassen",
+  "map.clearSelection": "Tippe erneut auf die Zelle, um sie abzuwählen.",
+
+  "status.liveExplain": "Live: Die Vorhersage ist auf die heute gemessene Sonnen- und geomagnetische Aktivität abgestimmt (NOAA). Offline nutzt sie die typischen Bedingungen des Monats.",
+
+  "compass.open": "Antenne mit dem Kompass ausrichten",
+  "compass.title": "Antenne ausrichten",
+  "compass.measureTitle": "Richtung messen",
+  "compass.heading": "Kurs",
+  "compass.target": "Ziel",
+  "compass.turnLeft": "{degrees}° nach links drehen",
+  "compass.turnRight": "{degrees}° nach rechts drehen",
+  "compass.onTarget": "Auf Ziel",
+  "compass.shortPath": "Kurzer Weg",
+  "compass.longPath": "Langer Weg",
+  "compass.holdBoom": "Halte das Telefon flach, die Oberkante entlang des Booms, fern von Metall und dem Funkgerät.",
+  "compass.holdWire": "Halte das Telefon flach, die Oberkante entlang des Drahts, fern von Metall und dem Funkgerät.",
+  "compass.calibrate": "Der Kompass ist unsicher. Bewege das Telefon in einer Acht, um ihn zu kalibrieren.",
+  "compass.declination": "Richtungen beziehen sich auf geografisch Nord; hier werden {degrees}° Missweisung ausgeglichen.",
+  "compass.measure": "Mit dem Kompass messen",
+  "compass.use": "{degrees}° übernehmen",
+  "compass.lobes": "Keulen deiner Antenne",
+  "compass.pointHere": "Hierhin ausrichten"
 }

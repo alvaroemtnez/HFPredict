@@ -100,6 +100,7 @@
   "quality.patchy": "Irregular",
   "quality.weak": "Débil",
   "quality.closed": "Cerrada",
+
   "qualityDescription.reliable": "Deberías conseguirlo",
   "qualityDescription.patchy": "Va y viene",
   "qualityDescription.weak": "Solo con paciencia",
@@ -294,5 +295,30 @@
   "a11y.pinBand": "Mostrar {band}",
   "a11y.windowRail": "Ventana útil: suelo {floor}, techo {ceiling}.",
   "a11y.nvis": "Llega por incidencia casi vertical, así que no hay zona de salto.",
-  "a11y.mapLegend": "Leyenda del mapa. Los tonos son el alcance previsto, de más débil a más fuerte. El velo gris es la noche."
+  "a11y.mapLegend": "Leyenda del mapa. Los tonos son el alcance previsto, de más débil a más fuerte. El velo gris es la noche.",
+
+  "map.fullscreen": "Mapa a pantalla completa",
+  "map.exitFullscreen": "Salir de pantalla completa",
+  "map.clearSelection": "Toca la celda otra vez para quitarla.",
+
+  "status.liveExplain": "En directo: la previsión se ajusta al sol y a la actividad geomagnética medidos hoy (NOAA). Sin conexión, usa las condiciones típicas del mes.",
+
+  "compass.open": "Orientar la antena con la brújula",
+  "compass.title": "Orientar la antena",
+  "compass.measureTitle": "Medir la dirección",
+  "compass.heading": "Rumbo",
+  "compass.target": "Objetivo",
+  "compass.turnLeft": "Gira {degrees}° a la izquierda",
+  "compass.turnRight": "Gira {degrees}° a la derecha",
+  "compass.onTarget": "En el objetivo",
+  "compass.shortPath": "Camino corto",
+  "compass.longPath": "Camino largo",
+  "compass.holdBoom": "Sostén el teléfono plano con el borde superior a lo largo del boom, lejos de metales y del equipo.",
+  "compass.holdWire": "Sostén el teléfono plano con el borde superior a lo largo del hilo, lejos de metales y del equipo.",
+  "compass.calibrate": "La brújula no es fiable ahora. Mueve el teléfono dibujando un ocho para calibrarla.",
+  "compass.declination": "Los rumbos son al norte geográfico; aquí se corrigen {degrees}° de declinación magnética.",
+  "compass.measure": "Medir con la brújula",
+  "compass.use": "Usar {degrees}°",
+  "compass.lobes": "Lóbulos de tu antena",
+  "compass.pointHere": "Apuntar aquí"
 }

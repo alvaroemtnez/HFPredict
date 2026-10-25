@@ -276,4 +276,26 @@
     <string name="a11y_windowRail">Usable window: floor {floor}, ceiling {ceiling}.</string>
     <string name="a11y_nvis">Reaches by near-vertical incidence, so there is no skip zone.</string>
     <string name="a11y_mapLegend">Map key. The shades are predicted reach, weakest to strongest. The grey wash is night.</string>
+    <string name="map_fullscreen">Full-screen map</string>
+    <string name="map_exitFullscreen">Leave full screen</string>
+    <string name="map_clearSelection">Tap the cell again to clear it.</string>
+    <string name="status_liveExplain">Live: the forecast is tuned to today\'s measured sun and geomagnetic activity (NOAA). Offline, it uses typical conditions for the month.</string>
+    <string name="compass_open">Point the antenna with the compass</string>
+    <string name="compass_title">Point the antenna</string>
+    <string name="compass_measureTitle">Measure the direction</string>
+    <string name="compass_heading">Heading</string>
+    <string name="compass_target">Target</string>
+    <string name="compass_turnLeft">Turn {degrees}° left</string>
+    <string name="compass_turnRight">Turn {degrees}° right</string>
+    <string name="compass_onTarget">On target</string>
+    <string name="compass_shortPath">Short path</string>
+    <string name="compass_longPath">Long path</string>
+    <string name="compass_holdBoom">Hold the phone flat with its top edge along the boom, away from metal and the rig.</string>
+    <string name="compass_holdWire">Hold the phone flat with its top edge along the wire, away from metal and the rig.</string>
+    <string name="compass_calibrate">The compass is unsure. Move the phone in a figure of eight to calibrate it.</string>
+    <string name="compass_declination">Bearings are true north; {degrees}° of magnetic declination is corrected for here.</string>
+    <string name="compass_measure">Measure with the compass</string>
+    <string name="compass_use">Use {degrees}°</string>
+    <string name="compass_lobes">Your antenna\'s lobes</string>
+    <string name="compass_pointHere">Point here</string>
 </resources>
