@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
@@ -155,7 +156,9 @@ fun ReachCard(
 fun MapSurface(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier, full: Boolean) {
     val colors = LocalMapColors.current
     val density = LocalDensity.current.density
-    val latest by rememberUpdatedState(state)
+    // The map's own state: a gesture or a new tile redraws this alone.
+    val frame by vm.frame.collectAsStateWithLifecycle()
+    val latest by rememberUpdatedState(frame)
     var area by remember { mutableStateOf(IntSize.Zero) }
     val side = if (full) maxOf(area.width, area.height) else minOf(area.width, area.height)
     // The square's corner on screen.
@@ -222,13 +225,17 @@ fun MapSurface(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier
     ) {
         // Every level from the whole earth down to the one that matches the
         // screen, so a coarser tile shows wherever a finer one is not drawn
-        // yet; a gesture only moves images. Reading `state.tiles` redraws
-        // this when a tile arrives.
-        if (side <= 0 || state.tiles < 0) return@Canvas
-        val view = state.view
-        for (z in 0..tileLevel(view, screen).toInt()) {
-            for (p in tilesVisible(view, screen, z.toUInt())) {
+        // yet; a gesture only moves images. Stale tiles (an earlier hour or
+        // band) first, fresh ones over them, so the newest content wins
+        // even from a coarser level. `frame.tick` redraws on each new tile.
+        if (side <= 0 || frame.tick < 0) return@Canvas
+        val view = frame.view
+        val fresh = vm.signature
+        val levels = 0..tileLevel(view, screen).toInt()
+        val placed = levels.flatMap { z -> tilesVisible(view, screen, z.toUInt()) }
+        for (pass in 0..1) for (p in placed) {
                 val e = vm.tileCache[p.tile] ?: continue
+                if ((e.signature == fresh) != (pass == 1)) continue
                 e.used = vm.nextUse()
                 // A pixel of overlap each side hides the seams (filtering
                 // softens a tile's last row).
@@ -242,7 +249,6 @@ fun MapSurface(state: UiState, vm: AppViewModel, fmt: Format, modifier: Modifier
                     filterQuality = FilterQuality.High,
                 )
             }
-        }
     }
 }
 

@@ -161,7 +161,8 @@ private fun WindowRail(floor: Double?, ceiling: Double?, band: Band) {
 private fun Heatmap(state: UiState, vm: AppViewModel) {
     val colors = LocalMapColors.current
     val scheme = MaterialTheme.colorScheme
-    val measurer = rememberTextMeasurer()
+    // 34 labels (bands and hours): the default cache of 8 missed on every draw.
+    val measurer = rememberTextMeasurer(cacheSize = 64)
     val start = state.trackStart
     val cells = remember(state.forecast) {
         state.forecast?.cells?.associate { (it.band to it.hour.toInt()) to it.reliability } ?: emptyMap()

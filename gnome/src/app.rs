@@ -116,13 +116,17 @@ impl View {
 /// Something the window redraws when the state changes.
 pub type Listener = Box<dyn Fn(&App, Change)>;
 
-/// A rendered tile: its texture, the content version it shows and when it
+/// A rendered tile: its texture, the fingerprint of what it shows (the
+/// core's map signature with the app's colours and selection) and when it
 /// was last drawn (for evicting the least used).
 pub struct TileEntry {
     pub texture: gtk::gdk::Texture,
-    pub epoch: u64,
+    pub signature: u64,
     pub used: Cell<u64>,
 }
+
+/// Hour changes closer than this count as sliding: coarser tiles first.
+const SCRUB_MS: i64 = 350;
 
 /// Tiles kept as textures, about 1 MB each.
 const MAX_TILES: usize = 96;
@@ -150,11 +154,14 @@ pub struct App {
     map_gen: Cell<u64>,
     /// The map area in device pixels and their size in logical ones.
     screen: Cell<Option<(Screen, f32)>>,
-    /// The map's tiles (see `hfpredict_core::tiles`), each the newest drawn,
-    /// for the content version `epoch` it was drawn at. A stale tile stays
-    /// on screen until its replacement arrives.
+    /// The map's tiles (see `hfpredict_core::tiles`), each the newest drawn.
+    /// A stale tile (its signature not the current one) stays on screen
+    /// until its replacement arrives.
     pub tiles: RefCell<HashMap<Tile, TileEntry>>,
-    epoch: Cell<u64>,
+    signature: Cell<u64>,
+    /// The hour is sliding (changes closer than SCRUB_MS): coarser tiles.
+    scrubbing: Cell<bool>,
+    last_select: Cell<i64>,
     tile_busy: Cell<bool>,
     uses: Cell<u64>,
     /// Redraws the map widget.
@@ -195,7 +202,9 @@ impl App {
             map_gen: Cell::new(0),
             screen: Cell::new(None),
             tiles: RefCell::new(HashMap::new()),
-            epoch: Cell::new(0),
+            signature: Cell::new(0),
+            scrubbing: Cell::new(false),
+            last_select: Cell::new(0),
             tile_busy: Cell::new(false),
             uses: Cell::new(0),
             redraw: RefCell::new(None),
@@ -295,6 +304,26 @@ impl App {
     }
 
     pub fn select(&self, band: Band, hour: u32) {
+        // Hours changing quickly (the slider, a drag along the grid): the
+        // map shows coarser tiles until it stops.
+        let t = glib::monotonic_time() / 1000;
+        if t - self.last_select.get() < SCRUB_MS {
+            self.scrubbing.set(true);
+        }
+        self.last_select.set(t);
+        let me = Rc::downgrade(&self.rc());
+        glib::timeout_add_local_once(
+            std::time::Duration::from_millis(SCRUB_MS as u64),
+            move || {
+                if let Some(me) = me.upgrade()
+                    && me.scrubbing.get()
+                    && glib::monotonic_time() / 1000 - me.last_select.get() >= SCRUB_MS
+                {
+                    me.scrubbing.set(false);
+                    me.pump_tiles();
+                }
+            },
+        );
         let band_changed = {
             let mut v = self.view.borrow_mut();
             let changed = v.band != band;
@@ -481,17 +510,22 @@ impl App {
         }
     }
 
-    /// What the map shows has changed (data, band, hour, colours, the
-    /// selection): every tile is now stale and is redrawn, those on screen
-    /// first.
+    /// What the map shows may have changed (data, band, hour, colours, the
+    /// selection): the tiles on screen are checked against the content's
+    /// fingerprint and only those that differ are drawn again.
     pub fn map_changed(&self) {
-        self.epoch.set(self.epoch.get() + 1);
         self.pump_tiles();
+    }
+
+    /// The fingerprint of the newest content; tiles with another are stale.
+    pub fn signature(&self) -> u64 {
+        self.signature.get()
     }
 
     /// Draws the next tile the screen lacks, one at a time: the one in the
     /// middle first; the whole-earth tile first when none is held at all,
-    /// so zooming out never shows empty space.
+    /// so zooming out never shows empty space. While the hour slides, a
+    /// level coarser (a quarter of the pixels), sharpened once it stops.
     fn pump_tiles(&self) {
         if self.tile_busy.get() {
             return;
@@ -502,19 +536,32 @@ impl App {
         if screen.side < 16.0 {
             return;
         }
-        let epoch = self.epoch.get();
         let (band, hour, now, view, palette, options) = {
             let v = self.view.borrow();
             let q = v
                 .probe
                 .as_ref()
                 .and_then(|p| p.chance.map(Quality::of).or(p.quality));
+            let mut palette = v.colors.map;
+            // The path in the traffic-light colour of the chance to its end.
+            if let Some(cell) = v
+                .forecast
+                .as_ref()
+                .filter(|f| f.to.is_some())
+                .and_then(|f| f.cell(v.band, v.hour))
+            {
+                palette.path = hfpredict_core::render::semaphore(
+                    Some(Quality::of(cell.reliability)),
+                    v.colors.dark,
+                    v.colors.low_light,
+                );
+            }
             (
                 v.band,
                 v.hour,
                 v.now,
                 v.map_view,
-                v.colors.map,
+                palette,
                 MapOptions {
                     show_night: true,
                     show_nvis: true,
@@ -528,61 +575,81 @@ impl App {
                 },
             )
         };
-        let z = tiles::level_for(view, &screen);
-        let next = {
-            let held = self.tiles.borrow();
-            let fresh = |t: &Tile| held.get(t).is_some_and(|e| e.epoch == epoch);
-            let mut wanted = vec![];
-            if !held.contains_key(&Tile::WORLD) {
-                wanted.push(Tile::WORLD);
-            }
-            wanted.extend(tiles::visible(view, &screen, z).into_iter().map(|p| p.tile));
-            wanted.push(Tile::WORLD);
-            wanted.into_iter().find(|t| !fresh(t))
+        // The app's part of a tile's look.
+        let app_key = {
+            use std::hash::{Hash, Hasher};
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            format!("{palette:?}{options:?}{scale}").hash(&mut h);
+            h.finish()
         };
-        let Some(tile) = next else {
-            return;
+        let full = tiles::level_for(view, &screen);
+        let z = if self.scrubbing.get() {
+            full.saturating_sub(1)
+        } else {
+            full
         };
         self.tile_busy.set(true);
         let core = self.core.clone();
         let me = self.rc();
-        // Lines thicker by as much as the tile will be shrunk.
-        let lines = scale * tiles::line_scale(view, &screen, tile.z) as f32;
         spawn(
-            move || core.render_tile(band, hour, now, view, tile, lines, palette, options),
-            move |image| {
-                me.tile_busy.set(false);
-                let changed = me.view.borrow().map_detail != image.detail;
-                me.view.borrow_mut().map_detail = image.detail;
-                if changed {
-                    me.emit(Change::Map);
-                }
-                let size = image.size as i32;
-                let texture = gtk::gdk::MemoryTexture::new(
-                    size,
-                    size,
-                    gtk::gdk::MemoryFormat::R8g8b8a8Premultiplied,
-                    &glib::Bytes::from_owned(image.pixels),
-                    (size * 4) as usize,
+            move || core.map_signature(band, hour, now, view),
+            move |content| {
+                let signature = content.wrapping_mul(31) ^ app_key;
+                me.signature.set(signature);
+                let next = {
+                    let held = me.tiles.borrow();
+                    let fresh = |t: &Tile| held.get(t).is_some_and(|e| e.signature == signature);
+                    let mut wanted = vec![];
+                    if !held.contains_key(&Tile::WORLD) {
+                        wanted.push(Tile::WORLD);
+                    }
+                    wanted.extend(tiles::visible(view, &screen, z).into_iter().map(|p| p.tile));
+                    wanted.push(Tile::WORLD);
+                    wanted.into_iter().find(|t| !fresh(t))
+                };
+                let Some(tile) = next else {
+                    me.tile_busy.set(false);
+                    me.request_redraw();
+                    return;
+                };
+                let core = me.core.clone();
+                let me2 = me.clone();
+                // Lines thicker by as much as the tile will be shrunk.
+                let lines = scale * tiles::line_scale(view, &screen, tile.z) as f32;
+                spawn(
+                    move || core.render_tile(band, hour, now, view, tile, lines, palette, options),
+                    move |image| {
+                        let me = me2;
+                        me.tile_busy.set(false);
+                        let changed = me.view.borrow().map_detail != image.detail;
+                        me.view.borrow_mut().map_detail = image.detail;
+                        if changed {
+                            me.emit(Change::Map);
+                        }
+                        let size = image.size as i32;
+                        let texture = gtk::gdk::MemoryTexture::new(
+                            size,
+                            size,
+                            gtk::gdk::MemoryFormat::R8g8b8a8Premultiplied,
+                            &glib::Bytes::from_owned(image.pixels),
+                            (size * 4) as usize,
+                        );
+                        me.keep_tile(tile, gtk::prelude::Cast::upcast(texture), signature);
+                        me.request_redraw();
+                        me.pump_tiles();
+                    },
                 );
-                me.keep_tile(tile, gtk::prelude::Cast::upcast(texture), epoch);
-                me.request_redraw();
-                me.pump_tiles();
             },
         );
     }
 
-    fn keep_tile(&self, tile: Tile, texture: gtk::gdk::Texture, epoch: u64) {
+    fn keep_tile(&self, tile: Tile, texture: gtk::gdk::Texture, signature: u64) {
         let mut held = self.tiles.borrow_mut();
-        // A slow tile from an older version never replaces a newer one.
-        if held.get(&tile).is_some_and(|e| e.epoch > epoch) {
-            return;
-        }
         held.insert(
             tile,
             TileEntry {
                 texture,
-                epoch,
+                signature,
                 used: Cell::new(self.next_use()),
             },
         );

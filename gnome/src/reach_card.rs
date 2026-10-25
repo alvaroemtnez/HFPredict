@@ -277,11 +277,20 @@ impl ReachCard {
                 let view = app.view.borrow().map_view;
                 let held = app.tiles.borrow();
                 let k = f64::from(scale);
-                for z in 0..=tiles::level_for(view, &screen) {
-                    for p in tiles::visible(view, &screen, z) {
+                let fresh = app.signature();
+                let placed: Vec<_> = (0..=tiles::level_for(view, &screen))
+                    .flat_map(|z| tiles::visible(view, &screen, z))
+                    .collect();
+                // Stale tiles (an earlier hour or band) first, fresh ones
+                // over them: the newest content wins even from a coarser level.
+                for pass in [false, true] {
+                    for p in &placed {
                         let Some(e) = held.get(&p.tile) else {
                             continue;
                         };
+                        if (e.signature == fresh) != pass {
+                            continue;
+                        }
                         e.used.set(app.next_use());
                         // A pixel of overlap each side hides the seams
                         // (filtering softens a tile's last row).

@@ -323,17 +323,39 @@ impl Core {
         hour: u32,
         view: MapView,
     ) -> (Vec<Arc<Grid>>, MapDetail) {
+        let (layers, detail, _) = self.layers_keyed(ctx, from, band, hour, view);
+        (layers, detail)
+    }
+
+    /// The layers drawn, with the cache keys they came from (what makes a
+    /// map look the way it does; see `map_signature`).
+    fn layers_keyed(
+        &self,
+        ctx: &RunContext,
+        from: &Place,
+        band: Band,
+        hour: u32,
+        view: MapView,
+    ) -> (Vec<Arc<Grid>>, MapDetail, Vec<String>) {
         let mut layers = vec![];
+        let mut keys = vec![];
         let mut detail = MapDetail::None;
         let coarse_key = Self::key("coarse", ctx, from, &hour.to_string());
         if let Some(c) = lock(&self.caches).coarse.get(&coarse_key)
             && let Some((_, g)) = c.iter().find(|(b, _)| *b == band)
         {
             layers.push(Arc::new(g.clone()));
+            keys.push(coarse_key);
             detail = MapDetail::Coarse;
         }
         if let Some(g) = self.cached_fine(ctx, from, band, hour) {
             layers.push(g);
+            keys.push(Self::key(
+                "fine",
+                ctx,
+                from,
+                &format!("{}|{hour}", band.label()),
+            ));
             detail = MapDetail::Fine;
         }
         if let Some((key, _)) = Self::patch_key(ctx, from, hour, view)
@@ -341,9 +363,10 @@ impl Core {
             && let Some((_, g)) = p.iter().find(|(b, _)| *b == band)
         {
             layers.push(Arc::new(g.clone()));
+            keys.push(key);
             detail = MapDetail::Patch;
         }
-        (layers, detail)
+        (layers, detail, keys)
     }
     /// The map for `frame` (a whole view or one tile), with the layers the
     /// screen's `view` calls for.
@@ -385,7 +408,15 @@ impl Core {
         };
         MapImage {
             size,
-            pixels: render::render(&scene, frame, size, density, &palette, self.threads),
+            // All cores but one: the app's own UI thread keeps one.
+            pixels: render::render(
+                &scene,
+                frame,
+                size,
+                density,
+                &palette,
+                self.threads.saturating_sub(1).max(1),
+            ),
             detail,
         }
     }
@@ -599,6 +630,22 @@ impl Core {
         options: MapOptions,
     ) -> MapImage {
         self.render_view(band, hour, now, view, view, size, density, palette, options)
+    }
+
+    /// A fingerprint of everything the core puts in a map for this band,
+    /// hour and view: the station, the path's ends, the day, the readings
+    /// and which grids are held. Equal fingerprints draw equal maps, so an
+    /// app redraws its tiles only when this (or its own colours and
+    /// selection) changes. Cheap: no computing, only cache lookups.
+    pub fn map_signature(&self, band: Band, hour: u32, now: i64, view: MapView) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let (ctx, from, to) = self.context(now);
+        let (_, _, keys) = self.layers_keyed(&ctx, &from, band, hour, view);
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        Self::key("map", &ctx, &from, &format!("{}|{hour}", band.label())).hash(&mut h);
+        to.map(|t| (t.lat.to_bits(), t.lon.to_bits())).hash(&mut h);
+        keys.hash(&mut h);
+        h.finish()
     }
 
     /// Draws one tile of the map (see `tiles`). `view` is the view on
@@ -899,6 +946,11 @@ mod tests {
         );
         let probe = c.probe(Band::M20, 12, NOW, view, 32.0, 32.0, 64.0).unwrap();
         assert!(probe.distance_km < 50.0, "{probe:?}");
+        // The fingerprint follows the content, not the call.
+        let a = c.map_signature(Band::M20, 12, NOW, MapView::default());
+        assert_eq!(a, c.map_signature(Band::M20, 12, NOW, MapView::default()));
+        assert_ne!(a, c.map_signature(Band::M20, 13, NOW, MapView::default()));
+        assert_ne!(a, c.map_signature(Band::M40, 12, NOW, MapView::default()));
         // In full, a point gets its own chance of contact.
         let tokyo = c.probe_at(Band::M20, 12, NOW, 35.7, 139.7);
         assert!(
