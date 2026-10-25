@@ -333,7 +333,10 @@ INI
     fi
     mkdir -p "$ANDROID_DIR/build"
     info "Starting the emulator (headless)"
+    # Two cores by default (HFP_EMULATOR_CORES): enough for the app, and a
+    # laptop stays cool; never build while it runs if it is a small one.
     ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd" setsid nohup "$SDK_DIR/emulator/emulator" -avd hfpredict \
+        -cores "${HFP_EMULATOR_CORES:-2}" \
         -no-window -no-audio -no-boot-anim -no-snapshot-save -gpu swangle_indirect >"$ANDROID_DIR/build/emulator.log" 2>&1 &
     "$ADB" wait-for-device
     until [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do sleep 2; done
