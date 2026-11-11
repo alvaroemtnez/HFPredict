@@ -13,7 +13,8 @@ ham, Spain). GPL-3.0-or-later. Read `docs/architecture.md` first, then
   WSPR-fitted correction, survey, coverage lattices, places, online readings,
   saved state, map cache, the map renderer). `core/src/app.rs` `Core` is the API.
 - `ffi/` — the core as `libhfpredict_ffi.so` + `uniffi-bindgen` (Kotlin bindings).
-- `gnome/` — GTK 4.18 / libadwaita 1.7 app in Rust; `gnome/build.sh` (podman).
+- `desktop/` — the GNOME-style app (Linux; also Windows and macOS builds):
+  GTK 4.18 / libadwaita 1.7 in Rust; `desktop/build.sh` (podman).
 - `android/` — Kotlin + Compose Material 3; `android/build.sh` (no Android Studio).
 - `i18n/<lang>.json` — every UI string, one table per language (en, es, ca, de, ja, ar).
 - `packaging/` — Flatpak (GNOME 51) and AppImage scripts. `.forgejo/` — CI and release.
@@ -24,8 +25,8 @@ ham, Spain). GPL-3.0-or-later. Read `docs/architecture.md` first, then
 
 ```sh
 tools/rust.sh cargo test --workspace     # core tests (engine runs included)
-gnome/build.sh test                      # fmt + clippy -D warnings + tests (container)
-gnome/build.sh run | screenshot [names]  # run on the desktop / headless PNGs in target/screenshots
+desktop/build.sh test                    # fmt + clippy -D warnings + tests (container)
+desktop/build.sh run | screenshot [names] # run on the desktop / headless PNGs in target/screenshots
 android/build.sh debug | test | release  # APK / unit tests + lint (zero warnings) / signed APKs
 android/build.sh emulator; android/build.sh install; android/build.sh shots
 packaging/flatpak/build.sh; packaging/appimage/build.sh   # -> dist/
@@ -52,7 +53,7 @@ python3 tools/gen-icons.py               # after editing the icon design
   fallback), placeholders `{name}`, then `tools/gen-strings.py`. Code, comments
   and docs in English.
 - **Colours** come from the platform theme (Material You / GNOME accent);
-  map colours are derived in `ui/Theme.kt` and `gnome/src/palette.rs`.
+  map colours are derived in `ui/Theme.kt` and `desktop/src/palette.rs`.
 - **Phones stay portrait**; tablets (sw ≥ 600 dp) and desktop windows get two
   columns when wide (≥ 840 dp Android, ≥ 960 sp GNOME).
 - **Version** lives only in the root `Cargo.toml`; releases follow

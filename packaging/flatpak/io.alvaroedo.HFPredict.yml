@@ -27,10 +27,10 @@ modules:
       - mkdir -p cargo && cp vendor-config.toml cargo/config.toml
       - cargo build --release --locked --offline -p hfpredict
       - install -Dm755 target/release/hfpredict /app/bin/hfpredict
-      - install -Dm644 gnome/data/io.alvaroedo.HFPredict.desktop /app/share/applications/io.alvaroedo.HFPredict.desktop
-      - install -Dm644 gnome/data/io.alvaroedo.HFPredict.metainfo.xml /app/share/metainfo/io.alvaroedo.HFPredict.metainfo.xml
-      - install -Dm644 gnome/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg /app/share/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg
-      - install -Dm644 gnome/data/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg /app/share/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg
+      - install -Dm644 desktop/data/io.alvaroedo.HFPredict.desktop /app/share/applications/io.alvaroedo.HFPredict.desktop
+      - install -Dm644 desktop/data/io.alvaroedo.HFPredict.metainfo.xml /app/share/metainfo/io.alvaroedo.HFPredict.metainfo.xml
+      - install -Dm644 desktop/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg /app/share/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg
+      - install -Dm644 desktop/data/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg /app/share/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg
     sources:
       - type: dir
         path: ../..

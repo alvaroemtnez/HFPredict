@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Runs inside the GNOME container (gnome/build.sh screenshot): starts a
+# Runs inside the desktop container (desktop/build.sh screenshot): starts a
 # headless Wayland compositor and captures the app in several states into
 # target/screenshots/. Pass scenario names to capture only those.
 set -euo pipefail
 
 OUT=target/screenshots
-BIN=target/gnome/release/hfpredict
+BIN=target/desktop/release/hfpredict
 mkdir -p "$OUT"
 export XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"

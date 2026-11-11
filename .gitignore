@@ -1,4 +1,4 @@
-# Downloaded toolchains and caches (tools/rust.sh, android/build.sh, gnome/build.sh)
+# Downloaded toolchains and caches (tools/rust.sh, android/build.sh, desktop/build.sh)
 /.tools/
 /.cache/
 /target/

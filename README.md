@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="gnome/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg" width="112" alt="">
+  <img src="desktop/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg" width="112" alt="">
   <h1>HFPredict</h1>
   <p><strong>Which amateur radio bands reach where, hour by hour, worked out on your own device.</strong><br>
   For Android and the Linux desktop. No account, no tracking, no ads; works with no network at all.</p>
@@ -83,8 +83,8 @@ Linux builds.
 tools/rust.sh cargo test --workspace   # the shared core: Rust toolchain into .tools/
 android/build.sh debug                 # Android APK -> android/dist/ (JDK, SDK, NDK into android/.tools/)
 android/build.sh test                  # Android unit tests and lint
-gnome/build.sh run                     # build and run the GNOME app (in a podman container)
-gnome/build.sh test                    # Rust format, lints and tests
+desktop/build.sh run                   # build and run the GNOME app (in a podman container)
+desktop/build.sh test                  # Rust format, lints and tests
 packaging/flatpak/build.sh             # dist/HFPredict-<version>-x86_64.flatpak
 packaging/appimage/build.sh            # dist/HFPredict-<version>-x86_64.AppImage
 ```

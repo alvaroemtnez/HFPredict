@@ -180,10 +180,10 @@ location" says it is unavailable, as on Windows.
 2. Add the `## X.Y.Z` entry to `CHANGELOG.md`, written for users. The release
    notes are this entry; the release fails without one.
 3. Add a `<release version="X.Y.Z" date="YYYY-MM-DD">` to
-   `gnome/data/io.alvaroedo.HFPredict.metainfo.xml`.
+   `desktop/data/io.alvaroedo.HFPredict.metainfo.xml`.
 4. Refresh the sunspot table if a month or two has passed:
    `tools/update-ssn.py` (check the diff looks sane).
-5. Run the checks: `gnome/build.sh test` and `android/build.sh test`.
+5. Run the checks: `desktop/build.sh test` and `android/build.sh test`.
 6. Commit, tag and push:
    ```sh
    git commit -am "Release X.Y.Z"
@@ -263,5 +263,5 @@ Keep the asset names (`HFPredict-<version>-<abi>.apk`) stable.
   the app needs (GNOME 51 runtime, Rust SDK extension, network and display
   permissions), and list the cargo sources with `flatpak-cargo-generator`
   instead of the local vendor step.
-- The metainfo (`gnome/data/io.alvaroedo.HFPredict.metainfo.xml`) with
+- The metainfo (`desktop/data/io.alvaroedo.HFPredict.metainfo.xml`) with
   screenshots and release notes, the desktop file and the icons are ready.

@@ -4,7 +4,7 @@
 # GNOME app development: GTK 4.18 and libadwaita 1.7 (the oldest versions
 # the app supports, and what the AppImage bundles), plus a headless Wayland
 # compositor and fonts for screenshots.
-FROM docker.io/library/debian:trixie-slim AS gnome
+FROM docker.io/library/debian:trixie-slim AS desktop
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       build-essential pkg-config ca-certificates curl git \

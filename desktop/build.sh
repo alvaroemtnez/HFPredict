@@ -2,10 +2,10 @@
 # build.sh - Build, run and test the GNOME app. Everything runs in a podman
 # container (tools/containers/Containerfile); the host only needs podman.
 #
-# Usage: gnome/build.sh [command]   (default: build)
+# Usage: desktop/build.sh [command]   (default: build)
 #
-#   build         debug build              -> target/gnome/debug/hfpredict
-#   release       release build            -> target/gnome/release/hfpredict
+#   build         debug build              -> target/desktop/debug/hfpredict
+#   release       release build            -> target/desktop/release/hfpredict
 #   run [args]    build and run it on this desktop (Wayland)
 #   test          core + GNOME unit tests, clippy and rustfmt check
 #   screenshot    headless screenshots of the UI into target/screenshots/
@@ -23,8 +23,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # At most four cores (HFP_CPUS to change): a laptop running a long build
 # on every core can overheat.
 CPUS="${HFP_CPUS:-$(( $(nproc) < 4 ? $(nproc) : 4 ))}"
-IMAGE=localhost/hfpredict-gnome:latest
-TARGET="$ROOT/target/gnome"
+IMAGE=localhost/hfpredict-desktop:latest
+TARGET="$ROOT/target/desktop"
 
 # VSCodium and other IDEs on Silverblue run as a Flatpak: reach the host's
 # podman through flatpak-spawn then.
@@ -39,7 +39,7 @@ info() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 ensure_image() {
     if ! "${PODMAN[@]}" image exists "$IMAGE"; then
         info "Building container image $IMAGE"
-        "${PODMAN[@]}" build --target gnome -t "$IMAGE" -f "$ROOT/tools/containers/Containerfile" "$ROOT/tools/containers"
+        "${PODMAN[@]}" build --target desktop -t "$IMAGE" -f "$ROOT/tools/containers/Containerfile" "$ROOT/tools/containers"
     fi
 }
 
@@ -66,7 +66,7 @@ case "${1:-build}" in
         shift
         EXTRA=(-e WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}" -e XDG_RUNTIME_DIR=/run/user/host
                -v "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/${WAYLAND_DISPLAY:-wayland-0}:/run/user/host/${WAYLAND_DISPLAY:-wayland-0}:z"
-               -e HFPREDICT_DATA_DIR="$ROOT/target/gnome/home/data" -e HFPREDICT_CACHE_DIR="$ROOT/target/gnome/home/cache")
+               -e HFPREDICT_DATA_DIR="$ROOT/target/desktop/home/data" -e HFPREDICT_CACHE_DIR="$ROOT/target/desktop/home/cache")
         in_container "cargo build -p hfpredict && $TARGET/debug/hfpredict $*"
         ;;
     test)
@@ -74,15 +74,15 @@ case "${1:-build}" in
         ;;
     screenshot)
         shift
-        in_container "cargo build --release -p hfpredict && bash gnome/tools/screenshots.sh $*"
+        in_container "cargo build --release -p hfpredict && bash desktop/tools/screenshots.sh $*"
         ;;
     flatpak) exec "$ROOT/packaging/flatpak/build.sh" ;;
     appimage) exec "$ROOT/packaging/appimage/build.sh" ;;
     shell) in_container bash ;;
     shell-cmd) shift; in_container "$*" ;;
     image)
-        "${PODMAN[@]}" build --target gnome -t "$IMAGE" -f "$ROOT/tools/containers/Containerfile" "$ROOT/tools/containers"
+        "${PODMAN[@]}" build --target desktop -t "$IMAGE" -f "$ROOT/tools/containers/Containerfile" "$ROOT/tools/containers"
         ;;
     -h|--help|help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//' ;;
-    *) echo "Unknown command '$1'. Run gnome/build.sh help." >&2; exit 2 ;;
+    *) echo "Unknown command '$1'. Run desktop/build.sh help." >&2; exit 2 ;;
 esac

@@ -41,7 +41,7 @@ cp target/release/hfpredict "$C/MacOS/hfpredict"
 # The icon: the desktop SVG rendered at every size iconutil wants.
 ICONSET="$OUT/HFPredict.iconset"
 mkdir -p "$ICONSET"
-SVG=gnome/data/icons/hicolor/scalable/apps/$APP_ID.svg
+SVG=desktop/data/icons/hicolor/scalable/apps/$APP_ID.svg
 for s in 16 32 128 256 512; do
     rsvg-convert -w $s -h $s "$SVG" -o "$ICONSET/icon_${s}x${s}.png"
     rsvg-convert -w $((s * 2)) -h $((s * 2)) "$SVG" -o "$ICONSET/icon_${s}x${s}@2x.png"
@@ -56,7 +56,7 @@ cp -RL "$BREW/share/icons/Adwaita" "$C/Resources/share/icons/"
 cp -RL "$BREW/share/icons/hicolor" "$C/Resources/share/icons/"
 install -m644 "$SVG" "$C/Resources/share/icons/hicolor/scalable/apps/$APP_ID.svg"
 mkdir -p "$C/Resources/share/icons/hicolor/symbolic/apps"
-install -m644 gnome/data/icons/hicolor/symbolic/apps/$APP_ID-symbolic.svg "$C/Resources/share/icons/hicolor/symbolic/apps/"
+install -m644 desktop/data/icons/hicolor/symbolic/apps/$APP_ID-symbolic.svg "$C/Resources/share/icons/hicolor/symbolic/apps/"
 gtk4-update-icon-cache -q -f -t "$C/Resources/share/icons/hicolor" || true
 gtk4-update-icon-cache -q -f -t "$C/Resources/share/icons/Adwaita" || true
 

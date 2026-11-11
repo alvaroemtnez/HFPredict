@@ -167,9 +167,9 @@ cp "$SYSROOT"/share/glib-2.0/schemas/*.xml "$OUT/share/glib-2.0/schemas/"
 glib-compile-schemas "$OUT/share/glib-2.0/schemas"
 cp -r "$SYSROOT/share/icons/Adwaita" "$OUT/share/icons/"
 cp -r "$SYSROOT/share/icons/hicolor" "$OUT/share/icons/"
-install -Dm644 gnome/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg \
+install -Dm644 desktop/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg \
     "$OUT/share/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg"
-install -Dm644 gnome/data/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg \
+install -Dm644 desktop/data/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg \
     "$OUT/share/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg"
 if [ -d "$SYSROOT/lib/gdk-pixbuf-2.0" ]; then
     cp -r "$SYSROOT/lib/gdk-pixbuf-2.0" "$OUT/lib/"

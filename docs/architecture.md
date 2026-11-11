@@ -11,14 +11,14 @@
             └───────────────┬───────────────────────────────────┬──────────────────┘
                             │ Rust                              │ UniFFI (ffi/)
                  ┌──────────┴──────────┐             ┌──────────┴──────────┐
-                 │ gnome/  GTK 4 +     │             │ android/  Kotlin +  │
+                 │ desktop/  GTK 4 +   │             │ android/  Kotlin +  │
                  │ libadwaita (Rust)   │             │ Compose Material 3  │
                  └─────────────────────┘             └─────────────────────┘
 ```
 
 ## One core, two thin apps
 
-The desktop app lives in `gnome/` and is called the GNOME app throughout the
+The desktop app lives in `desktop/` and is called the GNOME app throughout the
 code and these notes: GNOME's design (GTK 4, libadwaita, the HIG) is what it is
 built and judged against. It is not GNOME-only: the Flatpak and the AppImage
 carry their own GTK and libadwaita, so it runs on any Linux desktop, and what
@@ -77,7 +77,7 @@ quantised to 69 KB each, within 128 MB.
 ## Strings
 
 `i18n/<lang>.json` is the single source for every language. The GNOME app reads
-it directly (`gnome/src/i18n.rs`); `tools/gen-strings.py` generates Android's
+it directly (`desktop/src/i18n.rs`); `tools/gen-strings.py` generates Android's
 `res/values*/strings.xml` and checks that placeholders agree. Placeholders are
 named (`{band}`), so translations can reorder them.
 
@@ -87,7 +87,7 @@ named (`{band}`), so translations can reorder them.
 | --- | --- | --- |
 | Rust toolchain | `.tools/` via `tools/rust.sh` | pinned in `rust-toolchain.toml` |
 | Android | `android/build.sh` | JDK, SDK, NDK, cargo-ndk into `android/.tools/`; Rust for 3 ABIs, then Gradle |
-| GNOME dev | `gnome/build.sh` | podman, Debian 13 (GTK 4.18, libadwaita 1.7) |
+| GNOME dev | `desktop/build.sh` | podman, Debian 13 (GTK 4.18, libadwaita 1.7) |
 | Flatpak | `packaging/flatpak/build.sh` | vendored crates, Flathub's GNOME 51 image |
 | AppImage | `packaging/appimage/build.sh` | linuxdeploy + GTK plugin in the Debian 13 container |
 
@@ -96,7 +96,7 @@ GTK 4.18 and libadwaita 1.7 are the oldest supported (Cargo features `v4_18`,
 
 ## UI tests
 
-- GNOME: `gnome/build.sh screenshot [scenario…]` runs the app in a headless
+- GNOME: `desktop/build.sh screenshot [scenario…]` runs the app in a headless
   Weston and saves PNGs (the app's `HFPREDICT_SCREENSHOT` hook) for phone-sized,
   wide, light, dark, low-light, each dialog and Spanish.
 - Android: `android/build.sh emulator` starts a headless AOSP emulator (no

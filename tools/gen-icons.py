@@ -294,8 +294,8 @@ def store_icon_svg(way=COLOURWAYS[0]):
 
 
 def main():
-    write(f"gnome/data/icons/hicolor/scalable/apps/{APP}.svg", desktop_svg())
-    write(f"gnome/data/icons/hicolor/symbolic/apps/{APP}-symbolic.svg", symbolic_svg())
+    write(f"desktop/data/icons/hicolor/scalable/apps/{APP}.svg", desktop_svg())
+    write(f"desktop/data/icons/hicolor/symbolic/apps/{APP}-symbolic.svg", symbolic_svg())
     res = "android/app/src/main/res"
     colours = []
     for way in COLOURWAYS:

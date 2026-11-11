@@ -32,8 +32,8 @@ jobs:
         run: python3 tools/gen-strings.py --check
       - name: Desktop metadata
         run: |
-          desktop-file-validate gnome/data/io.alvaroedo.HFPredict.desktop
-          appstreamcli validate --no-net gnome/data/io.alvaroedo.HFPredict.metainfo.xml
+          desktop-file-validate desktop/data/io.alvaroedo.HFPredict.desktop
+          appstreamcli validate --no-net desktop/data/io.alvaroedo.HFPredict.metainfo.xml
 
   android:
     runs-on: docker

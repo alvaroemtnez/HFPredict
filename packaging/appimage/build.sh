@@ -2,7 +2,7 @@
 # build.sh - Builds dist/HFPredict-<version>-<arch>.AppImage for the machine's
 # architecture (x86_64, or aarch64 in an arm64 container).
 #
-# Runs in the GNOME build container (Debian 13: GTK 4.18, libadwaita 1.7),
+# Runs in the desktop build container (Debian 13: GTK 4.18, libadwaita 1.7),
 # bundling GTK and libadwaita with linuxdeploy and its GTK plugin, so the
 # AppImage runs on distributions from 2025 on (glibc 2.41) without either
 # installed. The tools are downloaded into .cache/appimage/.
@@ -13,8 +13,8 @@ VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -n1)
 cd "$ROOT"
 
 if [ "${IN_CONTAINER:-0}" != 1 ]; then
-    # Through the GNOME container, with the in-repo toolchain.
-    exec env EXTRA_ENV=1 "$ROOT/gnome/build.sh" shell-cmd "IN_CONTAINER=1 bash packaging/appimage/build.sh"
+    # Through the desktop container, with the in-repo toolchain.
+    exec env EXTRA_ENV=1 "$ROOT/desktop/build.sh" shell-cmd "IN_CONTAINER=1 bash packaging/appimage/build.sh"
 fi
 
 TOOLS=.cache/appimage
@@ -31,7 +31,7 @@ fetch "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/l
 printf '\0\0\0' | dd of="$TOOLS/linuxdeploy-$ARCH.AppImage" bs=1 seek=8 count=3 conv=notrunc status=none
 fetch https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh linuxdeploy-plugin-gtk.sh
 
-# The GNOME container has the toolchain on PATH; a bare CI container gets
+# The desktop container has the toolchain on PATH; a bare CI container gets
 # the pinned one installed into .tools/ by tools/rust.sh.
 if command -v cargo >/dev/null; then CARGO=(cargo); else CARGO=("$ROOT/tools/rust.sh" cargo); fi
 "${CARGO[@]}" build --release --locked -p hfpredict
@@ -40,20 +40,20 @@ BIN="${CARGO_TARGET_DIR:-target}/release/hfpredict"
 APPDIR=$TOOLS/AppDir
 rm -rf "$APPDIR"
 install -Dm755 "$BIN" "$APPDIR/usr/bin/hfpredict"
-install -Dm644 gnome/data/io.alvaroedo.HFPredict.metainfo.xml "$APPDIR/usr/share/metainfo/io.alvaroedo.HFPredict.appdata.xml"
-install -Dm644 gnome/data/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg "$APPDIR/usr/share/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg"
+install -Dm644 desktop/data/io.alvaroedo.HFPredict.metainfo.xml "$APPDIR/usr/share/metainfo/io.alvaroedo.HFPredict.appdata.xml"
+install -Dm644 desktop/data/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg "$APPDIR/usr/share/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-symbolic.svg"
 # The symbolic icons the UI uses come from the Adwaita theme.
 mkdir -p "$APPDIR/usr/share/icons"
 mkdir -p "$APPDIR/usr/share/icons/Adwaita"
 cp -r /usr/share/icons/Adwaita/symbolic /usr/share/icons/Adwaita/index.theme "$APPDIR/usr/share/icons/Adwaita/"
 
 # Screenshot URLs only resolve once pushed; metadata is validated offline
-# by gnome/build.sh test.
+# by desktop/build.sh test.
 export NO_APPSTREAM=1 APPIMAGE_EXTRACT_AND_RUN=1 DEPLOY_GTK_VERSION=4 ARCH="$ARCH" LINUXDEPLOY_OUTPUT_VERSION="$VERSION"
 export PATH="$PWD/$TOOLS:$PATH"
 (cd "$TOOLS" && "./linuxdeploy-$ARCH.AppImage" --appdir AppDir \
-    --desktop-file "$ROOT/gnome/data/io.alvaroedo.HFPredict.desktop" \
-    --icon-file "$ROOT/gnome/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg" \
+    --desktop-file "$ROOT/desktop/data/io.alvaroedo.HFPredict.desktop" \
+    --icon-file "$ROOT/desktop/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg" \
     --plugin gtk)
 # The GTK plugin forces X11; GTK picks Wayland or X11 well by itself.
 # It also forces GTK_THEME, which overrides libadwaita's own stylesheet;
