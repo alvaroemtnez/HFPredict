@@ -23,6 +23,9 @@ android {
         targetSdk = 37
         versionCode = appVersionCode
         versionName = appVersion
+        // The manifest's ".Name" components live in the namespace, not in the
+        // application id (different case, and ".debug" on debug builds).
+        buildConfigField("String", "NAMESPACE", "\"$namespace\"")
     }
 
     buildTypes {

@@ -26,7 +26,10 @@ enum class LauncherIcon(
     DAYLIGHT("LauncherDaylight", R.string.icon_daylight, R.color.ic_launcher_background_daylight, R.drawable.ic_launcher_foreground_daylight),
     ;
 
-    private fun component(context: Context) = ComponentName(context, "${context.packageName}.$alias")
+    /** The alias's class name: the manifest's ".Name" resolves against the namespace, never the application id. */
+    internal val className get() = "${BuildConfig.NAMESPACE}.$alias"
+
+    private fun component(context: Context) = ComponentName(context, className)
 
     companion object {
         fun current(context: Context): LauncherIcon {
