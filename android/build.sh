@@ -175,7 +175,14 @@ build_rust() {
     for abi in $abis; do args+=(-t "$abi"); done
     info "Building the Rust core for: $abis"
     rm -rf "$GENERATED/jniLibs"
-    (cd "$ROOT_DIR" && cargo ndk -P "$(gradle_value minSdk)" "${args[@]}" -o "$GENERATED/jniLibs" \
+    # Reproducible builds: no build-machine paths (panic locations) in the
+    # library, so F-Droid's build matches ours byte for byte wherever the
+    # checkout lives. The last matching prefix wins, and CARGO_HOME sits
+    # inside the checkout; the encoded form survives spaces in the paths.
+    # Only here: the host build below needs real paths (askama templates).
+    local remap
+    remap="--remap-path-prefix=$ROOT_DIR=/hfpredict"$'\x1f'"--remap-path-prefix=$CARGO_HOME=/cargo"
+    (cd "$ROOT_DIR" && CARGO_ENCODED_RUSTFLAGS="$remap" cargo ndk -P "$(gradle_value minSdk)" "${args[@]}" -o "$GENERATED/jniLibs" \
         build --release --locked -p hfpredict-ffi)
     info "Generating the Kotlin bindings"
     # From an unstripped host build: release builds strip the metadata the
