@@ -1,0 +1,1 @@
+Cambiar el icono de la pantalla de inicio ya no cierra la aplicación.

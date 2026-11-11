@@ -1,0 +1,1 @@
+Canviar la icona de la pantalla d'inici ja no tanca l'aplicació.

@@ -3,6 +3,11 @@
 Each release's entry becomes its release notes (tools/release-notes.sh), so
 write it for the people installing the app.
 
+## 0.1.1
+
+- Android: changing the home-screen icon no longer closes the app.
+- Android: the release also carries the APK set for the Accrescent store.
+
 ## 0.1.0
 
 First release: HFPredict for Android and for Linux (Flatpak and AppImage).
