@@ -214,6 +214,8 @@
     <string name="preferences_theme_dark">ダーク</string>
     <string name="preferences_theme_lowLight">低照度</string>
     <string name="preferences_theme_lowLightHint">黒地に暗い赤。夜間視力を保ちます</string>
+    <string name="preferences_icon">アプリのアイコン</string>
+    <string name="preferences_iconHint">ランチャーによっては、新しいアイコンの表示に少し時間がかかったり、ホーム画面から外れたりします。</string>
     <string name="preferences_language">言語</string>
     <string name="preferences_language_system">システムに合わせる</string>
     <string name="preferences_languageRestart">新しい言語は HFPredict の再起動後に表示されます。</string>
@@ -300,4 +302,10 @@
     <string name="compass_use">{degrees}°を使う</string>
     <string name="compass_lobes">アンテナのローブ</string>
     <string name="compass_pointHere">ここへ向ける</string>
+    <string name="icon_deepSea">深海</string>
+    <string name="icon_night">夜</string>
+    <string name="icon_sunspot">黒点</string>
+    <string name="icon_bandOpen">バンドオープン</string>
+    <string name="icon_aurora">オーロラ</string>
+    <string name="icon_daylight">昼光</string>
 </resources>

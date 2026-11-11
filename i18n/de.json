@@ -232,6 +232,8 @@
   "preferences.theme.dark": "Dunkel",
   "preferences.theme.lowLight": "Schwaches Licht",
   "preferences.theme.lowLightHint": "Gedämpftes Rot auf Schwarz, um die Nachtsicht zu erhalten",
+  "preferences.icon": "App-Symbol",
+  "preferences.iconHint": "Manche Startbildschirme zeigen das neue Symbol erst nach einem Moment, andere entfernen es vom Startbildschirm.",
   "preferences.language": "Sprache",
   "preferences.language.system": "Wie das System",
   "preferences.languageRestart": "Die neue Sprache erscheint nach einem Neustart von HFPredict.",
@@ -323,5 +325,12 @@
   "compass.measure": "Mit dem Kompass messen",
   "compass.use": "{degrees}° übernehmen",
   "compass.lobes": "Keulen deiner Antenne",
-  "compass.pointHere": "Hierhin ausrichten"
+  "compass.pointHere": "Hierhin ausrichten",
+
+  "icon.deepSea": "Tiefsee",
+  "icon.night": "Nacht",
+  "icon.sunspot": "Sonnenfleck",
+  "icon.bandOpen": "Band offen",
+  "icon.aurora": "Polarlicht",
+  "icon.daylight": "Tageslicht"
 }

@@ -219,12 +219,7 @@ fun FirstRunScreen(state: UiState, vm: AppViewModel) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Spacer(Modifier.height(32.dp))
-        Icon(
-            painterResource(R.drawable.ic_launcher_foreground),
-            contentDescription = null,
-            tint = androidx.compose.ui.graphics.Color.Unspecified,
-            modifier = Modifier.size(120.dp),
-        )
+        AppLogo(96.dp)
         Kicker(tr(R.string.firstRun_kicker), color = MaterialTheme.colorScheme.primary)
         Text(tr(R.string.firstRun_title), style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
         Text(tr(R.string.firstRun_subtitle), textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)

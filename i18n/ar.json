@@ -232,6 +232,8 @@
   "preferences.theme.dark": "داكنة",
   "preferences.theme.lowLight": "إضاءة خافتة",
   "preferences.theme.lowLightHint": "أحمر خافت على أسود للحفاظ على الرؤية الليلية",
+  "preferences.icon": "أيقونة التطبيق",
+  "preferences.iconHint": "تتأخر بعض واجهات التشغيل قليلًا في إظهار الأيقونة الجديدة، وبعضها يزيلها من الشاشة الرئيسية.",
   "preferences.language": "اللغة",
   "preferences.language.system": "حسب النظام",
   "preferences.languageRestart": "تظهر اللغة الجديدة بعد إعادة تشغيل HFPredict.",
@@ -323,5 +325,12 @@
   "compass.measure": "القياس بالبوصلة",
   "compass.use": "استخدم {degrees}°",
   "compass.lobes": "فصوص هوائيك",
-  "compass.pointHere": "وجّه إلى هنا"
+  "compass.pointHere": "وجّه إلى هنا",
+
+  "icon.deepSea": "أعماق البحر",
+  "icon.night": "الليل",
+  "icon.sunspot": "البقعة الشمسية",
+  "icon.bandOpen": "النطاق مفتوح",
+  "icon.aurora": "الشفق القطبي",
+  "icon.daylight": "ضوء النهار"
 }

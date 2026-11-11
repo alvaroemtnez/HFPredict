@@ -8,12 +8,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -24,13 +22,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,6 +37,7 @@ import io.alvaroedo.hfpredict.AppViewModel
 import io.alvaroedo.hfpredict.BuildConfig
 import io.alvaroedo.hfpredict.Format
 import io.alvaroedo.hfpredict.Languages
+import io.alvaroedo.hfpredict.LauncherIcon
 import io.alvaroedo.hfpredict.R
 import io.alvaroedo.hfpredict.UiState
 import io.alvaroedo.hfpredict.core.Model
@@ -90,6 +89,27 @@ fun PreferencesScreen(state: UiState, vm: AppViewModel, compact: Boolean, onDism
                 s.theme,
                 hint = { if (it == Theme.LOW_LIGHT) ctx.getString(R.string.preferences_theme_lowLightHint) else null },
             ) { vm.setSettings(s.copy(theme = it)) }
+
+            Group(tr(R.string.preferences_icon))
+            var icon by remember { mutableStateOf(LauncherIcon.current(context)) }
+            LauncherIcon.entries.forEach { option ->
+                ListItem(
+                    headlineContent = { Text(tr(option.label)) },
+                    leadingContent = { AppLogo(36.dp, option) },
+                    trailingContent = { RadioButton(selected = option == icon, onClick = null) },
+                    modifier = Modifier.selectable(option == icon, role = Role.RadioButton) {
+                        LauncherIcon.set(context, option)
+                        icon = option
+                    },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+                )
+            }
+            Text(
+                tr(R.string.preferences_iconHint),
+                Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             Group(tr(R.string.preferences_language))
             val current = Languages.current(context)
@@ -214,10 +234,7 @@ fun AboutScreen(compact: Boolean, onDismiss: () -> Unit) {
     FullScreenDialog(tr(R.string.about_title), onDismiss, compact) { mod ->
         Column(mod.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
             Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    painterResource(R.drawable.ic_launcher_foreground), null,
-                    tint = androidx.compose.ui.graphics.Color.Unspecified, modifier = Modifier.size(112.dp),
-                )
+                AppLogo(88.dp)
                 Text(tr(R.string.app_name), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text(tr(R.string.about_version, "version" to BuildConfig.VERSION_NAME), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("© 2026 Álvaro Edo Martínez · GPL-3.0-or-later", style = MaterialTheme.typography.bodySmall)

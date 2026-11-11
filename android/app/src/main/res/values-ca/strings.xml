@@ -214,6 +214,8 @@
     <string name="preferences_theme_dark">Fosc</string>
     <string name="preferences_theme_lowLight">Poca llum</string>
     <string name="preferences_theme_lowLightHint">Roig tènue sobre negre, per a conservar la visió nocturna</string>
+    <string name="preferences_icon">Icona de l\'aplicació</string>
+    <string name="preferences_iconHint">Alguns llançadors triguen una mica a mostrar la icona nova, i d\'altres la treuen de la pantalla d\'inici.</string>
     <string name="preferences_language">Llengua</string>
     <string name="preferences_language_system">Segueix el sistema</string>
     <string name="preferences_languageRestart">La nova llengua apareixerà quan reinicies HFPredict.</string>
@@ -300,4 +302,10 @@
     <string name="compass_use">Utilitzar {degrees}°</string>
     <string name="compass_lobes">Lòbuls de la teua antena</string>
     <string name="compass_pointHere">Apuntar ací</string>
+    <string name="icon_deepSea">Mar profund</string>
+    <string name="icon_night">Nit</string>
+    <string name="icon_sunspot">Taca solar</string>
+    <string name="icon_bandOpen">Banda oberta</string>
+    <string name="icon_aurora">Aurora</string>
+    <string name="icon_daylight">Llum de dia</string>
 </resources>

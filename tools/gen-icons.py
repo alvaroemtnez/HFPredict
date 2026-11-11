@@ -1,36 +1,58 @@
 #!/usr/bin/env python3
-"""Generates every app icon from one description, so the GNOME icon, the
-symbolic icon and the Android adaptive icon cannot drift apart.
+"""Generates every app icon from one description, so the desktop icon, the
+symbolic icon and the Android icons cannot drift apart.
 
-The mark is the app's own map: an earth disc seen from the station, a
-blob of rounded cells where the band reaches (brightest near the station,
-like the quality ramp), a dashed distance ring and the station's dot.
-The cell field nods to HFcast's icon, which this app's design grew from.
+The mark is the app's own map: a field of rounded cells where the band
+reaches, coloured by the quality ramp (brightest near the station), and the
+station's dot. It sits on a flat ground with no rim, centred on the field's
+own extent, so every platform shows the same art and only the corner shape
+changes. The cell field nods to HFcast's icon, which this design grew from.
 
-Usage: tools/gen-icons.py        (run from the repository root)
+Android offers every colourway in Preferences (launcher activity-aliases);
+everywhere else the icon is the first one, Deep sea.
+
+Small sizes get their own coarse grid (the symbolic icon, the status-bar
+icon): the fine field turns to mush below 32 px.
+
+Usage: tools/gen-icons.py        (run from the repository root; rsvg-convert,
+                                  if present, also renders the PNGs)
 """
 import math
 import os
+import shutil
+import subprocess
 
-# Colours: deep-sea disc, a teal quality ramp, the amber station.
-DISC = "#0F2B3A"
-DISC_RIM = "#1C4457"
-RAMP = ["#1E6E86", "#2F9EBB", "#86DDEB"]  # weak, patchy, reliable
-STATION = "#FFC23D"
-RING = "#FFFFFF"
+APP = "io.alvaroedo.HFPredict"
 
-# Geometry on a 100 x 100 design square, disc centred.
+# (id, ground, quality ramp weak -> reliable, station). The first is the default.
+COLOURWAYS = [
+    ("deepSea", "#0F2B3A", ["#1E6E86", "#2F9EBB", "#86DDEB"], "#FFC23D"),
+    ("night", "#1D1B3A", ["#3F3A8A", "#6E66D1", "#BDB6FF"], "#FFC23D"),
+    ("sunspot", "#2A160B", ["#7A3812", "#C8641F", "#FFB46B"], "#FFFFFF"),
+    ("bandOpen", "#161B22", ["#B4442F", "#E0A31B", "#47C27A"], "#FFFFFF"),
+    ("aurora", "#0C2421", ["#17665A", "#2BA889", "#9BF0CF"], "#FFC23D"),
+    ("daylight", "#EAF2F5", ["#9CCBDA", "#3F95B5", "#0F5E7C"], "#E8820C"),
+]
+
+# The field, on a 100-unit design square.
 C = 50.0
 R = 44.0
 PITCH = 6.3
 CELL = 5.3
-STATION_XY = (43.0, 57.0)
+CORNER = 1.3
+STATION = (43.0, 57.0)
+HALO = 6.2
+DOT = 4.4
+# The field's half-extent as a share of the visible icon (Android's 72 dp
+# window, the desktop tile): 0.64 leaves the ground a clear margin and keeps
+# the field inside Android's 66 dp safe circle.
+FILL = 0.64
 
 
 def reach(x, y):
     """0..1: how well the band reaches this point. A lobed blob around
     the station, stronger to the north-east, as a real map tends to be."""
-    sx, sy = STATION_XY
+    sx, sy = STATION
     dx, dy = x - sx, y - sy
     d = math.hypot(dx, dy)
     angle = math.atan2(-dy, dx)
@@ -38,102 +60,186 @@ def reach(x, y):
     return max(0.0, 1.0 - d / lobe)
 
 
-def cells():
+def centre(cells, size):
+    """Shift cells (x, y, level centres) so their bounding box is centred on C;
+    returns the cells, the station and the half-extent."""
+    xs = [c[0] for c in cells]
+    ys = [c[1] for c in cells]
+    dx = C - (min(xs) + max(xs)) / 2
+    dy = C - (min(ys) + max(ys)) / 2
+    moved = [(x + dx, y + dy, level) for x, y, level in cells]
+    extent = max(max(abs(x - C), abs(y - C)) for x, y, _ in moved) + size / 2
+    return moved, (STATION[0] + dx, STATION[1] + dy), extent
+
+
+def fine_field():
     out = []
     n = int(2 * R / PITCH) + 2
     for i in range(-n, n + 1):
         for j in range(-n, n + 1):
-            x = C + i * PITCH
-            y = C + j * PITCH
-            # Whole cells only, inside the disc with a margin.
+            x, y = C + i * PITCH, C + j * PITCH
             if math.hypot(x - C, y - C) > R - CELL * 0.75:
                 continue
             r = reach(x, y)
             if r <= 0.08:
                 continue
-            level = 2 if r > 0.58 else 1 if r > 0.3 else 0
-            out.append((x - CELL / 2, y - CELL / 2, level))
-    return out
+            out.append((x, y, 2 if r > 0.58 else 1 if r > 0.3 else 0))
+    return centre(out, CELL)
 
 
-def ring_points(radius, dashes=28):
-    for k in range(dashes):
-        a0 = 2 * math.pi * k / dashes
-        a1 = a0 + math.pi / dashes
-        yield a0, a1, radius
+def coarse_field(pitch=12.6):
+    out = []
+    for i in range(-4, 5):
+        for j in range(-4, 5):
+            x, y = STATION[0] + i * pitch, STATION[1] + j * pitch
+            r = reach(x, y)
+            if r > 0.12:
+                out.append((x, y, 2 if r > 0.5 else 1))
+    return centre(out, pitch * 0.78)
 
 
-def svg(size=128, symbolic=False):
-    s = size / 100.0
-    parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 100 100">']
-    if symbolic:
-        fg = "#241f31"
-        parts.append(f'<circle cx="{C}" cy="{C}" r="{R + 2}" fill="none" stroke="{fg}" stroke-width="7"/>')
-        for x, y, level in cells():
-            if level >= 1:
-                parts.append(f'<rect x="{x:.2f}" y="{y:.2f}" width="{CELL}" height="{CELL}" rx="1.6" fill="{fg}" opacity="{0.55 if level == 1 else 1}"/>')
-        sx, sy = STATION_XY
-        parts.append(f'<circle cx="{sx}" cy="{sy}" r="6" fill="#ffffff"/><circle cx="{sx}" cy="{sy}" r="4" fill="{fg}"/>')
-        parts.append("</svg>")
-        return "\n".join(parts)
-    # GNOME style: a soft drop shadow under the disc, then the disc.
-    parts.append(f'<ellipse cx="{C}" cy="{C + 4}" rx="{R + 1}" ry="{R}" fill="#000000" opacity="0.18"/>')
-    parts.append(f'<circle cx="{C}" cy="{C}" r="{R + 2}" fill="{DISC_RIM}"/>')
-    parts.append(f'<circle cx="{C}" cy="{C}" r="{R}" fill="{DISC}"/>')
-    for x, y, level in cells():
-        parts.append(f'<rect x="{x:.2f}" y="{y:.2f}" width="{CELL}" height="{CELL}" rx="1.3" fill="{RAMP[level]}"/>')
-    sx, sy = STATION_XY
-    for a0, a1, rr in ring_points(36.0, 34):
-        x0, y0 = sx + rr * math.cos(a0), sy + rr * math.sin(a0)
-        x1, y1 = sx + rr * math.cos(a1), sy + rr * math.sin(a1)
-        if math.hypot(x0 - C, y0 - C) < R - 2 and math.hypot(x1 - C, y1 - C) < R - 2:
-            parts.append(f'<path d="M{x0:.2f} {y0:.2f} A{rr} {rr} 0 0 1 {x1:.2f} {y1:.2f}" stroke="{RING}" stroke-opacity="0.45" stroke-width="1.2" fill="none" stroke-linecap="round"/>')
-    parts.append(f'<circle cx="{sx}" cy="{sy}" r="6.2" fill="{DISC}"/>')
-    parts.append(f'<circle cx="{sx}" cy="{sy}" r="4.4" fill="{STATION}"/>')
+def placed(field, half):
+    """The field scaled so its half-extent is `half` around (C, C): a list of
+    (x, y, size, corner, level) squares plus the station and a scale factor."""
+    cells, station, extent = field
+    k = half / extent
+    size = CELL * k
+
+    def t(v):
+        return C + (v - C) * k
+
+    return [(t(x) - size / 2, t(y) - size / 2, size, CORNER * k, lvl) for x, y, lvl in cells], (t(station[0]), t(station[1])), k
+
+
+def placed_coarse(half, pitch=12.6):
+    cells, station, extent = coarse_field(pitch)
+    k = half / extent
+    size = pitch * 0.78 * k
+
+    def t(v):
+        return C + (v - C) * k
+
+    return [(t(x) - size / 2, t(y) - size / 2, size, size * 0.28, lvl) for x, y, lvl in cells], (t(station[0]), t(station[1])), size
+
+
+# ---------------------------------------------------------------- desktop
+
+def desktop_svg(way=COLOURWAYS[0]):
+    """A rounded tile on the 128 grid (80% of the canvas, the share GNOME's
+    and macOS's square icons use), a soft contact shadow, the field."""
+    _, ground, ramp, station = way
+    tile, x0, radius = 80.0, 10.0, 18.0
+    cells, (sx, sy), k = placed(fine_field(), FILL * 50)
+    s = tile / 100.0
+    parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100">',
+             f'<rect x="{x0}" y="{x0 + 1.6}" width="{tile}" height="{tile}" rx="{radius}" fill="#000000" opacity="0.2"/>',
+             f'<rect x="{x0}" y="{x0}" width="{tile}" height="{tile}" rx="{radius}" fill="{ground}"/>',
+             f'<g transform="translate({x0} {x0}) scale({s})">']
+    for x, y, size, corner, level in cells:
+        parts.append(f'<rect x="{x:.2f}" y="{y:.2f}" width="{size:.2f}" height="{size:.2f}" rx="{corner:.2f}" fill="{ramp[level]}"/>')
+    parts.append(f'<circle cx="{sx:.2f}" cy="{sy:.2f}" r="{HALO * k:.2f}" fill="{ground}"/>')
+    parts.append(f'<circle cx="{sx:.2f}" cy="{sy:.2f}" r="{DOT * k:.2f}" fill="{station}"/>')
+    parts.append("</g></svg>")
+    return "\n".join(parts) + "\n"
+
+
+def symbolic_svg():
+    """GNOME symbolic: the coarse field in one ink; the weak ring at half
+    opacity, the station in a clearing."""
+    fg = "#241f31"
+    cells, (sx, sy), size = placed_coarse(49.0)
+    parts = ['<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 100 100">']
+    near = size * 0.95
+    for x, y, sz, corner, level in cells:
+        if math.hypot(x + sz / 2 - sx, y + sz / 2 - sy) < near:
+            continue
+        parts.append(f'<rect x="{x:.2f}" y="{y:.2f}" width="{sz:.2f}" height="{sz:.2f}" rx="{corner:.2f}" fill="{fg}" opacity="{0.45 if level == 1 else 1}"/>')
+    parts.append(f'<circle cx="{sx:.2f}" cy="{sy:.2f}" r="{size * 0.6:.2f}" fill="{fg}"/>')
     parts.append("</svg>")
-    return "\n".join(parts)
+    return "\n".join(parts) + "\n"
+
+
+# ---------------------------------------------------------------- Android
+
+def circle_path(cx, cy, r):
+    return f"M{cx - r:.2f},{cy:.2f}a{r:.2f},{r:.2f} 0 1,0 {2 * r:.2f},0a{r:.2f},{r:.2f} 0 1,0 -{2 * r:.2f},0"
 
 
 def rounded_rect_path(x, y, w, h, r):
-    return (f"M{x + r:.2f},{y:.2f}h{w - 2 * r:.2f}a{r},{r} 0 0 1 {r},{r}v{h - 2 * r:.2f}"
-            f"a{r},{r} 0 0 1 -{r},{r}h-{w - 2 * r:.2f}a{r},{r} 0 0 1 -{r},-{r}v-{h - 2 * r:.2f}a{r},{r} 0 0 1 {r},-{r}z")
+    return (f"M{x + r:.2f},{y:.2f}h{w - 2 * r:.2f}a{r:.2f},{r:.2f} 0 0 1 {r:.2f},{r:.2f}v{h - 2 * r:.2f}"
+            f"a{r:.2f},{r:.2f} 0 0 1 -{r:.2f},{r:.2f}h-{w - 2 * r:.2f}a{r:.2f},{r:.2f} 0 0 1 -{r:.2f},-{r:.2f}v-{h - 2 * r:.2f}"
+            f"a{r:.2f},{r:.2f} 0 0 1 {r:.2f},-{r:.2f}z")
 
 
-def android_vector(monochrome=False):
-    """The adaptive icon's foreground on a 108 dp canvas: the design square
-    scaled into the 66 dp safe zone, centred."""
-    k = 66.0 / 100.0 * 1.06
-    off = (108 - 100 * k) / 2
+def vector(paths, size=108, comment="", ignore_unused=False):
+    def alpha(a):
+        return "" if a is None else ' android:fillAlpha="%s"' % a
 
-    def t(v):
-        return off + v * k
-
-    paths = []
-    if not monochrome:
-        paths.append((f"M{t(C - R):.2f},{t(C):.2f}a{R * k:.2f},{R * k:.2f} 0 1,0 {2 * R * k:.2f},0a{R * k:.2f},{R * k:.2f} 0 1,0 -{2 * R * k:.2f},0", DISC))
-    by_level = {0: [], 1: [], 2: []}
-    for x, y, level in cells():
-        by_level[level].append(rounded_rect_path(t(x), t(y), CELL * k, CELL * k, 1.6 * k))
-    # One short path per cell: lint (rightly) objects to long vector paths.
-    for level in (0, 1, 2):
-        if monochrome and level == 0:
-            continue
-        colour = RAMP[level] if not monochrome else ("#99FFFFFF" if level == 1 else "#FFFFFFFF")
-        paths.extend((d, colour) for d in by_level[level])
-    sx, sy = STATION_XY
-    if not monochrome:
-        r = 6.2 * k
-        paths.append((f"M{t(sx) - r:.2f},{t(sy):.2f}a{r:.2f},{r:.2f} 0 1,0 {2 * r:.2f},0a{r:.2f},{r:.2f} 0 1,0 -{2 * r:.2f},0", DISC))
-    r = 4.4 * k
-    paths.append((f"M{t(sx) - r:.2f},{t(sy):.2f}a{r:.2f},{r:.2f} 0 1,0 {2 * r:.2f},0a{r:.2f},{r:.2f} 0 1,0 -{2 * r:.2f},0", "#FFFFFFFF" if monochrome else STATION))
-    body = "\n".join(f'    <path android:fillColor="{c}" android:pathData="{d}"/>' for d, c in paths)
+    body = "\n".join(f'    <path android:fillColor="{c}"{alpha(a)} android:pathData="{d}"/>' for d, c, a in paths)
+    tools = ' xmlns:tools="http://schemas.android.com/tools"\n    tools:ignore="UnusedResources"' if ignore_unused else ""
     return ('<?xml version="1.0" encoding="utf-8"?>\n'
-            '<!-- Generated by tools/gen-icons.py; edit that, not this. -->\n'
-            '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
-            '    android:width="108dp" android:height="108dp"\n'
-            '    android:viewportWidth="108" android:viewportHeight="108">\n'
+            f'<!-- Generated by tools/gen-icons.py; edit that, not this.{comment} -->\n'
+            f'<vector xmlns:android="http://schemas.android.com/apk/res/android"{tools}\n'
+            f'    android:width="{size}dp" android:height="{size}dp"\n'
+            f'    android:viewportWidth="{size}" android:viewportHeight="{size}">\n'
             f"{body}\n</vector>\n")
 
+
+def android_foreground(way=None):
+    """The adaptive icon's foreground on the 108 dp canvas. The launcher shows
+    the inner 72 dp; the field's half-extent is FILL of that window. With
+    `way` None it is the monochrome (themed) layer: one ink, levels as alpha,
+    the station in a clearing instead of a halo."""
+    window = 72.0
+    cells, (sx, sy), k = placed(fine_field(), FILL * 50)
+    s = window / 100.0
+    off = (108 - window) / 2
+
+    def t(v):
+        return off + v * s
+
+    paths = []
+    near = (HALO + CELL * 0.75) * k
+    for x, y, size, corner, level in cells:
+        if way is None:
+            if level == 0 or math.hypot(x + size / 2 - sx, y + size / 2 - sy) < near:
+                continue
+            colour, alpha = "#FFFFFFFF", ("0.55" if level == 1 else None)
+        else:
+            colour, alpha = way[2][level], None
+        # One short path per cell: lint (rightly) objects to long vector paths.
+        paths.append((rounded_rect_path(t(x), t(y), size * s, size * s, corner * s), colour, alpha))
+    if way is None:
+        paths.append((circle_path(t(sx), t(sy), DOT * k * s * 1.2), "#FFFFFFFF", None))
+    else:
+        paths.append((circle_path(t(sx), t(sy), HALO * k * s), way[1], None))
+        paths.append((circle_path(t(sx), t(sy), DOT * k * s), way[3], None))
+    return vector(paths, comment=f" Colourway {way[0]}." if way else " Themed (monochrome) layer.")
+
+
+def android_status():
+    """Status-bar icon (24 dp, white with alpha): the coarse field."""
+    cells, (sx, sy), size = placed_coarse(49.0)
+    s = 22.0 / 100.0
+    off = 1.0
+
+    def t(v):
+        return off + v * s
+
+    paths = []
+    for x, y, sz, corner, level in cells:
+        if math.hypot(x + sz / 2 - sx, y + sz / 2 - sy) < size * 0.95:
+            continue
+        paths.append((rounded_rect_path(t(x), t(y), sz * s, sz * s, corner * s), "#FFFFFFFF", "0.5" if level == 1 else None))
+    paths.append((circle_path(t(sx), t(sy), size * 0.6 * s), "#FFFFFFFF", None))
+    return vector(paths, size=24, comment=" Status-bar icon, for notifications.", ignore_unused=True)
+
+
+def android_name(way_id):
+    return "".join("_" + ch.lower() if ch.isupper() else ch for ch in way_id)
+
+
+# ---------------------------------------------------------------- output
 
 def write(path, text):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -142,23 +248,53 @@ def write(path, text):
     print(path)
 
 
+def render_png(svg_text, path, size):
+    rsvg = shutil.which("rsvg-convert")
+    if not rsvg:
+        print(f"skipped {path} (no rsvg-convert)")
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    subprocess.run([rsvg, "-w", str(size), "-h", str(size), "-o", path], input=svg_text.encode(), check=True)
+    print(path)
+
+
+def store_icon_svg(way=COLOURWAYS[0]):
+    """Full-bleed square for stores (F-Droid crops it itself): the Android
+    art at the same proportions."""
+    _, ground, ramp, station = way
+    cells, (sx, sy), k = placed(fine_field(), FILL * 50)
+    parts = ['<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 100 100">',
+             f'<rect width="100" height="100" fill="{ground}"/>']
+    for x, y, size, corner, level in cells:
+        parts.append(f'<rect x="{x:.2f}" y="{y:.2f}" width="{size:.2f}" height="{size:.2f}" rx="{corner:.2f}" fill="{ramp[level]}"/>')
+    parts.append(f'<circle cx="{sx:.2f}" cy="{sy:.2f}" r="{HALO * k:.2f}" fill="{ground}"/>')
+    parts.append(f'<circle cx="{sx:.2f}" cy="{sy:.2f}" r="{DOT * k:.2f}" fill="{station}"/>')
+    parts.append("</svg>")
+    return "\n".join(parts)
+
+
 def main():
-    app = "io.alvaroedo.HFPredict"
-    write(f"gnome/data/icons/hicolor/scalable/apps/{app}.svg", svg())
-    write(f"gnome/data/icons/hicolor/symbolic/apps/{app}-symbolic.svg", svg(16, symbolic=True))
+    write(f"gnome/data/icons/hicolor/scalable/apps/{APP}.svg", desktop_svg())
+    write(f"gnome/data/icons/hicolor/symbolic/apps/{APP}-symbolic.svg", symbolic_svg())
     res = "android/app/src/main/res"
-    write(f"{res}/drawable/ic_launcher_foreground.xml", android_vector())
-    write(f"{res}/drawable/ic_launcher_monochrome.xml", android_vector(monochrome=True))
+    colours = []
+    for way in COLOURWAYS:
+        name = android_name(way[0])
+        write(f"{res}/drawable/ic_launcher_foreground_{name}.xml", android_foreground(way))
+        write(f"{res}/mipmap-anydpi/ic_launcher_{name}.xml",
+              '<?xml version="1.0" encoding="utf-8"?>\n'
+              '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+              f'    <background android:drawable="@color/ic_launcher_background_{name}"/>\n'
+              f'    <foreground android:drawable="@drawable/ic_launcher_foreground_{name}"/>\n'
+              '    <monochrome android:drawable="@drawable/ic_launcher_monochrome"/>\n'
+              '</adaptive-icon>\n')
+        colours.append(f'    <color name="ic_launcher_background_{name}">{way[1]}</color>')
+    write(f"{res}/drawable/ic_launcher_monochrome.xml", android_foreground(None))
+    write(f"{res}/drawable/ic_stat_hfpredict.xml", android_status())
     write(f"{res}/values/ic_launcher_background.xml",
-          '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
-          f'    <color name="ic_launcher_background">{DISC_RIM}</color>\n</resources>\n')
-    write(f"{res}/mipmap-anydpi/ic_launcher.xml",
-          '<?xml version="1.0" encoding="utf-8"?>\n'
-          '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-          '    <background android:drawable="@color/ic_launcher_background"/>\n'
-          '    <foreground android:drawable="@drawable/ic_launcher_foreground"/>\n'
-          '    <monochrome android:drawable="@drawable/ic_launcher_monochrome"/>\n'
-          '</adaptive-icon>\n')
+          '<?xml version="1.0" encoding="utf-8"?>\n<!-- Generated by tools/gen-icons.py. -->\n<resources>\n'
+          + "\n".join(colours) + "\n</resources>\n")
+    render_png(store_icon_svg(), "fastlane/metadata/android/en-US/images/icon.png", 512)
 
 
 if __name__ == "__main__":

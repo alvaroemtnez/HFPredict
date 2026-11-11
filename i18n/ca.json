@@ -232,6 +232,8 @@
   "preferences.theme.dark": "Fosc",
   "preferences.theme.lowLight": "Poca llum",
   "preferences.theme.lowLightHint": "Roig tènue sobre negre, per a conservar la visió nocturna",
+  "preferences.icon": "Icona de l'aplicació",
+  "preferences.iconHint": "Alguns llançadors triguen una mica a mostrar la icona nova, i d'altres la treuen de la pantalla d'inici.",
   "preferences.language": "Llengua",
   "preferences.language.system": "Segueix el sistema",
   "preferences.languageRestart": "La nova llengua apareixerà quan reinicies HFPredict.",
@@ -323,5 +325,12 @@
   "compass.measure": "Mesurar amb la brúixola",
   "compass.use": "Utilitzar {degrees}°",
   "compass.lobes": "Lòbuls de la teua antena",
-  "compass.pointHere": "Apuntar ací"
+  "compass.pointHere": "Apuntar ací",
+
+  "icon.deepSea": "Mar profund",
+  "icon.night": "Nit",
+  "icon.sunspot": "Taca solar",
+  "icon.bandOpen": "Banda oberta",
+  "icon.aurora": "Aurora",
+  "icon.daylight": "Llum de dia"
 }

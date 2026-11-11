@@ -1,6 +1,8 @@
 package io.alvaroedo.hfpredict.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +33,9 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -39,6 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import io.alvaroedo.hfpredict.LauncherIcon
 import io.alvaroedo.hfpredict.R
 import io.alvaroedo.hfpredict.core.Quality
 import io.alvaroedo.hfpredict.description
@@ -173,5 +180,17 @@ fun FullScreenDialog(
                 ) { padding -> content(Modifier.padding(padding)) }
             }
         }
+    }
+}
+
+/** The app icon as the launcher shows it: the adaptive icon's 72 dp window
+ *  of the 108 dp foreground, on its ground, in a rounded tile. */
+@Composable
+fun AppLogo(size: Dp, icon: LauncherIcon = LauncherIcon.current(LocalContext.current)) {
+    Box(
+        Modifier.size(size).clip(RoundedCornerShape(percent = 24)).background(colorResource(icon.background)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(painterResource(icon.foreground), contentDescription = null, modifier = Modifier.requiredSize(size * 1.5f))
     }
 }

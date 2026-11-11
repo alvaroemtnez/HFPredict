@@ -214,6 +214,8 @@
     <string name="preferences_theme_dark">Oscuro</string>
     <string name="preferences_theme_lowLight">Poca luz</string>
     <string name="preferences_theme_lowLightHint">Rojo tenue sobre negro, para conservar la visión nocturna</string>
+    <string name="preferences_icon">Icono de la aplicación</string>
+    <string name="preferences_iconHint">Algunos lanzadores tardan un poco en mostrar el icono nuevo, y otros lo quitan de la pantalla de inicio.</string>
     <string name="preferences_language">Idioma</string>
     <string name="preferences_language_system">Seguir al sistema</string>
     <string name="preferences_languageRestart">El nuevo idioma aparecerá al reiniciar HFPredict.</string>
@@ -300,4 +302,10 @@
     <string name="compass_use">Usar {degrees}°</string>
     <string name="compass_lobes">Lóbulos de tu antena</string>
     <string name="compass_pointHere">Apuntar aquí</string>
+    <string name="icon_deepSea">Mar profundo</string>
+    <string name="icon_night">Noche</string>
+    <string name="icon_sunspot">Mancha solar</string>
+    <string name="icon_bandOpen">Banda abierta</string>
+    <string name="icon_aurora">Aurora</string>
+    <string name="icon_daylight">Luz de día</string>
 </resources>

@@ -233,6 +233,8 @@
   "preferences.theme.dark": "Dark",
   "preferences.theme.lowLight": "Low light",
   "preferences.theme.lowLightHint": "Dim red on black, to keep your night vision",
+  "preferences.icon": "App icon",
+  "preferences.iconHint": "Some launchers take a moment to show the new icon, and some take it off the home screen.",
   "preferences.language": "Language",
   "preferences.language.system": "Follow the system",
   "preferences.languageRestart": "The new language shows after HFPredict restarts.",
@@ -324,5 +326,12 @@
   "compass.measure": "Measure with the compass",
   "compass.use": "Use {degrees}°",
   "compass.lobes": "Your antenna's lobes",
-  "compass.pointHere": "Point here"
+  "compass.pointHere": "Point here",
+
+  "icon.deepSea": "Deep sea",
+  "icon.night": "Night",
+  "icon.sunspot": "Sunspot",
+  "icon.bandOpen": "Band open",
+  "icon.aurora": "Aurora",
+  "icon.daylight": "Daylight"
 }

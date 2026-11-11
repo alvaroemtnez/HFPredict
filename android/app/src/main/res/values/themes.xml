@@ -7,7 +7,8 @@
     </style>
     <style name="Theme.HFPredict.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground_deep_sea</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/ic_launcher_background_deep_sea</item>
         <item name="postSplashScreenTheme">@style/Theme.HFPredict</item>
     </style>
 </resources>

@@ -232,6 +232,8 @@
   "preferences.theme.dark": "ダーク",
   "preferences.theme.lowLight": "低照度",
   "preferences.theme.lowLightHint": "黒地に暗い赤。夜間視力を保ちます",
+  "preferences.icon": "アプリのアイコン",
+  "preferences.iconHint": "ランチャーによっては、新しいアイコンの表示に少し時間がかかったり、ホーム画面から外れたりします。",
   "preferences.language": "言語",
   "preferences.language.system": "システムに合わせる",
   "preferences.languageRestart": "新しい言語は HFPredict の再起動後に表示されます。",
@@ -323,5 +325,12 @@
   "compass.measure": "コンパスで測る",
   "compass.use": "{degrees}°を使う",
   "compass.lobes": "アンテナのローブ",
-  "compass.pointHere": "ここへ向ける"
+  "compass.pointHere": "ここへ向ける",
+
+  "icon.deepSea": "深海",
+  "icon.night": "夜",
+  "icon.sunspot": "黒点",
+  "icon.bandOpen": "バンドオープン",
+  "icon.aurora": "オーロラ",
+  "icon.daylight": "昼光"
 }

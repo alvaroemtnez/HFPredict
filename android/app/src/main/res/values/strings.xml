@@ -215,6 +215,8 @@
     <string name="preferences_theme_dark">Dark</string>
     <string name="preferences_theme_lowLight">Low light</string>
     <string name="preferences_theme_lowLightHint">Dim red on black, to keep your night vision</string>
+    <string name="preferences_icon">App icon</string>
+    <string name="preferences_iconHint">Some launchers take a moment to show the new icon, and some take it off the home screen.</string>
     <string name="preferences_language">Language</string>
     <string name="preferences_language_system">Follow the system</string>
     <string name="preferences_languageRestart">The new language shows after HFPredict restarts.</string>
@@ -301,4 +303,10 @@
     <string name="compass_use">Use {degrees}°</string>
     <string name="compass_lobes">Your antenna\'s lobes</string>
     <string name="compass_pointHere">Point here</string>
+    <string name="icon_deepSea">Deep sea</string>
+    <string name="icon_night">Night</string>
+    <string name="icon_sunspot">Sunspot</string>
+    <string name="icon_bandOpen">Band open</string>
+    <string name="icon_aurora">Aurora</string>
+    <string name="icon_daylight">Daylight</string>
 </resources>

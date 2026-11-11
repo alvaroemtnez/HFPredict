@@ -214,6 +214,8 @@
     <string name="preferences_theme_dark">داكنة</string>
     <string name="preferences_theme_lowLight">إضاءة خافتة</string>
     <string name="preferences_theme_lowLightHint">أحمر خافت على أسود للحفاظ على الرؤية الليلية</string>
+    <string name="preferences_icon">أيقونة التطبيق</string>
+    <string name="preferences_iconHint">تتأخر بعض واجهات التشغيل قليلًا في إظهار الأيقونة الجديدة، وبعضها يزيلها من الشاشة الرئيسية.</string>
     <string name="preferences_language">اللغة</string>
     <string name="preferences_language_system">حسب النظام</string>
     <string name="preferences_languageRestart">تظهر اللغة الجديدة بعد إعادة تشغيل HFPredict.</string>
@@ -300,4 +302,10 @@
     <string name="compass_use">استخدم {degrees}°</string>
     <string name="compass_lobes">فصوص هوائيك</string>
     <string name="compass_pointHere">وجّه إلى هنا</string>
+    <string name="icon_deepSea">أعماق البحر</string>
+    <string name="icon_night">الليل</string>
+    <string name="icon_sunspot">البقعة الشمسية</string>
+    <string name="icon_bandOpen">النطاق مفتوح</string>
+    <string name="icon_aurora">الشفق القطبي</string>
+    <string name="icon_daylight">ضوء النهار</string>
 </resources>

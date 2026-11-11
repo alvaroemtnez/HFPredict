@@ -214,6 +214,8 @@
     <string name="preferences_theme_dark">Dunkel</string>
     <string name="preferences_theme_lowLight">Schwaches Licht</string>
     <string name="preferences_theme_lowLightHint">Gedämpftes Rot auf Schwarz, um die Nachtsicht zu erhalten</string>
+    <string name="preferences_icon">App-Symbol</string>
+    <string name="preferences_iconHint">Manche Startbildschirme zeigen das neue Symbol erst nach einem Moment, andere entfernen es vom Startbildschirm.</string>
     <string name="preferences_language">Sprache</string>
     <string name="preferences_language_system">Wie das System</string>
     <string name="preferences_languageRestart">Die neue Sprache erscheint nach einem Neustart von HFPredict.</string>
@@ -300,4 +302,10 @@
     <string name="compass_use">{degrees}° übernehmen</string>
     <string name="compass_lobes">Keulen deiner Antenne</string>
     <string name="compass_pointHere">Hierhin ausrichten</string>
+    <string name="icon_deepSea">Tiefsee</string>
+    <string name="icon_night">Nacht</string>
+    <string name="icon_sunspot">Sonnenfleck</string>
+    <string name="icon_bandOpen">Band offen</string>
+    <string name="icon_aurora">Polarlicht</string>
+    <string name="icon_daylight">Tageslicht</string>
 </resources>
