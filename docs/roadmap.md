@@ -4,10 +4,6 @@ Open work only. Done items go into the commit history and CHANGELOG.md.
 
 ## Before the first release
 
-- **Map rim clipped**: at the whole-earth view the map area cuts the disc's
-  outer circle (its rim and antialiasing) at the edges. Minor; likely the
-  square's side or the rim's half-pixel at the area's border.
-
 - **Release keys**: Android keystore and GPG key, Forgejo secrets
   (docs/releasing.md); then the fingerprints into docs/verifying.md.
 - **Translations review**: es, ca are written natively; de, ja and ar start from

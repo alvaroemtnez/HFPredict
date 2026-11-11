@@ -85,9 +85,15 @@ impl Projection {
     }
 }
 
+/// The disc's bounding square reaches this far past the rim (unit-disc
+/// radii), so at the whole-earth view the rim's line and its antialiasing
+/// stay inside the map instead of being cut at the four edges.
+pub const RIM_MARGIN: f64 = 0.006;
+
 /// What part of the disc is on screen: magnification (1 shows the whole
 /// earth) and the centre of the window as a fraction of the disc's bounding
-/// square (0.5, 0.5 is the station).
+/// square (0.5, 0.5 is the station; the square has [`RIM_MARGIN`] round the
+/// rim).
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Record))]
 pub struct MapView {
@@ -127,14 +133,16 @@ impl MapView {
         let window = 1.0 / self.scale;
         let fx = self.cx - window / 2.0 + px / size * window;
         let fy = self.cy - window / 2.0 + py / size * window;
-        (fx * 2.0 - 1.0, fy * 2.0 - 1.0)
+        let k = 1.0 + RIM_MARGIN;
+        ((fx * 2.0 - 1.0) * k, (fy * 2.0 - 1.0) * k)
     }
 
     /// Pixel position of a unit-disc point.
     pub fn to_pixel(&self, x: f64, y: f64, size: f64) -> (f64, f64) {
         let window = 1.0 / self.scale;
-        let fx = (x + 1.0) / 2.0;
-        let fy = (y + 1.0) / 2.0;
+        let k = 1.0 + RIM_MARGIN;
+        let fx = (x / k + 1.0) / 2.0;
+        let fy = (y / k + 1.0) / 2.0;
         (
             (fx - (self.cx - window / 2.0)) / window * size,
             (fy - (self.cy - window / 2.0)) / window * size,
@@ -174,8 +182,9 @@ impl MapView {
         if self.scale <= MIN_SCALE {
             return None;
         }
-        let centre = projection.invert(self.cx * 2.0 - 1.0, self.cy * 2.0 - 1.0)?;
-        let half_km = Projection::km_of_radius(1.0 / self.scale);
+        let k = 1.0 + RIM_MARGIN;
+        let centre = projection.invert((self.cx * 2.0 - 1.0) * k, (self.cy * 2.0 - 1.0) * k)?;
+        let half_km = Projection::km_of_radius((k / self.scale).min(1.0));
         Some((centre, half_km / 111.19))
     }
 }
@@ -240,6 +249,10 @@ mod tests {
         assert!((before.0 - after.0).abs() < 1e-12 && (before.1 - after.1).abs() < 1e-12);
         let (px, py) = z.to_pixel(after.0, after.1, 100.0);
         assert!((px - 75.0).abs() < 1e-9 && (py - 50.0).abs() < 1e-9);
+        // The whole earth leaves room for the rim's line at every edge.
+        let (left, _) = v.to_pixel(-1.0, 0.0, 1000.0);
+        let (right, _) = v.to_pixel(1.0, 0.0, 1000.0);
+        assert!(left > 2.5 && right < 997.5, "{left} {right}");
         assert_eq!(
             MapView {
                 scale: 1.0,
