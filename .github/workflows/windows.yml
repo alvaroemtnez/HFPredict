@@ -1,9 +1,10 @@
-# Windows builds, on the GitHub mirror only (Forgejo reads .forgejo/workflows
-# and ignores this folder). Each v* tag the mirror pushes, or a manual run,
-# builds HFPredict-<version>-windows-<arch>.zip for x64 and for ARM64 with
-# packaging/windows/build.sh in MSYS2, natively on each. Forgejo's release
-# job collects the zips (tools/fetch-github-builds.sh; docs/releasing.md,
-# "Windows and macOS").
+# The Windows on ARM build, on the GitHub mirror only (Forgejo reads
+# .forgejo/workflows and ignores this folder). Each v* tag the mirror pushes,
+# or a manual run, builds HFPredict-<version>-windows-arm64.zip with
+# packaging/windows/build.sh in MSYS2, natively on an ARM64 runner: no Linux
+# distribution packages GTK for Windows on ARM to cross-build with. The x64
+# zip is cross-built on Forgejo. Forgejo's release job collects this one
+# (tools/fetch-github-builds.sh; docs/releasing.md, "Windows and macOS").
 name: windows
 on:
   push:
@@ -14,18 +15,8 @@ permissions:
   contents: read
 
 jobs:
-  zip:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: windows-2025
-            msystem: CLANG64
-            arch: x86_64
-          - runner: windows-11-arm
-            msystem: CLANGARM64
-            arch: arm64
-    runs-on: ${{ matrix.runner }}
+  zip-arm64:
+    runs-on: windows-11-arm
     timeout-minutes: 120
     defaults:
       run:
@@ -37,7 +28,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: msys2/setup-msys2@v2
         with:
-          msystem: ${{ matrix.msystem }}
+          msystem: CLANGARM64
           update: true
           install: zip patch curl
           pacboy: >-
@@ -50,6 +41,6 @@ jobs:
         run: packaging/windows/build.sh
       - uses: actions/upload-artifact@v6
         with:
-          name: HFPredict-windows-${{ matrix.arch }}
+          name: HFPredict-windows-arm64
           path: dist/*.zip
           if-no-files-found: error

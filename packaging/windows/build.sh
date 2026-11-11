@@ -5,13 +5,16 @@
 #
 # Linux comes first: this is a by-product of the same code. Two ways:
 #
-# - On Linux (x86_64 only): cross-compiled in its own container
+# - x86_64, on Linux: cross-compiled in its own container
 #   (tools/containers/Containerfile, target "windows": Fedora's MinGW GTK 4
-#   and AppStream, libadwaita 1.7 built there) with the in-repo Rust
-#   toolchain plus its Windows target. Nothing here changes a Linux build.
-# - On Windows, in an MSYS2 CLANG64 (x86_64) or CLANGARM64 (arm64) shell,
-#   with MSYS2's GTK 4 and libadwaita; the pinned Rust toolchain goes into
-#   .tools/ as on Linux. .github/workflows/windows.yml runs this for releases.
+#   and AppStream, libadwaita 1.7 built there, by windows-deps.sh) with the
+#   in-repo Rust toolchain plus its Windows target. The release workflow's
+#   Fedora job runs it with IN_CONTAINER=1. Nothing here changes a Linux build.
+# - arm64, on Windows on ARM, in an MSYS2 CLANGARM64 shell, with MSYS2's
+#   GTK 4 and libadwaita (no Linux distribution packages them for Windows on
+#   ARM); the pinned Rust toolchain goes into .tools/ as on Linux.
+#   .github/workflows/windows.yml runs it on the GitHub mirror. A CLANG64
+#   shell (x86_64) works the same way, though releases use the cross-build.
 #
 # The engine links files with Unix symlinks, which Windows lacks: this build
 # alone uses a private copy patched with hfcast-engine-windows.patch (a
@@ -68,7 +71,10 @@ elif [ "${IN_CONTAINER:-0}" != 1 ]; then
         -e PATH="$ROOT/.tools/cargo/bin:/usr/local/bin:/usr/bin:/bin" \
         "$IMAGE" bash packaging/windows/build.sh
 else
-    # In the container: cross-compiled with Fedora's MinGW.
+    # In the container (or the release workflow's Fedora job): cross-compiled
+    # with Fedora's MinGW, using the toolchain in .tools/.
+    eval "$("$ROOT/tools/rust.sh" env)"
+    export CARGO_TARGET_DIR="$ROOT/target/windows"
     TARGET=x86_64-pc-windows-gnu ARCH=x86_64
     SYSROOT=/usr/x86_64-w64-mingw32/sys-root/mingw
     OBJDUMP=x86_64-w64-mingw32-objdump

@@ -126,19 +126,24 @@ only for releases; the jobs allow five hours. An AppImage's ELF header
 carries a mark the QEMU rule does not accept, so the AppImage build zeroes it
 in the linuxdeploy it downloads (`packaging/appimage/build.sh`).
 
-### 7. Windows and macOS (on the GitHub mirror)
+### 7. Windows and macOS
 
-Forgejo has no Mac or Windows runner, so two workflows run on the GitHub
-mirror (Forgejo reads only `.forgejo/workflows`). When the mirror pushes a
-`v*` tag:
+The Windows x64 zip, `HFPredict-X.Y.Z-windows-x86_64.zip`, is built on
+Forgejo with the rest: the release workflow's `windows` job cross-compiles it
+in Fedora with `packaging/windows/build.sh` (MinGW GTK, the same set-up as the
+local container, `tools/containers/windows-deps.sh`).
+
+Forgejo has no Mac runner, and nothing on Linux packages GTK for Windows on
+ARM, so two workflows run on the GitHub mirror (Forgejo reads only
+`.forgejo/workflows`). When the mirror pushes a `v*` tag:
 
 - `.github/workflows/macos.yml` builds `HFPredict-X.Y.Z-macos-arm64.dmg`
   (Apple silicon) and `HFPredict-X.Y.Z-macos-x86_64.dmg` (Intel) with
   `packaging/macos/build.sh` (Homebrew's GTK, bundled into the .app).
-- `.github/workflows/windows.yml` builds `HFPredict-X.Y.Z-windows-x86_64.zip`
-  and `HFPredict-X.Y.Z-windows-arm64.zip` natively on x64 and ARM64 runners
-  with `packaging/windows/build.sh` in MSYS2 (CLANG64 / CLANGARM64: MSYS2's
-  GTK and libadwaita, Rust's `*-windows-gnullvm` targets).
+- `.github/workflows/windows.yml` builds `HFPredict-X.Y.Z-windows-arm64.zip`
+  natively on an ARM64 runner with `packaging/windows/build.sh` in MSYS2
+  (CLANGARM64: MSYS2's GTK and libadwaita, Rust's
+  `aarch64-pc-windows-gnullvm`).
 
 Either can also be started by hand: *Actions → macos/windows → Run workflow*.
 Actions must be enabled on the mirror (*Settings → Actions → General*);
@@ -147,7 +152,7 @@ public repositories get these runners for free.
 The Forgejo release job collects them by itself
 (`tools/fetch-github-builds.sh`): after its own builds it polls the mirror's
 runs for the tag, every minute for up to two hours, downloads their artifacts
-and puts the .dmg and .zip files into the release before `SHA256SUMS` is
+and puts the .dmg and the ARM64 .zip into the release before `SHA256SUMS` is
 made and signed. It needs *Actions: read* on `MIRROR_GITHUB_TOKEN`. A run
 that failed, is missing or is still going at the deadline is skipped with a
 warning and the release goes out without it; then, by hand, download the

@@ -38,15 +38,15 @@ Linux:
 Linux stays first; these are by-products of the same code.
 
 - **Windows**: `packaging/windows/build.sh` builds
-  `dist/HFPredict-<version>-windows-<arch>.zip` two ways: cross-compiled for
-  x64 in a Fedora container (MinGW GTK 4.21, libadwaita 1.7 built there), or
-  natively in MSYS2 for x64 and ARM64, which `.github/workflows/windows.yml`
-  does for releases on the GitHub mirror. The engine links files with Unix
+  `dist/HFPredict-<version>-windows-<arch>.zip` two ways: x64 cross-compiled
+  in Fedora (MinGW GTK 4.21, libadwaita 1.7 built there; the local container
+  and the Forgejo release job), and ARM64 natively in MSYS2, which
+  `.github/workflows/windows.yml` does on the GitHub mirror. The engine links files with Unix
   symlinks, so this build alone patches a private copy of it
   (`packaging/windows/hfcast-engine-windows.patch`: a copy where there are
   no Unix symlinks, identical on Unix); worth offering upstream, after which
   the patch goes. "Use my location" says it is unavailable (no portal).
-  The MSYS2 builds are untested; none has run on a real Windows machine.
+  Neither zip has run on a real Windows machine yet.
 - **macOS**: `.github/workflows/macos.yml` on the GitHub mirror builds
   .dmg files for Apple silicon and Intel with `packaging/macos/build.sh`
   (Homebrew's GTK bundled into the .app, ad-hoc signed). Not yet run. To
