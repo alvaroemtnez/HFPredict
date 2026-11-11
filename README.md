@@ -3,10 +3,14 @@
   <h1>HFPredict</h1>
   <p><strong>Which amateur radio bands reach where, hour by hour, worked out on your own device.</strong><br>
   For Android and the Linux desktop, with Windows and macOS builds too. No account, no tracking, no ads; works with no network at all.</p>
-
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/alvaroemtnez/HFPredict"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="56" alt="Get it on Obtainium"></a>
-  &nbsp;
-  <a href="https://code.alvaroedo.io/alvaroemtnez/HFPredict/releases"><img src="https://img.shields.io/badge/Releases-APK%20·%20Flatpak%20·%20AppImage%20·%20Windows%20·%20macOS-1E6E86?style=for-the-badge" height="40" alt="Releases"></a>
+  <!-- Stores, one row: F-Droid, Accrescent and Flathub join Obtainium here. -->
+  <p>
+    <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/alvaroemtnez/HFPredict"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="72" alt="Get it on Obtainium"></a>
+  </p>
+  <p>
+    <a href="https://code.alvaroedo.io/alvaroemtnez/HFPredict/releases"><img src="https://img.shields.io/badge/Releases-APK%20·%20Flatpak%20·%20AppImage%20·%20Windows%20·%20macOS-1E6E86?style=for-the-badge" height="40" alt="Releases"></a>
+  </p>
+  <br>
 </div>
 
 <p align="center">
