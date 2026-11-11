@@ -24,6 +24,11 @@ fetch() { [ -f "$TOOLS/$2" ] || curl -fsSL --retry 3 "$1" -o "$TOOLS/$2"; chmod 
 # container (QEMU on an x86 server; docs/releasing.md, "ARM builds").
 ARCH="$(uname -m)"
 fetch "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-$ARCH.AppImage" "linuxdeploy-$ARCH.AppImage"
+# An AppImage marks itself with "AI\x02" at offset 8 of its ELF header,
+# where QEMU's binfmt_misc rule wants zeros, so under emulation the kernel
+# refuses it ("Exec format error"). Zero the mark: the runtime never reads
+# it, and a native kernel ignores those bytes.
+printf '\0\0\0' | dd of="$TOOLS/linuxdeploy-$ARCH.AppImage" bs=1 seek=8 count=3 conv=notrunc status=none
 fetch https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh linuxdeploy-plugin-gtk.sh
 
 # The GNOME container has the toolchain on PATH; a bare CI container gets
