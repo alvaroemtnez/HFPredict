@@ -1,9 +1,8 @@
-# Builds and publishes a release when a v* tag is pushed: signed APKs, the
-# Flatpak bundle and the AppImage for x86_64 and arm64, the Windows x64
-# installer,
-# the macOS and Windows on ARM builds the GitHub mirror makes
-# (.github/workflows), SHA256SUMS (and its signature), with the CHANGELOG.md entry as the notes, on Forgejo and on the
-# GitHub mirror.
+# Builds and publishes a release when a v* tag is pushed: signed APKs and the
+# Accrescent APK set, the Flatpak bundle and the AppImage for x86_64 and arm64,
+# the Windows x64 installer, the macOS and Windows on ARM builds the GitHub
+# mirror makes (.github/workflows), SHA256SUMS (and its signature), with the
+# CHANGELOG.md entry as the notes, on Forgejo and on the GitHub mirror.
 # Secrets and runner set-up: docs/releasing.md.
 name: release
 on:
@@ -35,8 +34,12 @@ jobs:
             export HFPREDICT_KEYSTORE="$RUNNER_TEMP/release.keystore"
           fi
           android/build.sh release
+          # The APK set for Accrescent, signed only: the Rust core is already
+          # built, so this costs the app bundle and bundletool.
+          [ -n "${HFPREDICT_KEYSTORE:-}" ] && android/build.sh accrescent
           rm -f "$RUNNER_TEMP/release.keystore"
           mkdir -p out && cp android/dist/HFPredict-*.apk out/
+          cp android/dist/HFPredict-*.apks out/ 2>/dev/null || true
       - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
           name: android
@@ -178,7 +181,7 @@ jobs:
       - name: Collect the builds
         run: |
           mkdir -p release
-          find artifacts -type f \( -name '*.apk' -o -name '*.flatpak' -o -name '*.AppImage' -o -name '*-setup.exe' \) -exec cp {} release/ \;
+          find artifacts -type f \( -name '*.apk' -o -name '*.apks' -o -name '*.flatpak' -o -name '*.AppImage' -o -name '*-setup.exe' \) -exec cp {} release/ \;
       # macOS and Windows on ARM, from the GitHub mirror's runs for this tag. Usually
       # done by now; it waits up to two hours, then publishes without them.
       - name: GitHub builds
