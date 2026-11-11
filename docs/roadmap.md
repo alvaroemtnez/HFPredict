@@ -19,10 +19,13 @@ builds on.
 
 Android:
 - **Obtainium**: works today from the release APKs.
-- **F-Droid**: recipe and store text ready (docs/releasing.md, "F-Droid");
-  submit the merge request to fdroiddata once v0.1.0 is tagged.
-- **Accrescent**: `android/build.sh accrescent` builds the signed APK set;
-  register in the developer console and upload.
+- **F-Droid**: recipe, store text and reviewer notes ready (docs/releasing.md,
+  "F-Droid"); run `fdroid build` on the recipe, then submit the merge request
+  to fdroiddata. The Rust core builds reproducibly from the next release on; add
+  `AllowedAPKSigningKeys` once F-Droid's build matches ours.
+- **Accrescent**: the release attaches the signed APK set
+  (`HFPredict-<version>.apks`); register in the developer console when it
+  opens and upload.
 
 Linux:
 - **arm64 Flatpak and AppImage**: the release workflow registers QEMU on the

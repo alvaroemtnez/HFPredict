@@ -236,9 +236,32 @@ Keep the asset names (`HFPredict-<version>-<abi>.apk`) stable.
 - Submit: fork https://gitlab.com/fdroid/fdroiddata, copy the recipe to
   `metadata/`, check it with `fdroid lint` and `fdroid build -v -l
   io.alvaroedo.HFPredict` (their docker image), open a merge request.
-- After the first release, reproducible builds let F-Droid ship our
-  signature instead of theirs: add `AllowedAPKSigningKeys` with the
-  certificate's SHA-256 from docs/verifying.md.
+- Check the recipe's `ndk:` against the NDKs F-Droid's build server offers
+  (`fdroidserver`'s list); if r30 is not there yet, use the newest it has and
+  match `ndkVersion` in `android/app/build.gradle.kts`.
+- Expect the reviewer to ask about:
+  - the Rust toolchain: `tools/rust.sh` installs rustup and the toolchain
+    pinned in `rust-toolchain.toml` into `.tools/`, and cargo builds
+    `cargo-ndk` and every crate from source (`Cargo.lock`, `--locked`);
+  - the engine: a git dependency pinned by commit in `Cargo.toml`, fetched
+    from `code.alvaroedo.io/alvaroemtnez/hfcast-engine` (Apache-2.0 upstream,
+    https://github.com/jonathanmcsweet/hfcast). That mirror must stay public;
+  - JNA from Maven Central, whose AAR carries a prebuilt `libjnidispatch.so`
+    (LGPL-2.1 / Apache-2.0, built by the JNA project). UniFFI's Kotlin
+    bindings need it;
+  - network use: NOAA SWPC (space weather), GIRO/LGDC FastChar (ionosonde
+    readings) and Open-Meteo geocoding (place search). All free to use and
+    none track the user; the forecasts themselves are computed on the phone.
+- Reproducible builds let F-Droid ship our signature instead of theirs, so an
+  F-Droid install and a Forgejo/Obtainium install can update each other. The
+  Rust core is built with its paths remapped (`android/build.sh`,
+  `setup_rust`) so it matches wherever the checkout lives. Once F-Droid's
+  build of a release matches ours, add to the recipe
+  `AllowedAPKSigningKeys:` with the certificate's SHA-256 from
+  docs/verifying.md, and `Binaries:` pointing at the universal APK
+  (`https://code.alvaroedo.io/alvaroemtnez/HFPredict/releases/download/v%v/HFPredict-%v-universal.apk`).
+  To check locally first: build the release twice from two different
+  checkout paths and compare the unsigned APKs.
 - IzzyOnDroid, the other F-Droid repository, does not take apps written
   with generative AI.
 
@@ -248,7 +271,8 @@ Keep the asset names (`HFPredict-<version>-<abi>.apk`) stable.
   `android/dist/HFPredict-<version>.apks`: the app bundle split by bundletool
   (pinned, downloaded into `android/.tools/`) and signed with the release
   key (v2 and v3 signatures, one signer). Accrescent never takes a
-  debug-signed app.
+  debug-signed app. The release workflow builds it too (when the keystore
+  secret is set) and attaches it to the release.
 - Register in the developer console, then upload the `.apks`. The two
   permissions (internet, coarse location) are both explained in the manifest
   for the reviewer; location is one Accrescent reviews by hand.
