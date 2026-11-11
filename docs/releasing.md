@@ -51,8 +51,9 @@ the CI server:
 
 ```sh
 gpg --quick-generate-key "HFPredict releases <releases@example.org>" ed25519 sign 5y
-gpg --armor --export "HFPredict releases" > docs/hfpredict-release-key.asc     # public: commit this
-gpg --armor --export-secret-keys "HFPredict releases" > hfpredict-release-key.secret.asc   # private: CI secret only
+# Export by the fingerprint gpg printed: a name matches every key that has it.
+gpg --armor --export <FINGERPRINT> > docs/hfpredict-release-key.asc     # public: commit this
+gpg --armor --export-secret-keys <FINGERPRINT> > hfpredict-release-key.secret.asc   # private: CI secret only
 ```
 
 Commit the public key (`docs/hfpredict-release-key.asc`) and put its

@@ -16,7 +16,8 @@ sha256sum --check --ignore-missing SHA256SUMS
 The first command must report a good signature from the release key below, the
 second `OK` for every file you downloaded.
 
-**Release key fingerprint:** *(added with the first signed release)*
+**Release key fingerprint:** `4E5E D724 6337 53C0 8313  C543 5899 97F4 47B7 7166`
+(ed25519, `HFPredict releases <support@alvaroedo.io>`, expires 2031-11-10)
 
 ## The APK signing certificate
 
@@ -28,7 +29,11 @@ Android SDK's `apksigner`:
 apksigner verify --print-certs HFPredict-X.Y.Z-arm64-v8a.apk | grep SHA-256
 ```
 
-**Certificate SHA-256:** *(added with the first signed release)*
+**Certificate SHA-256:**
+`EA:8D:CF:D9:41:98:F4:E7:2A:86:70:56:79:FE:09:6C:D2:31:9C:6E:FA:BF:3C:9D:7D:50:F8:A5:27:8F:AD:59`
+
+The same in the form F-Droid's `AllowedAPKSigningKeys` and AppVerifier take:
+`ea8dcfd94198f4e72a86705679fe096cd2319c6efabf3c9d7d50f8a5278fad59`
 
 Obtainium and AppVerifier can pin this certificate, so an APK signed by anyone
 else is refused.

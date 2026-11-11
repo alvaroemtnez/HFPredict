@@ -4,8 +4,8 @@ Open work only. Done items go into the commit history and CHANGELOG.md.
 
 ## Before the first release
 
-- **Release keys**: Android keystore and GPG key, Forgejo secrets
-  (docs/releasing.md); then the fingerprints into docs/verifying.md.
+- **Release secrets**: keys made and fingerprints in docs/verifying.md;
+  the Forgejo secrets (docs/releasing.md, step 3) are still to be set.
 - **Translations review**: es, ca are written natively; de, ja and ar start from
   HFcast's translations and need a native reader's pass.
 - **Test on real devices**: a phone and a tablet (GrapheneOS), including the
