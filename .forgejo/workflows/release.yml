@@ -121,7 +121,9 @@ jobs:
     runs-on: docker
     timeout-minutes: 300
     container:
-      image: docker.io/library/debian:trixie
+      # The arm64-only repository: the runner's daemon keeps a single-arch
+      # copy of library/debian:trixie (amd64), so --platform can't pick arm64.
+      image: docker.io/arm64v8/debian:trixie
       options: --platform linux/arm64
     steps:
       - name: System packages

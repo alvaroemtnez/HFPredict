@@ -176,7 +176,7 @@
     <string name="station_needsName">Cada estación necesita un nombre.</string>
     <string name="station_mode_fm">FM</string>
     <string name="station_mode_am">AM</string>
-    <string name="station_mode_ssb">Voz BLU</string>
+    <string name="station_mode_ssb">Voz SSB</string>
     <string name="station_mode_rtty">RTTY</string>
     <string name="station_mode_cw">CW</string>
     <string name="station_mode_psk31">PSK31</string>

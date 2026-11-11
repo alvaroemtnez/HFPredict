@@ -192,7 +192,7 @@
   "station.needsName": "Cada estación necesita un nombre.",
   "station.mode.fm": "FM",
   "station.mode.am": "AM",
-  "station.mode.ssb": "Voz BLU",
+  "station.mode.ssb": "Voz SSB",
   "station.mode.rtty": "RTTY",
   "station.mode.cw": "CW",
   "station.mode.psk31": "PSK31",

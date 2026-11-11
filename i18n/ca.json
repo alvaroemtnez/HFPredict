@@ -192,7 +192,7 @@
   "station.needsName": "Cada estació necessita un nom.",
   "station.mode.fm": "FM",
   "station.mode.am": "AM",
-  "station.mode.ssb": "Veu BLU",
+  "station.mode.ssb": "Veu SSB",
   "station.mode.rtty": "RTTY",
   "station.mode.cw": "CW",
   "station.mode.psk31": "PSK31",
