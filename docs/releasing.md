@@ -13,6 +13,10 @@ so this key is permanent: lose it and every user has to uninstall and reinstall.
 Make it once, keep two offline copies (for example an encrypted USB stick and
 your password manager), and never commit it.
 
+Use a key for HFPredict alone, not one shared with MeshConnect or Skypost: a
+leaked key then affects one app, and the app can change hands, or move to a
+store that holds keys, without taking the others with it.
+
 Use the JDK the Android build already downloaded (`android/build.sh setup`
 fetches it):
 
@@ -102,21 +106,52 @@ README's button) reads the GitHub releases.
 ### 6. ARM builds (arm64 Flatpak and AppImage)
 
 The release workflow also builds for arm64 on the same x86 runner, under
-QEMU emulation (as for multi-arch Docker images). Once, on the runner's host:
+QEMU emulation. Nothing to set up on the host: the workflow's `qemu` job, a
+privileged Debian container, registers QEMU for arm64 in the host kernel's
+`binfmt_misc` with the "F" flag (the interpreter is loaded at registration,
+so containers without QEMU in them, and flatpak-builder's sandbox, can run
+arm64 programs). It needs the same `privileged` permission as the Flatpak
+job, lasts until the host reboots, and every release checks it again.
+
+To check or undo it on the host:
 
 ```sh
-docker run --privileged --rm tonistiigi/binfmt --install arm64
+cat /proc/sys/fs/binfmt_misc/qemu-aarch64        # "enabled", flags: FPC
+echo -1 > /proc/sys/fs/binfmt_misc/qemu-aarch64  # remove it (as root)
 ```
-
-That registers QEMU for arm64 with the "fix binary" flag, so containers
-started with `--platform linux/arm64` run, and flatpak-builder's own sandbox
-can run arm64 tools. It does not survive a reboot unless the host's
-binfmt service keeps it (on Debian, the `qemu-user-static` and
-`binfmt-support` packages do it permanently instead).
 
 Emulated builds are slow (expect one to two hours for both), so they run
 only for releases; the jobs allow five hours. Windows on ARM has no packaged
 GTK to build against; the x64 zip runs there under Windows' own emulation.
+
+### 7. macOS (on the GitHub mirror)
+
+Forgejo has no Mac runner, so `.github/workflows/macos.yml` runs on the
+GitHub mirror (Forgejo reads only `.forgejo/workflows`). When the mirror
+pushes a `v*` tag it builds `HFPredict-X.Y.Z-macos-arm64.dmg` (Apple
+silicon) and `HFPredict-X.Y.Z-macos-x86_64.dmg` (Intel) with
+`packaging/macos/build.sh` (Homebrew's GTK, bundled into the .app). It can
+also be started by hand: *Actions → macos → Run workflow*.
+
+Actions must be enabled on the mirror (*Settings → Actions → General*);
+public repositories get the macOS runners for free. Then, for each release:
+
+1. When the run is green, download the two artifacts from the run's page and
+   unzip them.
+2. Attach the two `.dmg` files to the Forgejo release (*Releases → Edit*) and,
+   if you want them there too, to the GitHub release.
+3. Their checksums are in the `.sha256` files beside them; they are not in
+   the signed `SHA256SUMS`, which is made before the Mac builds finish. To
+   cover them, append the lines to `SHA256SUMS`, sign it again with
+   `gpg --armor --detach-sign SHA256SUMS`, and replace both files on the
+   release.
+
+The app has only an ad-hoc signature (no Apple Developer ID, no
+notarisation), so the first time, macOS asks: right-click the app, *Open*,
+then *Open* again (or *System Settings → Privacy & Security → Open Anyway*).
+It needs the macOS version the runner had (macOS 15) or newer, because
+Homebrew builds its libraries for the system they are installed on. "Use my
+location" says it is unavailable, as on Windows.
 
 ## Each release
 

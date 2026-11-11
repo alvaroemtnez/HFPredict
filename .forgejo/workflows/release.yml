@@ -70,9 +70,37 @@ jobs:
           name: appimage
           path: dist/*.AppImage
 
-  # arm64 builds, emulated: the runner host needs QEMU registered for arm64
-  # once (docs/releasing.md, "ARM builds"). Slow, so only for releases.
+  # arm64 builds, emulated on the x86 runner (docs/releasing.md, "ARM
+  # builds"). This job registers QEMU for arm64 in the runner host's kernel
+  # (binfmt_misc is one per kernel, so a privileged container can do it); the
+  # "F" flag loads the interpreter now, so containers without QEMU in them,
+  # and flatpak-builder's sandbox, can run arm64 programs. It lasts until the
+  # host reboots, and every release checks again.
+  qemu:
+    runs-on: docker
+    container:
+      image: docker.io/library/debian:trixie
+      options: --privileged
+    steps:
+      - name: Register QEMU for arm64
+        run: |
+          B=/proc/sys/fs/binfmt_misc
+          [ -e "$B/register" ] || mount -t binfmt_misc binfmt_misc "$B"
+          if [ -e "$B/qemu-aarch64" ] && grep -q '^flags: .*F' "$B/qemu-aarch64"; then
+            echo "already registered:"; cat "$B/qemu-aarch64"; exit 0
+          fi
+          [ -e "$B/qemu-aarch64" ] && echo -1 > "$B/qemu-aarch64"
+          apt-get update -q
+          apt-get install -y -q --no-install-recommends qemu-user-static || apt-get install -y -q --no-install-recommends qemu-user
+          Q=$(command -v qemu-aarch64-static || command -v qemu-aarch64)
+          # Must be static: with "F" it runs inside containers that lack its libraries.
+          ! ldd "$Q" >/dev/null 2>&1 || { echo "$Q is not static"; exit 1; }
+          # Magic and mask of an aarch64 ELF executable, as QEMU's qemu-binfmt-conf.sh has them.
+          printf '%s' ":qemu-aarch64:M::\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\xb7\x00:\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff:$Q:FPC" > "$B/register"
+          cat "$B/qemu-aarch64"
+
   flatpak-arm64:
+    needs: qemu
     runs-on: docker
     timeout-minutes: 300
     container:
@@ -87,6 +115,7 @@ jobs:
           path: dist/*.flatpak
 
   appimage-arm64:
+    needs: qemu
     runs-on: docker
     timeout-minutes: 300
     container:

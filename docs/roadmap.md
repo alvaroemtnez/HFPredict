@@ -25,10 +25,9 @@ Android:
   register in the developer console and upload.
 
 Linux:
-- **arm64 Flatpak and AppImage**: the release workflow has the jobs and the
-  scripts build for arm64 (docs/releasing.md, "ARM builds"); the runner's
-  host still needs QEMU registered, and the jobs have not run yet. Set up
-  after the map work settles.
+- **arm64 Flatpak and AppImage**: the release workflow registers QEMU on the
+  runner itself and builds both (docs/releasing.md, "ARM builds"); not yet
+  run.
 - **Flathub**: the manifest must be written by hand (Flathub's AI policy;
   docs/releasing.md, "Flathub"); the metainfo is ready.
 - **Forgejo / GitHub releases**: the Flatpak bundle and the AppImage, with the
@@ -46,11 +45,11 @@ Linux stays first; these are by-products of the same code.
   no Unix symlinks, identical on Unix); worth offering upstream, after which
   the patch goes. "Use my location" says it is unavailable (no portal).
   Builds; not yet run on a real Windows machine.
-- **macOS**: the code should build as is (the engine is Unix-clean), but
-  GTK and libadwaita apps need a Mac to build and bundle (Homebrew, then an
-  .app made with gtk-mac-bundler or by hand) and, to open without warnings,
-  an Apple Developer ID to sign and notarise. A GitHub Actions macOS runner on
-  the mirror could do the build; untested.
+- **macOS**: `.github/workflows/macos.yml` on the GitHub mirror builds
+  .dmg files for Apple silicon and Intel with `packaging/macos/build.sh`
+  (Homebrew's GTK bundled into the .app, ad-hoc signed); attached to the
+  Forgejo release by hand (docs/releasing.md, "macOS"). Not yet run. To
+  open without warnings it would need an Apple Developer ID and notarising.
 
 ## Later
 
