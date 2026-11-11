@@ -37,8 +37,9 @@ Linux:
 
 Linux stays first; these are by-products of the same code.
 
-- **Windows**: `packaging/windows/build.sh` builds
-  `dist/HFPredict-<version>-windows-<arch>.zip` two ways: x64 cross-compiled
+- **Windows**: `packaging/windows/build.sh` builds an installer (NSIS,
+  per user) and a portable zip, `dist/HFPredict-<version>-windows-<arch>`
+  `-setup.exe` and `.zip`, two ways: x64 cross-compiled
   in Fedora (MinGW GTK 4.21, libadwaita 1.7 built there; the local container
   and the Forgejo release job), and ARM64 natively in MSYS2, which
   `.github/workflows/windows.yml` does on the GitHub mirror. The engine links files with Unix

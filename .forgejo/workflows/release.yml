@@ -1,5 +1,6 @@
 # Builds and publishes a release when a v* tag is pushed: signed APKs, the
-# Flatpak bundle and the AppImage for x86_64 and arm64, the Windows x64 zip,
+# Flatpak bundle and the AppImage for x86_64 and arm64, the Windows x64
+# installer and zip,
 # the macOS and Windows on ARM builds the GitHub mirror makes
 # (.github/workflows), SHA256SUMS (and its signature), with the CHANGELOG.md entry as the notes, on Forgejo and on the
 # GitHub mirror.
@@ -88,7 +89,9 @@ jobs:
       - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
           name: windows
-          path: dist/*.zip
+          path: |
+            dist/*.zip
+            dist/*-setup.exe
 
   # arm64 builds, emulated on the x86 runner (docs/releasing.md, "ARM
   # builds"). This job registers QEMU for arm64 in the runner host's kernel
@@ -177,7 +180,7 @@ jobs:
       - name: Collect the builds
         run: |
           mkdir -p release
-          find artifacts -type f \( -name '*.apk' -o -name '*.flatpak' -o -name '*.AppImage' -o -name '*.zip' \) -exec cp {} release/ \;
+          find artifacts -type f \( -name '*.apk' -o -name '*.flatpak' -o -name '*.AppImage' -o -name '*.zip' -o -name '*-setup.exe' \) -exec cp {} release/ \;
       # macOS and Windows on ARM, from the GitHub mirror's runs for this tag. Usually
       # done by now; it waits up to two hours, then publishes without them.
       - name: GitHub builds

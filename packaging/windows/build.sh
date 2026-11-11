@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# build.sh - Builds dist/HFPredict-<version>-windows-<arch>.zip: the GNOME app
-# for Windows, with GTK 4, libadwaita and everything they need beside it.
-# Unzip and run HFPredict\bin\hfpredict.exe.
+# build.sh - Builds the GNOME app for Windows, with GTK 4, libadwaita and
+# everything they need beside it, two ways:
+#   dist/HFPredict-<version>-windows-<arch>-setup.exe  installer (installer.nsi)
+#   dist/HFPredict-<version>-windows-<arch>.zip        portable: unzip and run
+#                                                      HFPredict\bin\hfpredict.exe
 #
 # Linux comes first: this is a by-product of the same code. Two ways:
 #
@@ -59,6 +61,11 @@ if [ -n "${MSYSTEM:-}" ]; then
     fi
     T="${TARGET^^}"; T="${T//-/_}"
     export "CARGO_TARGET_${T}_LINKER=clang" "CC_${TARGET//-/_}=clang" "AR_${TARGET//-/_}=llvm-ar"
+    WINDRES=llvm-windres
+    # NSIS is x86 code either way; on ARM64 it comes from MSYS2's MINGW64
+    # packages and runs under Windows' emulation.
+    MAKENSIS="$(command -v makensis || echo /mingw64/bin/makensis)"
+    winpath() { cygpath -m "$1"; }
 elif [ "${IN_CONTAINER:-0}" != 1 ]; then
     if [ -f /.flatpak-info ]; then PODMAN=(flatpak-spawn --host podman); else PODMAN=(podman); fi
     if ! "${PODMAN[@]}" image exists "$IMAGE"; then
@@ -83,6 +90,9 @@ else
     export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
     export PKG_CONFIG_ALLOW_CROSS=1
     export PKG_CONFIG_x86_64_pc_windows_gnu=x86_64-w64-mingw32-pkg-config
+    WINDRES=x86_64-w64-mingw32-windres
+    MAKENSIS=makensis
+    winpath() { printf '%s\n' "$1"; }
 fi
 
 # The pinned engine, copied out of cargo's checkout and patched.
@@ -97,6 +107,37 @@ cp -r "$CHECKOUT" "$ENGINE"
 patch -d "$ENGINE" -p1 --quiet <packaging/windows/hfcast-engine-windows.patch
 cp Cargo.lock target/windows/Cargo.lock.saved
 trap 'cp target/windows/Cargo.lock.saved Cargo.lock' EXIT
+# The program's icon and version, as a resource linked into the .exe.
+IFS=. read -r V1 V2 V3 <<<"$VERSION"
+cp packaging/windows/hfpredict.ico target/windows/
+cat >target/windows/hfpredict.rc <<EOF
+1 ICON "hfpredict.ico"
+1 VERSIONINFO
+FILEVERSION $V1,$V2,$V3,0
+PRODUCTVERSION $V1,$V2,$V3,0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "FileDescription", "HFPredict"
+      VALUE "ProductName", "HFPredict"
+      VALUE "FileVersion", "$VERSION"
+      VALUE "ProductVersion", "$VERSION"
+      VALUE "OriginalFilename", "hfpredict.exe"
+      VALUE "LegalCopyright", "GPL-3.0-or-later"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END
+EOF
+(cd target/windows && "$WINDRES" hfpredict.rc -O coff -o hfpredict-res.o)
+T="${TARGET^^}"; T="${T//-/_}"
+export "CARGO_TARGET_${T}_RUSTFLAGS=-C link-arg=$(winpath "$ROOT/target/windows/hfpredict-res.o")"
+
 cargo build --release --target "$TARGET" -p hfpredict \
     --config "patch.\"$ENGINE_URL\".hfcast.path = \"$ENGINE\""
 
@@ -154,4 +195,10 @@ cp LICENSE NOTICE "$OUT/"
 mkdir -p dist
 rm -f "dist/HFPredict-$VERSION-windows-$ARCH.zip"
 (cd target/windows && zip -qr "$ROOT/dist/HFPredict-$VERSION-windows-$ARCH.zip" HFPredict)
-ls -la "dist/HFPredict-$VERSION-windows-$ARCH.zip"
+
+SETUP="dist/HFPredict-$VERSION-windows-$ARCH-setup.exe"
+rm -f "$SETUP"
+"$MAKENSIS" -V2 -DVERSION="$VERSION" -DARCH="$ARCH" -DSRC="$(winpath "$ROOT/$OUT")" \
+    -DICON="$(winpath "$ROOT/packaging/windows/hfpredict.ico")" -DOUTFILE="$(winpath "$ROOT/$SETUP")" \
+    "$(winpath "$ROOT/packaging/windows/installer.nsi")"
+ls -la "dist/HFPredict-$VERSION-windows-$ARCH.zip" "$SETUP"

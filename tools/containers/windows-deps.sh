@@ -1,14 +1,14 @@
 #!/bin/sh
 # windows-deps.sh - Sets up a Fedora system for packaging/windows/build.sh:
-# Fedora's MinGW GTK 4 and AppStream, and libadwaita 1.7 built here (Fedora
-# packages no MinGW libadwaita). Run as root by the Containerfile's
-# "windows" stage and by the release workflow's Fedora job.
+# Fedora's MinGW GTK 4 and AppStream, libadwaita 1.7 built here (Fedora
+# packages no MinGW libadwaita), and NSIS for the installer. Run as root by
+# the Containerfile's "windows" stage and by the release workflow's Fedora job.
 set -eu
 
 dnf -y install --setopt=install_weak_deps=False \
     mingw64-gcc mingw64-gtk4 mingw64-appstream mingw64-adwaita-icon-theme \
     mingw64-librsvg2 mingw64-pkg-config mingw64-hicolor-icon-theme \
-    gcc meson ninja-build sassc gettext glib2-devel python3 curl xz zip findutils patch
+    mingw32-nsis gcc meson ninja-build sassc gettext glib2-devel python3 curl xz zip findutils patch
 dnf clean all
 
 ADW_VERSION=1.7.12
