@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# build.sh - Builds the GNOME app for Windows, with GTK 4, libadwaita and
-# everything they need beside it, two ways:
-#   dist/HFPredict-<version>-windows-<arch>-setup.exe  installer (installer.nsi)
-#   dist/HFPredict-<version>-windows-<arch>.zip        portable: unzip and run
-#                                                      HFPredict\bin\hfpredict.exe
+# build.sh - Builds dist/HFPredict-<version>-windows-<arch>-setup.exe: an
+# installer (installer.nsi) for the GNOME app on Windows, with GTK 4,
+# libadwaita and everything they need beside it. The installed folder is
+# target/windows/HFPredict (run bin\hfpredict.exe from it to try a build).
 #
 # Linux comes first: this is a by-product of the same code. Two ways:
 #
@@ -193,12 +192,9 @@ fi
 cp LICENSE NOTICE "$OUT/"
 
 mkdir -p dist
-rm -f "dist/HFPredict-$VERSION-windows-$ARCH.zip"
-(cd target/windows && zip -qr "$ROOT/dist/HFPredict-$VERSION-windows-$ARCH.zip" HFPredict)
-
 SETUP="dist/HFPredict-$VERSION-windows-$ARCH-setup.exe"
 rm -f "$SETUP"
 "$MAKENSIS" -V2 -DVERSION="$VERSION" -DARCH="$ARCH" -DSRC="$(winpath "$ROOT/$OUT")" \
     -DICON="$(winpath "$ROOT/packaging/windows/hfpredict.ico")" -DOUTFILE="$(winpath "$ROOT/$SETUP")" \
     "$(winpath "$ROOT/packaging/windows/installer.nsi")"
-ls -la "dist/HFPredict-$VERSION-windows-$ARCH.zip" "$SETUP"
+ls -la "$SETUP"

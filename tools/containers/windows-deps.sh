@@ -8,7 +8,7 @@ set -eu
 dnf -y install --setopt=install_weak_deps=False \
     mingw64-gcc mingw64-gtk4 mingw64-appstream mingw64-adwaita-icon-theme \
     mingw64-librsvg2 mingw64-pkg-config mingw64-hicolor-icon-theme \
-    mingw32-nsis gcc meson ninja-build sassc gettext glib2-devel python3 curl xz zip findutils patch
+    mingw32-nsis gcc meson ninja-build sassc gettext glib2-devel python3 curl xz findutils patch
 dnf clean all
 
 ADW_VERSION=1.7.12

@@ -130,14 +130,14 @@ in the linuxdeploy it downloads (`packaging/appimage/build.sh`).
 
 Windows comes as an installer, `HFPredict-X.Y.Z-windows-<arch>-setup.exe`
 (NSIS, `packaging/windows/installer.nsi`: per user, no administrator rights,
-Start menu shortcut, uninstalled from *Settings → Apps*), and as a portable
-zip, `HFPredict-X.Y.Z-windows-<arch>.zip` (unzip, run
-`HFPredict\bin\hfpredict.exe`). A single-file executable is not on offer:
-GTK needs its DLLs, icons and settings schemas beside the program.
+Start menu shortcut, uninstalled from *Settings → Apps*). There is no
+portable build: GTK needs its DLLs, icons and settings schemas beside the
+program, so it cannot be a single file.
 
-The x64 ones are built on Forgejo with the rest: the release workflow's `windows` job cross-compiles it
-in Fedora with `packaging/windows/build.sh` (MinGW GTK, the same set-up as the
-local container, `tools/containers/windows-deps.sh`).
+The x64 installer is built on Forgejo with the rest: the release workflow's
+`windows` job cross-compiles it in Fedora with `packaging/windows/build.sh`
+(MinGW GTK, the same set-up as the local container,
+`tools/containers/windows-deps.sh`).
 
 Forgejo has no Mac runner, and nothing on Linux packages GTK for Windows on
 ARM, so two workflows run on the GitHub mirror (Forgejo reads only
@@ -146,7 +146,7 @@ ARM, so two workflows run on the GitHub mirror (Forgejo reads only
 - `.github/workflows/macos.yml` builds `HFPredict-X.Y.Z-macos-arm64.dmg`
   (Apple silicon) and `HFPredict-X.Y.Z-macos-x86_64.dmg` (Intel) with
   `packaging/macos/build.sh` (Homebrew's GTK, bundled into the .app).
-- `.github/workflows/windows.yml` builds the ARM64 installer and zip
+- `.github/workflows/windows.yml` builds the ARM64 installer
   natively on an ARM64 runner with `packaging/windows/build.sh` in MSYS2
   (CLANGARM64: MSYS2's GTK and libadwaita, Rust's
   `aarch64-pc-windows-gnullvm`).
@@ -158,7 +158,7 @@ public repositories get these runners for free.
 The Forgejo release job collects them by itself
 (`tools/fetch-github-builds.sh`): after its own builds it polls the mirror's
 runs for the tag, every minute for up to two hours, downloads their artifacts
-and puts the .dmg files and the ARM64 installer and zip into the release before `SHA256SUMS` is
+and puts the .dmg files and the ARM64 installer into the release before `SHA256SUMS` is
 made and signed. It needs *Actions: read* on `MIRROR_GITHUB_TOKEN`. A run
 that failed, is missing or is still going at the deadline is skipped with a
 warning and the release goes out without it; then, by hand, download the
@@ -196,7 +196,7 @@ location" says it is unavailable, as on Windows.
    `HFPredict-X.Y.Z-{x86_64,aarch64}.flatpak`,
    `HFPredict-X.Y.Z-{x86_64,aarch64}.AppImage`,
    `HFPredict-X.Y.Z-macos-{arm64,x86_64}.dmg`,
-   `HFPredict-X.Y.Z-windows-{x86_64,arm64}{-setup.exe,.zip}`,
+   `HFPredict-X.Y.Z-windows-{x86_64,arm64}-setup.exe`,
    `SHA256SUMS` and `SHA256SUMS.asc`, on Forgejo and GitHub.
 
 Don't create the release by hand as well: the job fails if it already exists.

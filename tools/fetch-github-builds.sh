@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # fetch-github-builds.sh TAG DIR - waits for the GitHub mirror's runs of
-# TAG (the macOS and Windows workflows) and copies the .dmg, .zip and
-# -setup.exe files they built into DIR, so the release carries them and SHA256SUMS covers
+# TAG (the macOS and Windows workflows) and copies the .dmg and -setup.exe
+# files they built into DIR, so the release carries them and SHA256SUMS covers
 # them. Used by .forgejo/workflows/release.yml before the checksums.
 #
 # Never fails the release: a run that is missing, failed or still going at
@@ -71,7 +71,7 @@ for a in json.load(sys.stdin).get("artifacts", []):
         echo "artifact $name"
         # The download redirects to signed storage; curl drops the token there.
         if ghapi -o "$WORK/$name.zip" "$url" && unzip -q -o "$WORK/$name.zip" -d "$WORK/$name"; then
-            find "$WORK/$name" -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*-setup.exe' \) -exec cp -v {} "$DIR/" \;
+            find "$WORK/$name" -type f \( -name '*.dmg' -o -name '*-setup.exe' \) -exec cp -v {} "$DIR/" \;
         else
             echo "::warning::$wf: could not download $name"
         fi
