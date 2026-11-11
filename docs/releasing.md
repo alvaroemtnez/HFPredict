@@ -75,7 +75,7 @@ before the first public release.
 | `GPG_PRIVATE_KEY` | the contents of `hfpredict-release-key.secret.asc` |
 | `GPG_PASSPHRASE` | its passphrase |
 | `RELEASE_TOKEN` | only if the automatic token cannot create releases: a Forgejo access token with *repository: read and write* |
-| `MIRROR_GITHUB_TOKEN` | a GitHub fine-grained token for `alvaroemtnez/HFPredict` with *Contents: read and write* |
+| `MIRROR_GITHUB_TOKEN` | a GitHub fine-grained token for `alvaroemtnez/HFPredict` with *Contents: read and write* and *Actions: read* (the release fetches the macOS and Windows builds) |
 
 Delete the local `.secret.asc` and base64 copies after pasting them.
 
@@ -122,30 +122,38 @@ echo -1 > /proc/sys/fs/binfmt_misc/qemu-aarch64  # remove it (as root)
 ```
 
 Emulated builds are slow (expect one to two hours for both), so they run
-only for releases; the jobs allow five hours. Windows on ARM has no packaged
-GTK to build against; the x64 zip runs there under Windows' own emulation.
+only for releases; the jobs allow five hours. An AppImage's ELF header
+carries a mark the QEMU rule does not accept, so the AppImage build zeroes it
+in the linuxdeploy it downloads (`packaging/appimage/build.sh`).
 
-### 7. macOS (on the GitHub mirror)
+### 7. Windows and macOS (on the GitHub mirror)
 
-Forgejo has no Mac runner, so `.github/workflows/macos.yml` runs on the
-GitHub mirror (Forgejo reads only `.forgejo/workflows`). When the mirror
-pushes a `v*` tag it builds `HFPredict-X.Y.Z-macos-arm64.dmg` (Apple
-silicon) and `HFPredict-X.Y.Z-macos-x86_64.dmg` (Intel) with
-`packaging/macos/build.sh` (Homebrew's GTK, bundled into the .app). It can
-also be started by hand: *Actions → macos → Run workflow*.
+Forgejo has no Mac or Windows runner, so two workflows run on the GitHub
+mirror (Forgejo reads only `.forgejo/workflows`). When the mirror pushes a
+`v*` tag:
 
+- `.github/workflows/macos.yml` builds `HFPredict-X.Y.Z-macos-arm64.dmg`
+  (Apple silicon) and `HFPredict-X.Y.Z-macos-x86_64.dmg` (Intel) with
+  `packaging/macos/build.sh` (Homebrew's GTK, bundled into the .app).
+- `.github/workflows/windows.yml` builds `HFPredict-X.Y.Z-windows-x86_64.zip`
+  and `HFPredict-X.Y.Z-windows-arm64.zip` natively on x64 and ARM64 runners
+  with `packaging/windows/build.sh` in MSYS2 (CLANG64 / CLANGARM64: MSYS2's
+  GTK and libadwaita, Rust's `*-windows-gnullvm` targets).
+
+Either can also be started by hand: *Actions → macos/windows → Run workflow*.
 Actions must be enabled on the mirror (*Settings → Actions → General*);
-public repositories get the macOS runners for free. Then, for each release:
+public repositories get these runners for free.
 
-1. When the run is green, download the two artifacts from the run's page and
-   unzip them.
-2. Attach the two `.dmg` files to the Forgejo release (*Releases → Edit*) and,
-   if you want them there too, to the GitHub release.
-3. Their checksums are in the `.sha256` files beside them; they are not in
-   the signed `SHA256SUMS`, which is made before the Mac builds finish. To
-   cover them, append the lines to `SHA256SUMS`, sign it again with
-   `gpg --armor --detach-sign SHA256SUMS`, and replace both files on the
-   release.
+The Forgejo release job collects them by itself
+(`tools/fetch-github-builds.sh`): after its own builds it polls the mirror's
+runs for the tag, every minute for up to two hours, downloads their artifacts
+and puts the .dmg and .zip files into the release before `SHA256SUMS` is
+made and signed. It needs *Actions: read* on `MIRROR_GITHUB_TOKEN`. A run
+that failed, is missing or is still going at the deadline is skipped with a
+warning and the release goes out without it; then, by hand, download the
+files from the run's page, attach them to both releases, add their
+`sha256sum` lines to `SHA256SUMS`, sign it again with
+`gpg --armor --detach-sign SHA256SUMS` and replace both files.
 
 The app has only an ad-hoc signature (no Apple Developer ID, no
 notarisation), so the first time, macOS asks: right-click the app, *Open*,
@@ -171,9 +179,13 @@ location" says it is unavailable, as on Windows.
    git tag -a vX.Y.Z -m "HFPredict X.Y.Z"
    git push && git push --tags
    ```
-7. The release workflow (about half an hour) publishes:
+7. The release workflow (two to three hours, most of it the emulated arm64
+   builds) publishes:
    `HFPredict-X.Y.Z-{universal,arm64-v8a,armeabi-v7a,x86_64}.apk`,
-   `HFPredict-X.Y.Z-x86_64.flatpak`, `HFPredict-X.Y.Z-x86_64.AppImage`,
+   `HFPredict-X.Y.Z-{x86_64,aarch64}.flatpak`,
+   `HFPredict-X.Y.Z-{x86_64,aarch64}.AppImage`,
+   `HFPredict-X.Y.Z-macos-{arm64,x86_64}.dmg`,
+   `HFPredict-X.Y.Z-windows-{x86_64,arm64}.zip`,
    `SHA256SUMS` and `SHA256SUMS.asc`, on Forgejo and GitHub.
 
 Don't create the release by hand as well: the job fails if it already exists.

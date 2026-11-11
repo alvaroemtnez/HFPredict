@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
-# build.sh - Builds dist/HFPredict-<version>-windows-x86_64.zip: the GNOME app
-# cross-compiled for 64-bit Windows, with GTK 4, libadwaita and everything
-# they need beside it. Unzip and run HFPredict\bin\hfpredict.exe.
+# build.sh - Builds dist/HFPredict-<version>-windows-<arch>.zip: the GNOME app
+# for Windows, with GTK 4, libadwaita and everything they need beside it.
+# Unzip and run HFPredict\bin\hfpredict.exe.
 #
-# Linux comes first: this is a by-product of the same code, built in its own
-# container (tools/containers/Containerfile, target "windows": Fedora's MinGW
-# GTK 4 and AppStream, libadwaita 1.7 built there) with the in-repo Rust
-# toolchain plus its Windows target. Nothing here changes a Linux build.
+# Linux comes first: this is a by-product of the same code. Two ways:
+#
+# - On Linux (x86_64 only): cross-compiled in its own container
+#   (tools/containers/Containerfile, target "windows": Fedora's MinGW GTK 4
+#   and AppStream, libadwaita 1.7 built there) with the in-repo Rust
+#   toolchain plus its Windows target. Nothing here changes a Linux build.
+# - On Windows, in an MSYS2 CLANG64 (x86_64) or CLANGARM64 (arm64) shell,
+#   with MSYS2's GTK 4 and libadwaita; the pinned Rust toolchain goes into
+#   .tools/ as on Linux. .github/workflows/windows.yml runs this for releases.
 #
 # The engine links files with Unix symlinks, which Windows lacks: this build
 # alone uses a private copy patched with hfcast-engine-windows.patch (a
@@ -22,7 +27,36 @@ VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -n1)
 IMAGE=localhost/hfpredict-windows:latest
 cd "$ROOT"
 
-if [ "${IN_CONTAINER:-0}" != 1 ]; then
+if [ -n "${MSYSTEM:-}" ]; then
+    # Native, in MSYS2. The toolchains are LLVM's: rustc's *-windows-gnullvm
+    # targets and MSYS2's clang environments agree on the C runtime (UCRT).
+    case "$MSYSTEM" in
+        CLANG64) TARGET=x86_64-pc-windows-gnullvm ARCH=x86_64 ;;
+        CLANGARM64) TARGET=aarch64-pc-windows-gnullvm ARCH=arm64 ;;
+        *) echo "packaging/windows/build.sh: run it from an MSYS2 CLANG64 or CLANGARM64 shell" >&2; exit 1 ;;
+    esac
+    SYSROOT="$MINGW_PREFIX"
+    OBJDUMP=llvm-objdump
+    # Windows programs read these, so in C:/... form.
+    RUSTUP_HOME="$(cygpath -m "$ROOT/.tools/rustup")"
+    CARGO_HOME="$(cygpath -m "$ROOT/.tools/cargo")"
+    export RUSTUP_HOME CARGO_HOME CARGO_TARGET_DIR="$(cygpath -m "$ROOT/target/windows")"
+    export PATH="$ROOT/.tools/cargo/bin:$PATH"
+    if [ ! -x "$ROOT/.tools/cargo/bin/rustup.exe" ]; then
+        echo "==> Installing rustup into .tools/ (no system changes)" >&2
+        mkdir -p "$ROOT/.tools"
+        # The installer for this machine's processor (it needs no MSVC to run);
+        # the toolchain it installs is the gnullvm one, set as the host.
+        curl --proto '=https' --tlsv1.2 -fsSL --retry 3 \
+            "https://static.rust-lang.org/rustup/dist/$MSYSTEM_CARCH-pc-windows-msvc/rustup-init.exe" \
+            -o "$ROOT/.tools/rustup-init.exe"
+        "$ROOT/.tools/rustup-init.exe" -y --no-modify-path --profile minimal \
+            --default-toolchain none --default-host "$TARGET"
+        rm -f "$ROOT/.tools/rustup-init.exe"
+    fi
+    T="${TARGET^^}"; T="${T//-/_}"
+    export "CARGO_TARGET_${T}_LINKER=clang" "CC_${TARGET//-/_}=clang" "AR_${TARGET//-/_}=llvm-ar"
+elif [ "${IN_CONTAINER:-0}" != 1 ]; then
     if [ -f /.flatpak-info ]; then PODMAN=(flatpak-spawn --host podman); else PODMAN=(podman); fi
     if ! "${PODMAN[@]}" image exists "$IMAGE"; then
         "${PODMAN[@]}" build --cpu-period 100000 --cpu-quota "$((CPUS * 100000))" --target windows -t "$IMAGE" -f "$ROOT/tools/containers/Containerfile" "$ROOT/tools/containers"
@@ -33,17 +67,20 @@ if [ "${IN_CONTAINER:-0}" != 1 ]; then
         -e CARGO_TARGET_DIR="$ROOT/target/windows" -e HOME=/tmp -e IN_CONTAINER=1 \
         -e PATH="$ROOT/.tools/cargo/bin:/usr/local/bin:/usr/bin:/bin" \
         "$IMAGE" bash packaging/windows/build.sh
+else
+    # In the container: cross-compiled with Fedora's MinGW.
+    TARGET=x86_64-pc-windows-gnu ARCH=x86_64
+    SYSROOT=/usr/x86_64-w64-mingw32/sys-root/mingw
+    OBJDUMP=x86_64-w64-mingw32-objdump
+    rustup target add "$TARGET" >/dev/null
+    export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
+    export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
+    export PKG_CONFIG_ALLOW_CROSS=1
+    export PKG_CONFIG_x86_64_pc_windows_gnu=x86_64-w64-mingw32-pkg-config
 fi
 
-TARGET=x86_64-pc-windows-gnu
-SYSROOT=/usr/x86_64-w64-mingw32/sys-root/mingw
-rustup target add "$TARGET" >/dev/null
-
-export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
-export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
-export PKG_CONFIG_ALLOW_CROSS=1
-export PKG_CONFIG_x86_64_pc_windows_gnu=x86_64-w64-mingw32-pkg-config
 # The pinned engine, copied out of cargo's checkout and patched.
+mkdir -p target/windows
 cargo fetch --locked >/dev/null
 ENGINE_REV=$(sed -n 's/.*hfcast-engine.git", rev = "\([0-9a-f]*\)".*/\1/p' Cargo.toml)
 ENGINE_URL=$(sed -n 's/^hfcast = { git = "\([^"]*\)".*/\1/p' Cargo.toml)
@@ -67,7 +104,7 @@ declare -A seen=()
 queue=("$OUT/bin/hfpredict.exe")
 while [ ${#queue[@]} -gt 0 ]; do
     file="${queue[0]}"; queue=("${queue[@]:1}")
-    for dll in $(x86_64-w64-mingw32-objdump -p "$file" | sed -n 's/.*DLL Name: //p'); do
+    for dll in $("$OBJDUMP" -p "$file" | sed -n 's/.*DLL Name: //p'); do
         key="${dll,,}"
         [ -n "${seen[$key]:-}" ] && continue
         seen[$key]=1
@@ -91,7 +128,7 @@ install -Dm644 gnome/data/icons/hicolor/symbolic/apps/io.alvaroedo.HFPredict-sym
 if [ -d "$SYSROOT/lib/gdk-pixbuf-2.0" ]; then
     cp -r "$SYSROOT/lib/gdk-pixbuf-2.0" "$OUT/lib/"
     for loader in "$OUT"/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.dll; do
-        for dll in $(x86_64-w64-mingw32-objdump -p "$loader" | sed -n 's/.*DLL Name: //p'); do
+        for dll in $("$OBJDUMP" -p "$loader" | sed -n 's/.*DLL Name: //p'); do
             src="$(find "$SYSROOT/bin" -maxdepth 1 -iname "$dll" | head -n1)"
             [ -n "$src" ] && [ ! -f "$OUT/bin/$(basename "$src")" ] && cp "$src" "$OUT/bin/"
         done
@@ -109,6 +146,6 @@ fi
 cp LICENSE NOTICE "$OUT/"
 
 mkdir -p dist
-rm -f "dist/HFPredict-$VERSION-windows-x86_64.zip"
-(cd target/windows && zip -qr "$ROOT/dist/HFPredict-$VERSION-windows-x86_64.zip" HFPredict)
-ls -la "dist/HFPredict-$VERSION-windows-x86_64.zip"
+rm -f "dist/HFPredict-$VERSION-windows-$ARCH.zip"
+(cd target/windows && zip -qr "$ROOT/dist/HFPredict-$VERSION-windows-$ARCH.zip" HFPredict)
+ls -la "dist/HFPredict-$VERSION-windows-$ARCH.zip"

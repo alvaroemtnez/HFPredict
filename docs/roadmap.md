@@ -37,19 +37,22 @@ Linux:
 
 Linux stays first; these are by-products of the same code.
 
-- **Windows**: `packaging/windows/build.sh` cross-compiles in a Fedora
-  container (MinGW GTK 4.21, libadwaita 1.7 built there) into
-  `dist/HFPredict-<version>-windows-x86_64.zip`. The engine links files with
-  Unix symlinks, so this build alone patches a private copy of it
+- **Windows**: `packaging/windows/build.sh` builds
+  `dist/HFPredict-<version>-windows-<arch>.zip` two ways: cross-compiled for
+  x64 in a Fedora container (MinGW GTK 4.21, libadwaita 1.7 built there), or
+  natively in MSYS2 for x64 and ARM64, which `.github/workflows/windows.yml`
+  does for releases on the GitHub mirror. The engine links files with Unix
+  symlinks, so this build alone patches a private copy of it
   (`packaging/windows/hfcast-engine-windows.patch`: a copy where there are
   no Unix symlinks, identical on Unix); worth offering upstream, after which
   the patch goes. "Use my location" says it is unavailable (no portal).
-  Builds; not yet run on a real Windows machine.
+  The MSYS2 builds are untested; none has run on a real Windows machine.
 - **macOS**: `.github/workflows/macos.yml` on the GitHub mirror builds
   .dmg files for Apple silicon and Intel with `packaging/macos/build.sh`
-  (Homebrew's GTK bundled into the .app, ad-hoc signed); attached to the
-  Forgejo release by hand (docs/releasing.md, "macOS"). Not yet run. To
+  (Homebrew's GTK bundled into the .app, ad-hoc signed). Not yet run. To
   open without warnings it would need an Apple Developer ID and notarising.
+- The Forgejo release job fetches both from the mirror's runs
+  (`tools/fetch-github-builds.sh`) and signs them in `SHA256SUMS`.
 
 ## Later
 

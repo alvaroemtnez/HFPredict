@@ -1,5 +1,8 @@
 //! HFPredict for GNOME.
 
+// A window, not a console, when started on Windows.
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod app;
 mod bands_card;
 mod canvas;

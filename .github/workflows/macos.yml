@@ -1,8 +1,8 @@
 # macOS builds, on the GitHub mirror only (Forgejo reads .forgejo/workflows
 # and ignores this folder). Each v* tag the mirror pushes, or a manual run,
 # builds HFPredict.app for Apple silicon and for Intel as .dmg files, kept as
-# the run's artifacts; they are attached to the Forgejo release by hand
-# (docs/releasing.md, "macOS").
+# the run's artifacts. Forgejo's release job collects them
+# (tools/fetch-github-builds.sh; docs/releasing.md, "Windows and macOS").
 name: macos
 on:
   push:
@@ -31,12 +31,8 @@ jobs:
         run: test "v$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)" = "${GITHUB_REF_NAME}"
       - name: Build
         run: packaging/macos/build.sh
-      - name: Checksum
-        run: cd dist && shasum -a 256 *.dmg | tee "HFPredict-macos-${{ matrix.arch }}.sha256"
       - uses: actions/upload-artifact@v6
         with:
           name: HFPredict-macos-${{ matrix.arch }}
-          path: |
-            dist/*.dmg
-            dist/*.sha256
+          path: dist/*.dmg
           if-no-files-found: error
