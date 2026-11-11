@@ -2,11 +2,11 @@
   <img src="desktop/data/icons/hicolor/scalable/apps/io.alvaroedo.HFPredict.svg" width="112" alt="">
   <h1>HFPredict</h1>
   <p><strong>Which amateur radio bands reach where, hour by hour, worked out on your own device.</strong><br>
-  For Android and the Linux desktop. No account, no tracking, no ads; works with no network at all.</p>
+  For Android and the Linux desktop, with Windows and macOS builds too. No account, no tracking, no ads; works with no network at all.</p>
 
   <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/alvaroemtnez/HFPredict"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="56" alt="Get it on Obtainium"></a>
   &nbsp;
-  <a href="https://code.alvaroedo.io/alvaroemtnez/HFPredict/releases"><img src="https://img.shields.io/badge/Releases-APK%20·%20Flatpak%20·%20AppImage-1E6E86?style=for-the-badge" height="40" alt="Releases"></a>
+  <a href="https://code.alvaroedo.io/alvaroemtnez/HFPredict/releases"><img src="https://img.shields.io/badge/Releases-APK%20·%20Flatpak%20·%20AppImage%20·%20Windows%20·%20macOS-1E6E86?style=for-the-badge" height="40" alt="Releases"></a>
 </div>
 
 <p align="center">
@@ -57,6 +57,15 @@ Spanish, Valencian, German, Japanese and Arabic.
   desktop works (GNOME, KDE Plasma, Xfce, Cinnamon, a tiling window manager…): the app is
   built with GTK 4 and libadwaita, so it looks most at home on GNOME and carries its own
   styling everywhere else.
+- **Windows 10 or later** (x64 or ARM64): the `-setup.exe` from the releases. It installs
+  for your user only, with no administrator rights, and has an uninstaller. It is not
+  code-signed, so SmartScreen may warn: *More info → Run anyway*.
+- **macOS 15 or later** (Apple silicon `arm64` or Intel `x86_64`): the `.dmg` from the
+  releases; drag HFPredict into Applications. It is not notarised by Apple, so the first
+  launch is refused: open *System Settings → Privacy & Security* and choose *Open Anyway*.
+
+On Windows and macOS, "Use my location" is not available (it relies on the Linux location
+portal): search for your place or type your locator instead.
 
 Every release carries a `SHA256SUMS` file, signed (`SHA256SUMS.asc`); the APKs are signed with
 the same key on every release. See [docs/verifying.md](docs/verifying.md).
@@ -87,6 +96,14 @@ desktop/build.sh run                   # build and run the GNOME app (in a podma
 desktop/build.sh test                  # Rust format, lints and tests
 packaging/flatpak/build.sh             # dist/HFPredict-<version>-x86_64.flatpak
 packaging/appimage/build.sh            # dist/HFPredict-<version>-x86_64.AppImage
+packaging/windows/build.sh             # dist/HFPredict-<version>-windows-x86_64-setup.exe (cross-built)
+```
+
+The Windows ARM64 installer and the macOS `.dmg` files are built natively on the GitHub
+mirror's runners (`.github/workflows/`), with the same scripts:
+
+```sh
+packaging/macos/build.sh               # on a Mac: dist/HFPredict-<version>-macos-<arch>.dmg
 ```
 
 More: [docs/architecture.md](docs/architecture.md) for how it fits together,
