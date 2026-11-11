@@ -93,8 +93,10 @@ jobs:
           apt-get update -q
           apt-get install -y -q --no-install-recommends qemu-user-static || apt-get install -y -q --no-install-recommends qemu-user
           Q=$(command -v qemu-aarch64-static || command -v qemu-aarch64)
-          # Must be static: with "F" it runs inside containers that lack its libraries.
-          ! ldd "$Q" >/dev/null 2>&1 || { echo "$Q is not static"; exit 1; }
+          Q=$(readlink -f "$Q")
+          # Must be static: with "F" it runs inside containers that lack its
+          # libraries. (ldd exits 0 on a static-PIE binary, so read what it says.)
+          ldd "$Q" 2>&1 | grep -qE 'not a dynamic executable|statically linked' || { ldd "$Q"; echo "$Q is not static"; exit 1; }
           # Magic and mask of an aarch64 ELF executable, as QEMU's qemu-binfmt-conf.sh has them.
           printf '%s' ":qemu-aarch64:M::\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\xb7\x00:\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff:$Q:FPC" > "$B/register"
           cat "$B/qemu-aarch64"

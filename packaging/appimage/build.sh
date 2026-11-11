@@ -26,7 +26,10 @@ ARCH="$(uname -m)"
 fetch "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-$ARCH.AppImage" "linuxdeploy-$ARCH.AppImage"
 fetch https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh linuxdeploy-plugin-gtk.sh
 
-cargo build --release --locked -p hfpredict
+# The GNOME container has the toolchain on PATH; a bare CI container gets
+# the pinned one installed into .tools/ by tools/rust.sh.
+if command -v cargo >/dev/null; then CARGO=(cargo); else CARGO=("$ROOT/tools/rust.sh" cargo); fi
+"${CARGO[@]}" build --release --locked -p hfpredict
 BIN="${CARGO_TARGET_DIR:-target}/release/hfpredict"
 
 APPDIR=$TOOLS/AppDir
