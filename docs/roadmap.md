@@ -2,16 +2,6 @@
 
 Open work only. Done items go into the commit history and CHANGELOG.md.
 
-## Before the first release
-
-- **Release secrets**: keys made and fingerprints in docs/verifying.md;
-  the Forgejo secrets (docs/releasing.md, step 3) are still to be set.
-- **Translations review**: es, ca are written natively; de, ja and ar start from
-  HFcast's translations and need a native reader's pass.
-- **Test on real devices**: a phone and a tablet (GrapheneOS), including the
-  compass on real hardware (the emulator's sensor is virtual), and a Linux
-  laptop through the Flatpak and the AppImage.
-
 ## Distribution
 
 Release assets on Forgejo (mirrored to GitHub) are the base everything else
@@ -21,20 +11,15 @@ Android:
 - **Obtainium**: works today from the release APKs.
 - **F-Droid**: recipe, store text and reviewer notes ready (docs/releasing.md,
   "F-Droid"); run `fdroid build` on the recipe, then submit the merge request
-  to fdroiddata. The Rust core builds reproducibly from the next release on; add
+  to fdroiddata. The Rust core builds reproducibly from 0.1.1 on; add
   `AllowedAPKSigningKeys` once F-Droid's build matches ours.
 - **Accrescent**: the release attaches the signed APK set
   (`HFPredict-<version>.apks`); register in the developer console when it
   opens and upload.
 
 Linux:
-- **arm64 Flatpak and AppImage**: the release workflow registers QEMU on the
-  runner itself and builds both (docs/releasing.md, "ARM builds"); not yet
-  run.
 - **Flathub**: the manifest must be written by hand (Flathub's AI policy;
   docs/releasing.md, "Flathub"); the metainfo is ready.
-- **Forgejo / GitHub releases**: the Flatpak bundle and the AppImage, with the
-  signed SHA256SUMS (done by the release workflow).
 
 ## Windows and macOS
 
@@ -53,8 +38,8 @@ Linux stays first; these are by-products of the same code.
   Neither installer has run on a real Windows machine yet.
 - **macOS**: `.github/workflows/macos.yml` on the GitHub mirror builds
   .dmg files for Apple silicon and Intel with `packaging/macos/build.sh`
-  (Homebrew's GTK bundled into the .app, ad-hoc signed). Not yet run. To
-  open without warnings it would need an Apple Developer ID and notarising.
+  (Homebrew's GTK bundled into the .app, ad-hoc signed); untested on a real
+  Mac. To open without warnings it would need an Apple Developer ID and notarising.
 - The Forgejo release job fetches both from the mirror's runs
   (`tools/fetch-github-builds.sh`) and signs them in `SHA256SUMS`.
 
