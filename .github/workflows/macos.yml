@@ -25,7 +25,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Tag matches the version
         if: startsWith(github.ref, 'refs/tags/')
         run: test "v$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)" = "${GITHUB_REF_NAME}"
@@ -33,7 +33,7 @@ jobs:
         run: packaging/macos/build.sh
       - name: Checksum
         run: cd dist && shasum -a 256 *.dmg | tee "HFPredict-macos-${{ matrix.arch }}.sha256"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: HFPredict-macos-${{ matrix.arch }}
           path: |
