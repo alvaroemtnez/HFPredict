@@ -1,7 +1,9 @@
 ; installer.nsi - HFPredict-<version>-windows-<arch>-setup.exe, built by
 ; packaging/windows/build.sh with makensis from the folder it zips:
-;   makensis -DVERSION=0.1.0 -DARCH=x86_64 -DSRC=<HFPredict folder>
+;   makensis -DVERSION=0.1.0 -DNUMVERSION=0.1.0 -DARCH=x86_64 -DSRC=<HFPredict folder>
 ;            -DICON=<hfpredict.ico> -DOUTFILE=<setup.exe> installer.nsi
+; NUMVERSION is VERSION without a pre-release part (0.4.0 for 0.4.0-beta.1):
+; VIProductVersion takes numbers only.
 ;
 ; Installs for the current user only (no administrator rights) into
 ; %LOCALAPPDATA%\Programs\HFPredict, with a Start menu shortcut and an entry
@@ -26,12 +28,16 @@ RequestExecutionLevel user
 !define APP_ID "io.alvaroedo.HFPredict"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_ID}"
 
+!ifndef NUMVERSION
+  !define NUMVERSION "${VERSION}"
+!endif
+
 Name "HFPredict"
 OutFile "${OUTFILE}"
 InstallDir "$LOCALAPPDATA\Programs\HFPredict"
 InstallDirRegKey HKCU "${UNINSTALL_KEY}" "InstallLocation"
 BrandingText "HFPredict ${VERSION}"
-VIProductVersion "${VERSION}.0"
+VIProductVersion "${NUMVERSION}.0"
 VIAddVersionKey "ProductName" "HFPredict"
 VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "FileVersion" "${VERSION}"

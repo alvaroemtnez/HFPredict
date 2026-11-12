@@ -113,8 +113,8 @@ cat >"$C/Info.plist" <<EOF
     <key>CFBundleName</key><string>HFPredict</string>
     <key>CFBundleDisplayName</key><string>HFPredict</string>
     <key>CFBundleIdentifier</key><string>$APP_ID</string>
-    <key>CFBundleVersion</key><string>$VERSION</string>
-    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleVersion</key><string>${VERSION%%-*}</string>
+    <key>CFBundleShortVersionString</key><string>${VERSION%%-*}</string>
     <key>CFBundleExecutable</key><string>HFPredict</string>
     <key>CFBundleIconFile</key><string>HFPredict</string>
     <key>CFBundlePackageType</key><string>APPL</string>

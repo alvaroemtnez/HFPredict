@@ -229,6 +229,42 @@ may ask for the permission again after an update.
 
 Don't create the release by hand as well: the job fails if it already exists.
 
+## Betas
+
+Set `version = "X.Y.Z-beta.N"` (`N` from 1) in `Cargo.toml`, commit, and tag
+`vX.Y.Z-beta.N`. The same workflow builds and publishes every file, named
+`HFPredict-X.Y.Z-beta.N-…`, and marks both releases as pre-releases. Who
+gets it:
+
+- **Obtainium**: only users who turned on *Include prereleases*.
+- **Windows and macOS builds**: never offered a beta; they read the latest
+  release, which a pre-release never is. A beta build is offered X.Y.Z (and
+  anything later) once it is out (`core/src/update.rs`).
+- **AppImage**: its updaters read the latest release as well. A beta
+  AppImage that runs its updater is taken back to that release, which is
+  older; testers update a beta by downloading the next one.
+- **F-Droid** never sees it: its recipe follows `^v[0-9.]+$`.
+
+Don't upload the beta's `.apks` to Accrescent, and don't add a `<release>`
+to the metainfo for it.
+
+The notes are the `## X.Y.Z` entry of `CHANGELOG.md`, so it has to exist,
+with a "Pre-release of X.Y.Z" line on top. The beta's versionCode is
+X.Y.Z's (`X*10000 + Y*100 + Z`): the scheme has no room below a release, and
+Android installs an equal code as an update, so beta.1 → beta.2 → X.Y.Z each
+install over the last. Where Windows and macOS want numbers only (the
+program's version resource, the installer, the app bundle) the beta carries
+X.Y.Z; its names and texts say X.Y.Z-beta.N.
+
+```sh
+git commit -am "Beta X.Y.Z-beta.N"
+git tag -a vX.Y.Z-beta.N -m "HFPredict X.Y.Z-beta.N"
+git push && git push --tags
+```
+
+For the release, set `version = "X.Y.Z"`, add the metainfo `<release>`, and
+follow "Each release".
+
 ## Building a release by hand
 
 Everything the workflow does runs locally too:

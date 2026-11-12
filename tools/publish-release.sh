@@ -3,6 +3,10 @@
 # the GitHub mirror, with every file in DIR attached and the CHANGELOG.md
 # entry as its text. Used by .forgejo/workflows/release.yml.
 #
+# A tag vX.Y.Z-beta.N is a pre-release (docs/releasing.md, "Betas"): notes
+# from the X.Y.Z entry, marked so on both, never GitHub's "latest" (which the
+# desktop updaters and Obtainium without pre-releases read).
+#
 # Environment:
 #   FORGEJO_URL, FORGEJO_REPO, FORGEJO_TOKEN   e.g. https://code.alvaroedo.io, alvaroemtnez/HFPredict
 #   GITHUB_REPO, GITHUB_TOKEN                  optional: the mirror (alvaroemtnez/HFPredict)
@@ -12,9 +16,21 @@ set -euo pipefail
 TAG="$1"
 DIR="$2"
 VERSION="${TAG#v}"
-NOTES=$("$(dirname "$0")/release-notes.sh" "$VERSION")
-BODY=$(python3 -c 'import json,sys; print(json.dumps({"tag_name": sys.argv[1], "name": "HFPredict " + sys.argv[2], "body": sys.argv[3], "target_commitish": sys.argv[4]}))' \
-    "$TAG" "$VERSION" "$NOTES" "${TARGET_SHA:-main}")
+if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    PRERELEASE=false
+    NOTES=$("$(dirname "$0")/release-notes.sh" "$VERSION")
+elif [[ "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)-beta\.[1-9][0-9]*$ ]]; then
+    PRERELEASE=true
+    NOTES="Pre-release of ${BASH_REMATCH[1]}, for testing.
+
+$("$(dirname "$0")/release-notes.sh" "${BASH_REMATCH[1]}")"
+else
+    echo "Tag $TAG is not vX.Y.Z or vX.Y.Z-beta.N" >&2
+    exit 1
+fi
+BODY=$(python3 -c 'import json,sys; print(json.dumps({"tag_name": sys.argv[1], "name": "HFPredict " + sys.argv[2], "body": sys.argv[3], "target_commitish": sys.argv[4], "prerelease": sys.argv[5] == "true"}))' \
+    "$TAG" "$VERSION" "$NOTES" "${TARGET_SHA:-main}" "$PRERELEASE")
+if [ -n "${PUBLISH_DRY_RUN:-}" ]; then echo "$BODY"; exit 0; fi
 json_field() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1]])' "$1"; }
 
 forgejo() {
@@ -45,7 +61,7 @@ github() {
     done
     curl -fsS -X PATCH "https://api.github.com/repos/$GITHUB_REPO/releases/$id" \
         -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
-        -d '{"draft": false, "make_latest": "true"}' >/dev/null
+        -d "{\"draft\": false, \"make_latest\": \"$([ "$PRERELEASE" = true ] && echo false || echo true)\"}" >/dev/null
     echo "github: published"
 }
 

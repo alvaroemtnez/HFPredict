@@ -6,8 +6,10 @@ plugins {
 // One version for the whole project: [workspace.package] in Cargo.toml.
 val appVersion: String = Regex("""(?m)^version\s*=\s*"([^"]+)"""")
     .find(rootDir.resolve("../Cargo.toml").readText())!!.groupValues[1]
-// 1.2.3 -> 10203: increases with every release.
-val appVersionCode: Int = appVersion.split(".").map { it.takeWhile(Char::isDigit).toInt() }
+// 1.2.3 -> 10203: increases with every release. A beta (1.2.3-beta.1) has its
+// release's code: the scheme has no room below a release, and Android installs
+// an equal code as an update, so beta.1 -> beta.2 -> 1.2.3 each install over the last.
+val appVersionCode: Int = appVersion.substringBefore('-').split(".").map { it.toInt() }
     .let { (a, b, c) -> a * 10000 + b * 100 + c }
 
 android {

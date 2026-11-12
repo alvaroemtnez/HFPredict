@@ -55,25 +55,34 @@ pub fn platform_file() -> Option<&'static str> {
     }
 }
 
-/// "v0.3.0" or "0.3.0" as numbers; `None` if it is not a version.
-fn version_parts(v: &str) -> Option<Vec<u64>> {
+/// "v0.3.0", "0.3.0" or "0.4.0-beta.2" as numbers, and whether it is a
+/// pre-release (anything after a '-'); `None` if it is not a version.
+fn version_parts(v: &str) -> Option<(Vec<u64>, bool)> {
     let v = v.trim().trim_start_matches('v');
-    // A pre-release ("0.3.0-rc1") is older than its release; such tags are
-    // not offered at all.
-    if v.contains('-') || v.is_empty() {
+    let (base, pre) = match v.split_once('-') {
+        Some((base, pre)) => (base, Some(pre)),
+        None => (v, None),
+    };
+    if base.is_empty() || pre.is_some_and(str::is_empty) {
         return None;
     }
-    v.split('.').map(|p| p.parse().ok()).collect()
+    let numbers = base
+        .split('.')
+        .map(|p| p.parse().ok())
+        .collect::<Option<Vec<u64>>>()?;
+    Some((numbers, pre.is_some()))
 }
 
-/// Whether `candidate` is a later version than `current`.
+/// Whether `candidate` is a later version than `current`. A pre-release is
+/// never offered; a pre-release build (a beta, docs/releasing.md "Betas") is
+/// offered the release it leads to, and anything after.
 pub fn is_newer(candidate: &str, current: &str) -> bool {
     match (version_parts(candidate), version_parts(current)) {
-        (Some(mut a), Some(mut b)) => {
+        (Some((mut a, false)), Some((mut b, current_pre))) => {
             let n = a.len().max(b.len());
             a.resize(n, 0);
             b.resize(n, 0);
-            a > b
+            a > b || (a == b && current_pre)
         }
         _ => false,
     }
@@ -298,6 +307,22 @@ mod tests {
     }
 
     #[test]
+    fn a_beta_build_is_offered_its_release_and_later_but_never_a_beta() {
+        // The case that matters: without it a beta tester is stuck on the beta.
+        assert!(is_newer("v0.4.0", "0.4.0-beta.2"));
+        assert!(is_newer("0.4.1", "0.4.0-beta.1"));
+        // The release before it is older, not an update.
+        assert!(!is_newer("v0.3.2", "0.4.0-beta.1"));
+        // Pre-releases are never offered, to a beta or to a release.
+        assert!(!is_newer("v0.4.0-beta.2", "0.4.0-beta.1"));
+        assert!(!is_newer("v0.5.0-beta.1", "0.4.0"));
+        // Malformed current or candidate: nothing.
+        assert!(!is_newer("0.4.0", "0.4.0-"));
+        assert!(!is_newer("0.4.0", "-beta.1"));
+        assert!(!is_newer("0.4.0-", "0.3.0"));
+    }
+
+    #[test]
     fn offers_the_platform_file_of_a_newer_release() {
         let u = parse_latest(RELEASE, "0.2.1", "windows-x86_64-setup.exe").unwrap();
         assert_eq!(u.version, "0.3.0");
@@ -306,6 +331,12 @@ mod tests {
         assert_eq!(u.size, 42);
         assert_eq!(u.sums_url, "https://e/SHA256SUMS");
         assert_eq!(u.sig_url, "https://e/SHA256SUMS.asc");
+    }
+
+    #[test]
+    fn a_beta_build_is_offered_the_release() {
+        let u = parse_latest(RELEASE, "0.3.0-beta.2", "windows-x86_64-setup.exe").unwrap();
+        assert_eq!(u.file, "HFPredict-0.3.0-windows-x86_64-setup.exe");
     }
 
     #[test]

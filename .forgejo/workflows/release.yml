@@ -2,6 +2,8 @@
 # Accrescent APK set, the Flatpak bundle and the AppImage for x86_64 and arm64,
 # the macOS and Windows builds the GitHub mirror makes (.github/workflows),
 # SHA256SUMS (and its signature), with the CHANGELOG.md entry as the notes, on Forgejo and on the GitHub mirror.
+# A vX.Y.Z-beta.N tag (Cargo.toml version X.Y.Z-beta.N) does the same as a
+# pre-release, with the X.Y.Z entry as its notes (docs/releasing.md, "Betas").
 # Secrets and runner set-up: docs/releasing.md.
 name: release
 on:
@@ -20,7 +22,12 @@ jobs:
           apt-get install -y -q --no-install-recommends git curl ca-certificates nodejs unzip build-essential python3
       - uses: https://code.forgejo.org/actions/checkout@v4
       - name: Tag matches the version
-        run: test "v$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)" = "${GITHUB_REF_NAME}"
+        run: |
+          test "v$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)" = "${GITHUB_REF_NAME}"
+          # A release or a beta, and its notes exist, before hours of builds.
+          echo "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[1-9][0-9]*)?$' \
+            || { echo "Tag ${GITHUB_REF_NAME} is not vX.Y.Z or vX.Y.Z-beta.N"; exit 1; }
+          tools/release-notes.sh "${GITHUB_REF_NAME%%-*}" > /dev/null
       - name: Release APKs
         env:
           HFPREDICT_KEYSTORE_B64: ${{ secrets.HFPREDICT_KEYSTORE_B64 }}

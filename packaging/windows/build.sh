@@ -108,8 +108,11 @@ cp -r "$CHECKOUT" "$ENGINE"
 patch -d "$ENGINE" -p1 --quiet <packaging/windows/hfcast-engine-windows.patch
 cp Cargo.lock target/windows/Cargo.lock.saved
 trap 'cp target/windows/Cargo.lock.saved Cargo.lock' EXIT
-# The program's icon and version, as a resource linked into the .exe.
-IFS=. read -r V1 V2 V3 <<<"$VERSION"
+# The program's icon and version, as a resource linked into the .exe. The
+# numeric fields take only numbers: a beta (0.4.0-beta.1) puts its release's
+# there and its full version in the strings.
+NUMVERSION="${VERSION%%-*}"
+IFS=. read -r V1 V2 V3 <<<"$NUMVERSION"
 cp packaging/windows/hfpredict.ico target/windows/
 cat >target/windows/hfpredict.rc <<EOF
 1 ICON "hfpredict.ico"
@@ -196,7 +199,7 @@ cp LICENSE NOTICE "$OUT/"
 mkdir -p dist
 SETUP="dist/HFPredict-$VERSION-windows-$ARCH-setup.exe"
 rm -f "$SETUP"
-"$MAKENSIS" -V2 -DVERSION="$VERSION" -DARCH="$ARCH" -DSRC="$(winpath "$ROOT/$OUT")" \
+"$MAKENSIS" -V2 -DVERSION="$VERSION" -DNUMVERSION="$NUMVERSION" -DARCH="$ARCH" -DSRC="$(winpath "$ROOT/$OUT")" \
     -DICON="$(winpath "$ROOT/packaging/windows/hfpredict.ico")" -DOUTFILE="$(winpath "$ROOT/$SETUP")" \
     "$(winpath "$ROOT/packaging/windows/installer.nsi")"
 ls -la "$SETUP"
