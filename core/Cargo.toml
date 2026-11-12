@@ -8,10 +8,13 @@ rust-version.workspace = true
 
 [features]
 default = ["net"]
-# The optional online sources (NOAA, GIRO, Open-Meteo) and the update check
-# (GitHub releases, Windows and macOS only). Off, the core
+# The three optional online sources (NOAA, GIRO, Open-Meteo). Off, the core
 # has no networking code at all.
-net = ["dep:ureq", "dep:sha2"]
+net = ["dep:ureq"]
+# Updates for the desktop builds that update themselves (Windows, macOS):
+# the release check, the download, its checksum and the release key's
+# signature on SHA256SUMS. Only the desktop app turns it on.
+update = ["net", "dep:sha2", "dep:ed25519-dalek"]
 # UniFFI derives, for the Android bindings (crate `hfpredict-ffi`).
 ffi = ["dep:uniffi"]
 
@@ -23,6 +26,7 @@ tiny-skia = { version = "0.12", default-features = false, features = ["std", "si
 unicode-normalization = "0.1"
 ureq = { version = "3", optional = true }
 sha2 = { version = "0.10", optional = true }
+ed25519-dalek = { version = "2", optional = true }
 uniffi = { workspace = true, optional = true }
 thiserror = "2"
 # Local time at a place: the zone from its coordinates (boundaries from

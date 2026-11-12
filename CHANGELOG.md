@@ -7,7 +7,8 @@ write it for the people installing the app.
 
 - Windows and macOS: HFPredict checks for a new version at start and
   offers it. One click downloads it, checks it against the release's
-  checksums, installs it and opens the app again. "Don't remind me"
+  checksums and their signature by the HFPredict release key, installs it
+  and opens the app again. "Don't remind me"
   silences that version; *Main menu → Check for updates* is always there.
   The check only runs with the network on in Preferences.
 - AppImage: carries update information, so Gear Lever and AppImageUpdate

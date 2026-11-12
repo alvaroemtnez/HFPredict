@@ -60,11 +60,28 @@ Commit the public key (`docs/hfpredict-release-key.asc`) and put its
 fingerprint in [verifying.md](verifying.md). Put whichever address you want public in
 the key's name (the example's is a placeholder): it ships with every release.
 
+The Windows and macOS builds carry this public key (`core/src/openpgp.rs`
+reads it from `docs/hfpredict-release-key.asc` at build time) and install an
+update only if its `SHA256SUMS` has a good signature by it. So:
+
+- The app reads the key alone, an Ed25519 key that signs, with no subkeys
+  (as the command above makes). A different kind of key, or signing with a
+  subkey, would make every update fail its check.
+- It ignores the key's expiry, so an installed copy keeps updating after
+  2031-11-10. Extend the expiry anyway, for people checking by hand
+  (`gpg --quick-set-expire <FINGERPRINT> 5y`, then export and commit the
+  public key again): the key itself does not change.
+- To replace the key, first release a version that carries the new public
+  key, signed with the old one; installed copies reach it through the old
+  key and trust the new one from then on. A copy that skipped that release
+  has to be updated by hand.
+
 ### 3. Forgejo secrets
 
 In the repository: *Settings → Actions → Secrets*. All are optional, and a
 release still goes out without them (unsigned APKs, no `.asc`), but set them
-before the first public release.
+before the first public release. Without the GPG key, Windows and macOS
+never offer the release as an update (they require `SHA256SUMS.asc`).
 
 | Secret | Value |
 | --- | --- |

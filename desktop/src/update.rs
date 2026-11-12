@@ -378,6 +378,7 @@ pub fn sample(w: &Rc<Window>) {
         url: String::new(),
         size: 0,
         sums_url: String::new(),
+        sig_url: String::new(),
     };
     offer(w, &u, true);
 }

@@ -26,6 +26,8 @@ pub mod localtime;
 pub mod maps;
 pub mod modes;
 pub mod online;
+#[cfg(feature = "update")]
+pub mod openpgp;
 pub mod parallel;
 pub mod places;
 pub mod projection;

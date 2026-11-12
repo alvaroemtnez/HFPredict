@@ -5,8 +5,11 @@
 //!
 //! The latest release comes from the GitHub mirror's API, the same release
 //! the Forgejo one is published with. An update is offered only once the
-//! release has this platform's file and `SHA256SUMS`, and the download is
-//! kept only if its checksum matches that file's line.
+//! release has this platform's file, `SHA256SUMS` and its signature, and
+//! the download is kept only if `SHA256SUMS` carries a good signature by
+//! the release key (compiled in, `crate::openpgp`) and the file's checksum
+//! matches its line there. A server that hands out other files, or other
+//! checksums, cannot get past that without the release key.
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64};
@@ -31,8 +34,9 @@ pub struct Update {
     pub file: String,
     pub url: String,
     pub size: u64,
-    /// The release's `SHA256SUMS`.
+    /// The release's `SHA256SUMS`, and its signature `SHA256SUMS.asc`.
     pub sums_url: String,
+    pub sig_url: String,
 }
 
 /// The release file for the platform this build runs on, after
@@ -107,6 +111,8 @@ pub fn parse_latest(json: &str, current: &str, platform: &str) -> Option<Update>
     let asset = r.assets.iter().find(|a| a.name == file)?;
     // Still uploading, or a release without checksums: not yet.
     let sums = r.assets.iter().find(|a| a.name == "SHA256SUMS")?;
+    // Unsigned releases are never offered.
+    let sig = r.assets.iter().find(|a| a.name == "SHA256SUMS.asc")?;
     Some(Update {
         version,
         page: r.html_url,
@@ -114,6 +120,7 @@ pub fn parse_latest(json: &str, current: &str, platform: &str) -> Option<Update>
         url: asset.browser_download_url.clone(),
         size: asset.size,
         sums_url: sums.browser_download_url.clone(),
+        sig_url: sig.browser_download_url.clone(),
     })
 }
 
@@ -136,20 +143,20 @@ pub struct Progress {
     pub cancel: AtomicBool,
 }
 
-#[cfg(feature = "net")]
+#[cfg(feature = "update")]
 pub use fetch::{check, download};
 
-#[cfg(not(feature = "net"))]
+#[cfg(not(feature = "update"))]
 pub fn check(_platform: &str) -> Result<Option<Update>, Error> {
     Err(Error::Offline)
 }
 
-#[cfg(not(feature = "net"))]
+#[cfg(not(feature = "update"))]
 pub fn download(_u: &Update, _dir: &Path, _p: &Progress) -> Result<PathBuf, Error> {
     Err(Error::Offline)
 }
 
-#[cfg(feature = "net")]
+#[cfg(feature = "update")]
 mod fetch {
     use std::fs;
     use std::io::{Read, Write};
@@ -197,7 +204,8 @@ mod fetch {
     }
 
     /// Downloads the update into `dir` and checks it against the release's
-    /// `SHA256SUMS`; the file's path once it matches.
+    /// `SHA256SUMS`, once that is shown to be signed by the release key;
+    /// the file's path once it matches.
     pub fn download(u: &Update, dir: &Path, progress: &Progress) -> Result<PathBuf, Error> {
         let sums = agent()
             .get(&u.sums_url)
@@ -206,6 +214,18 @@ mod fetch {
             .body_mut()
             .read_to_string()
             .map_err(net)?;
+        let sig = agent()
+            .get(&u.sig_url)
+            .call()
+            .map_err(net)?
+            .body_mut()
+            .read_to_string()
+            .map_err(net)?;
+        if !crate::openpgp::verify(crate::openpgp::RELEASE_KEY, sums.as_bytes(), &sig) {
+            return Err(Error::Network(
+                "SHA256SUMS is not signed by the HFPredict release key".into(),
+            ));
+        }
         let expected = checksum_for(&sums, &u.file)
             .ok_or_else(|| Error::Network(format!("SHA256SUMS does not list {}", u.file)))?;
 
@@ -261,7 +281,8 @@ mod tests {
         "draft": false, "prerelease": false,
         "assets": [
             {"name": "HFPredict-0.3.0-windows-x86_64-setup.exe", "browser_download_url": "https://e/setup.exe", "size": 42},
-            {"name": "SHA256SUMS", "browser_download_url": "https://e/SHA256SUMS", "size": 900}
+            {"name": "SHA256SUMS", "browser_download_url": "https://e/SHA256SUMS", "size": 900},
+            {"name": "SHA256SUMS.asc", "browser_download_url": "https://e/SHA256SUMS.asc", "size": 228}
         ]
     }"#;
 
@@ -284,6 +305,7 @@ mod tests {
         assert_eq!(u.url, "https://e/setup.exe");
         assert_eq!(u.size, 42);
         assert_eq!(u.sums_url, "https://e/SHA256SUMS");
+        assert_eq!(u.sig_url, "https://e/SHA256SUMS.asc");
     }
 
     #[test]
@@ -295,6 +317,11 @@ mod tests {
         // The ARM64 installer is not in this release (yet).
         assert_eq!(
             parse_latest(RELEASE, "0.2.1", "windows-arm64-setup.exe"),
+            None
+        );
+        let no_sig = RELEASE.replace("\"SHA256SUMS.asc\"", "\"README\"");
+        assert_eq!(
+            parse_latest(&no_sig, "0.2.1", "windows-x86_64-setup.exe"),
             None
         );
         let no_sums = RELEASE.replace("\"SHA256SUMS\"", "\"README\"");

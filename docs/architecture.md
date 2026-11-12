@@ -43,8 +43,10 @@ repository. The AppImage embeds update information (`gh-releases-zsync`, the
 AppImage spec's), so Gear Lever or AppImageUpdate find the next version in the
 GitHub mirror's latest release by its `.zsync` file. The Windows and macOS
 builds update themselves: `core/src/update.rs` reads the mirror's latest
-release, offers it only once it has the platform's file and `SHA256SUMS`, and
-downloads and checks the file; `desktop/src/update.rs` asks the reader at
+release, offers it only once it has the platform's file, `SHA256SUMS` and
+its signature, and downloads the file, keeping it only if `SHA256SUMS` is
+signed by the release key compiled into the app (`core/src/openpgp.rs`, a
+small reader for that one Ed25519 key) and the file matches its checksum; `desktop/src/update.rs` asks the reader at
 start (unless they turned that version's reminder off), then runs the
 installer silently (Windows) or swaps the .app (macOS) and reopens the app.
 With the network off in Preferences there is no check.

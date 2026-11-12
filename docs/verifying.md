@@ -16,6 +16,9 @@ sha256sum --check --ignore-missing SHA256SUMS
 The first command must report a good signature from the release key below, the
 second `OK` for every file you downloaded.
 
+On Windows and macOS, HFPredict makes both checks itself before it installs an
+update, with this key built into the app.
+
 **Release key fingerprint:** `4E5E D724 6337 53C0 8313  C543 5899 97F4 47B7 7166`
 (ed25519, `HFPredict releases <support@alvaroedo.io>`, expires 2031-11-10)
 
