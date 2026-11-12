@@ -79,7 +79,7 @@ pub struct ReachCard {
     map: Canvas,
     spinner: adw::Spinner,
     /// What is under the last click: text and "set as destination".
-    probe: gtk::Box,
+    probe: adw::WrapBox,
     probe_text: gtk::Label,
     detail: gtk::Label,
     reach_line: gtk::Label,
@@ -127,6 +127,24 @@ fn osd_button(icon: &str, tooltip: &str) -> gtk::Button {
     b
 }
 
+/// Where the probe sits: at the map's foot, as wide as its text but never
+/// wider than the map, and as tall as it then needs. (GtkOverlay's own
+/// placement narrows a child to fit but keeps the height of its natural
+/// width, which cuts off wrapped text.)
+fn place_probe(overlay: &gtk::Overlay, child: &gtk::Widget) -> gdk::Rectangle {
+    let (width, height) = (overlay.width(), overlay.height());
+    let (min, natural, _, _) = child.measure(gtk::Orientation::Horizontal, -1);
+    let w = natural.min(width).max(min);
+    let (_, h, _, _) = child.measure(gtk::Orientation::Vertical, w);
+    let h = h.min(height);
+    let x = if child.direction() == gtk::TextDirection::Rtl {
+        width - w
+    } else {
+        0
+    };
+    gdk::Rectangle::new(x, height - h, w, h)
+}
+
 impl ReachCard {
     pub fn new(app: &Rc<App>) -> Rc<ReachCard> {
         let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
@@ -170,8 +188,16 @@ impl ReachCard {
         }
         overlay.add_overlay(&controls);
 
-        let probe = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        let probe_text = gtk::Label::new(None);
+        // The text wraps and the button drops under it when the map is
+        // narrow (placed by `place_probe`).
+        let probe = adw::WrapBox::new();
+        probe.set_child_spacing(8);
+        probe.set_line_spacing(4);
+        let probe_text = gtk::Label::builder()
+            .xalign(0.0)
+            .wrap(true)
+            .wrap_mode(gtk::pango::WrapMode::WordChar)
+            .build();
         probe.append(&probe_text);
         let to_here = gtk::Button::with_label(&tr("map.setDestination"));
         to_here.add_css_class("flat");
@@ -190,9 +216,16 @@ impl ReachCard {
         probe.set_halign(gtk::Align::Start);
         probe.set_valign(gtk::Align::End);
         probe.set_margin_start(8);
+        probe.set_margin_end(8);
         probe.set_margin_bottom(8);
         probe.set_visible(false);
         overlay.add_overlay(&probe);
+        {
+            let probe = probe.clone();
+            overlay.connect_get_child_position(move |overlay, child| {
+                (child == probe.upcast_ref::<gtk::Widget>()).then(|| place_probe(overlay, child))
+            });
+        }
 
         let spinner = adw::Spinner::new();
         spinner.set_halign(gtk::Align::End);
