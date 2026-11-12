@@ -1,0 +1,1 @@
+Nothing changes on Android: this release improves the desktop app.

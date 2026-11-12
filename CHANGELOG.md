@@ -3,6 +3,17 @@
 Each release's entry becomes its release notes (tools/release-notes.sh), so
 write it for the people installing the app.
 
+## 0.2.0
+
+- Desktop: the map fills its card. Beside the bands it is a wide rectangle,
+  so zooming in uses the whole width; with the cards stacked (a narrow
+  window) it is a square as wide as the window.
+- Windows and macOS: "Use my location" works, through the system's own
+  location service. On Windows, turn on Settings → Privacy & security →
+  Location, including access for desktop apps; on macOS, allow HFPredict
+  when asked.
+- Android: nothing changes.
+
 ## 0.1.1
 
 - Android: changing the home-screen icon no longer closes the app.

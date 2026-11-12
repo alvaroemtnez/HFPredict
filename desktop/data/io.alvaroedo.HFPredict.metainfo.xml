@@ -75,6 +75,11 @@
     <keyword>shortwave</keyword>
   </keywords>
   <releases>
+    <release version="0.2.0" date="2026-11-12">
+      <description>
+        <p>The map fills its card: a wide rectangle beside the bands, so zooming in uses the whole width, and a square as wide as the window when the cards are stacked.</p>
+      </description>
+    </release>
     <release version="0.1.1" date="2026-11-12">
       <description>
         <p>Fixes on Android; nothing changes on Linux.</p>

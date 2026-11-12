@@ -1010,7 +1010,7 @@ source = "git+https://code.alvaroedo.io/alvaroemtnez/hfcast-engine.git?rev=f9782
 
 [[package]]
 name = "hfpredict"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "ashpd",
  "futures-channel",
@@ -1027,7 +1027,7 @@ dependencies = [
 
 [[package]]
 name = "hfpredict-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "hfcast",
  "jiff",
@@ -1043,7 +1043,7 @@ dependencies = [
 
 [[package]]
 name = "hfpredict-ffi"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "hfpredict-core",
  "uniffi",
