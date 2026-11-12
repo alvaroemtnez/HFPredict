@@ -134,22 +134,21 @@ Start menu shortcut, uninstalled from *Settings → Apps*). There is no
 portable build: GTK needs its DLLs, icons and settings schemas beside the
 program, so it cannot be a single file.
 
-The x64 installer is built on Forgejo with the rest: the release workflow's
-`windows` job cross-compiles it in Fedora with `packaging/windows/build.sh`
-(MinGW GTK, the same set-up as the local container,
-`tools/containers/windows-deps.sh`).
-
-Forgejo has no Mac runner, and nothing on Linux packages GTK for Windows on
-ARM, so two workflows run on the GitHub mirror (Forgejo reads only
-`.forgejo/workflows`). When the mirror pushes a `v*` tag:
+Forgejo has no Mac or Windows runner, so two workflows run on the GitHub
+mirror (Forgejo reads only `.forgejo/workflows`). When the mirror pushes a
+`v*` tag:
 
 - `.github/workflows/macos.yml` builds `HFPredict-X.Y.Z-macos-arm64.dmg`
   (Apple silicon) and `HFPredict-X.Y.Z-macos-x86_64.dmg` (Intel) with
   `packaging/macos/build.sh` (Homebrew's GTK, bundled into the .app).
-- `.github/workflows/windows.yml` builds the ARM64 installer
-  natively on an ARM64 runner with `packaging/windows/build.sh` in MSYS2
-  (CLANGARM64: MSYS2's GTK and libadwaita, Rust's
-  `aarch64-pc-windows-gnullvm`).
+- `.github/workflows/windows.yml` builds the x64 and ARM64 installers
+  natively, on an x64 and an ARM64 runner, with `packaging/windows/build.sh`
+  in MSYS2 (CLANG64 / CLANGARM64: MSYS2's GTK and libadwaita, Rust's
+  `*-pc-windows-gnullvm`).
+
+The local cross-build (`packaging/windows/build.sh` on Linux, Fedora's MinGW
+GTK) is not used for releases: Fedora ships a development GTK there, and
+the 0.1.0 x64 installer built that way crashed at start-up on Windows 11.
 
 Either can also be started by hand: *Actions → macos/windows → Run workflow*.
 Actions must be enabled on the mirror (*Settings → Actions → General*);

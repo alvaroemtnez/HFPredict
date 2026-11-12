@@ -1,8 +1,7 @@
 # Builds and publishes a release when a v* tag is pushed: signed APKs and the
 # Accrescent APK set, the Flatpak bundle and the AppImage for x86_64 and arm64,
-# the Windows x64 installer, the macOS and Windows on ARM builds the GitHub
-# mirror makes (.github/workflows), SHA256SUMS (and its signature), with the
-# CHANGELOG.md entry as the notes, on Forgejo and on the GitHub mirror.
+# the macOS and Windows builds the GitHub mirror makes (.github/workflows),
+# SHA256SUMS (and its signature), with the CHANGELOG.md entry as the notes, on Forgejo and on the GitHub mirror.
 # Secrets and runner set-up: docs/releasing.md.
 name: release
 on:
@@ -76,24 +75,6 @@ jobs:
           name: appimage
           path: dist/*.AppImage
 
-  # Windows x64, cross-compiled with Fedora's MinGW GTK (the same set-up as
-  # the local container, tools/containers/windows-deps.sh).
-  windows:
-    runs-on: docker
-    container:
-      image: registry.fedoraproject.org/fedora:44
-    steps:
-      - name: System packages
-        run: dnf -y install --setopt=install_weak_deps=False git nodejs
-      - uses: https://code.forgejo.org/actions/checkout@v4
-      - name: MinGW GTK and libadwaita
-        run: sh tools/containers/windows-deps.sh
-      - run: IN_CONTAINER=1 packaging/windows/build.sh
-      - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
-        with:
-          name: windows
-          path: dist/*-setup.exe
-
   # arm64 builds, emulated on the x86 runner (docs/releasing.md, "ARM
   # builds"). This job registers QEMU for arm64 in the runner host's kernel
   # (binfmt_misc is one per kernel, so a privileged container can do it); the
@@ -163,7 +144,7 @@ jobs:
           path: dist/*.AppImage
 
   publish:
-    needs: [android, flatpak, appimage, windows, flatpak-arm64, appimage-arm64]
+    needs: [android, flatpak, appimage, flatpak-arm64, appimage-arm64]
     runs-on: docker
     # Room to wait for the GitHub builds (two hours at most, below).
     timeout-minutes: 180
@@ -182,7 +163,7 @@ jobs:
         run: |
           mkdir -p release
           find artifacts -type f \( -name '*.apk' -o -name '*.apks' -o -name '*.flatpak' -o -name '*.AppImage' -o -name '*-setup.exe' \) -exec cp {} release/ \;
-      # macOS and Windows on ARM, from the GitHub mirror's runs for this tag. Usually
+      # macOS and Windows, from the GitHub mirror's runs for this tag. Usually
       # done by now; it waits up to two hours, then publishes without them.
       - name: GitHub builds
         continue-on-error: true

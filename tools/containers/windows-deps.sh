@@ -2,7 +2,7 @@
 # windows-deps.sh - Sets up a Fedora system for packaging/windows/build.sh:
 # Fedora's MinGW GTK 4 and AppStream, libadwaita 1.7 built here (Fedora
 # packages no MinGW libadwaita), and NSIS for the installer. Run as root by
-# the Containerfile's "windows" stage and by the release workflow's Fedora job.
+# the Containerfile's "windows" stage (local builds only; releases use MSYS2).
 set -eu
 
 dnf -y install --setopt=install_weak_deps=False \

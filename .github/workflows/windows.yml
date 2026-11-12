@@ -1,10 +1,13 @@
-# The Windows on ARM build, on the GitHub mirror only (Forgejo reads
+# The Windows builds, on the GitHub mirror only (Forgejo reads
 # .forgejo/workflows and ignores this folder). Each v* tag the mirror pushes,
-# or a manual run, builds HFPredict-<version>-windows-arm64-setup.exe with
-# packaging/windows/build.sh in MSYS2, natively on an ARM64 runner: no Linux
-# distribution packages GTK for Windows on ARM to cross-build with. The x64
-# installer is cross-built on Forgejo. Forgejo's release job collects this one
-# (tools/fetch-github-builds.sh; docs/releasing.md, "Windows and macOS").
+# or a manual run, builds HFPredict-<version>-windows-<arch>-setup.exe with
+# packaging/windows/build.sh in MSYS2, natively: x64 on an x64 runner
+# (CLANG64), ARM64 on an ARM64 one (CLANGARM64). MSYS2's GTK is a stable
+# release and the one GTK itself tests on Windows; Fedora's MinGW GTK (the
+# local cross-build) was a development release whose x64 installer crashed
+# at start-up on Windows 11 24H2 (heap corruption). Forgejo's release job
+# collects these (tools/fetch-github-builds.sh; docs/releasing.md, "Windows
+# and macOS").
 name: windows
 on:
   push:
@@ -15,8 +18,18 @@ permissions:
   contents: read
 
 jobs:
-  setup-arm64:
-    runs-on: windows-11-arm
+  setup:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            msystem: CLANG64
+            arch: x86_64
+          - runner: windows-11-arm
+            msystem: CLANGARM64
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     defaults:
       run:
@@ -28,9 +41,9 @@ jobs:
       - uses: actions/checkout@v6
       - uses: msys2/setup-msys2@v2
         with:
-          msystem: CLANGARM64
+          msystem: ${{ matrix.msystem }}
           update: true
-          # NSIS from MINGW64: x86 code, run under Windows' emulation.
+          # NSIS from MINGW64: x86 code (under Windows' emulation on ARM64).
           install: patch curl mingw-w64-x86_64-nsis
           pacboy: >-
             clang:p lld:p llvm:p pkgconf:p
@@ -42,6 +55,6 @@ jobs:
         run: packaging/windows/build.sh
       - uses: actions/upload-artifact@v6
         with:
-          name: HFPredict-windows-arm64
+          name: HFPredict-windows-${{ matrix.arch }}
           path: dist/*-setup.exe
           if-no-files-found: error

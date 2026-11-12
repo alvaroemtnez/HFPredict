@@ -8,6 +8,7 @@ write it for the people installing the app.
 - Android: changing the home-screen icon no longer closes the app.
 - Android: the release also carries the APK set for the Accrescent store.
 - macOS: the app opens (0.1.0 bounced in the Dock and never showed a window).
+- Windows x64: the app opens (0.1.0 closed at once on Windows 11, before showing a window). The installer is now built natively on Windows with a stable GTK.
 
 ## 0.1.0
 

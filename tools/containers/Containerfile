@@ -14,8 +14,8 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # Windows x64 builds, cross-compiled: Fedora's MinGW GTK 4 and AppStream, and
-# libadwaita 1.7 built here (windows-deps.sh, which the release workflow runs
-# too). Used by packaging/windows/build.sh only; Linux builds never touch it.
+# libadwaita 1.7 built here (windows-deps.sh). Local builds only (releases use
+# MSYS2, .github/workflows/windows.yml); used by packaging/windows/build.sh; Linux builds never touch it.
 FROM registry.fedoraproject.org/fedora:44 AS windows
 COPY windows-deps.sh /tmp/windows-deps.sh
 RUN sh /tmp/windows-deps.sh && rm /tmp/windows-deps.sh

@@ -27,10 +27,10 @@ Linux stays first; these are by-products of the same code.
 
 - **Windows**: `packaging/windows/build.sh` builds an installer (NSIS,
   per user), `dist/HFPredict-<version>-windows-<arch>-setup.exe`, two
-  ways: x64 cross-compiled
-  in Fedora (MinGW GTK 4.21, libadwaita 1.7 built there; the local container
-  and the Forgejo release job), and ARM64 natively in MSYS2, which
-  `.github/workflows/windows.yml` does on the GitHub mirror. The engine links files with Unix
+  ways: natively in MSYS2 (x64 and ARM64; the release installers, which
+  `.github/workflows/windows.yml` builds on the GitHub mirror), or x64
+  cross-compiled in Fedora's local container for trying things (MinGW GTK
+  4.21, a development release: its 0.1.0 installer crashed on Windows 11). The engine links files with Unix
   symlinks, so this build alone patches a private copy of it
   (`packaging/windows/hfcast-engine-windows.patch`: a copy where there are
   no Unix symlinks, identical on Unix); worth offering upstream, after which
