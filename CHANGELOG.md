@@ -3,6 +3,15 @@
 Each release's entry becomes its release notes (tools/release-notes.sh), so
 write it for the people installing the app.
 
+## 0.3.1
+
+- Desktop: with the cards side by side, the map grows to end level with
+  the bands and the sun beside it, instead of leaving an empty space
+  under it.
+- Desktop: "Set as destination", on a tapped grid square, stands out as
+  a button in the accent colour.
+- Android: nothing changes.
+
 ## 0.3.0
 
 - Windows and macOS: HFPredict checks for a new version at start and
