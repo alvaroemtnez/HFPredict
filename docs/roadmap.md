@@ -9,10 +9,11 @@ builds on.
 
 Android:
 - **Obtainium**: works today from the release APKs.
-- **F-Droid**: recipe, store text and reviewer notes ready (docs/releasing.md,
-  "F-Droid"); run `fdroid build` on the recipe, then submit the merge request
-  to fdroiddata. The Rust core builds reproducibly from 0.1.1 on; add
-  `AllowedAPKSigningKeys` once F-Droid's build matches ours.
+- **F-Droid**: from 25 January 2027 (three months of development). Submit
+  with the first release signed by the fixed `android/build.sh`: F-Droid's
+  build then verifies against ours, so it ships our signature. Recipe
+  (with `Binaries:` and `AllowedAPKSigningKeys:`), store text, steps and
+  reviewer notes: docs/releasing.md, "F-Droid".
 - **Accrescent**: the release attaches the signed APK set
   (`HFPredict-<version>.apks`); register in the developer console when it
   opens and upload.

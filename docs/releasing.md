@@ -254,42 +254,65 @@ Keep the asset names (`HFPredict-<version>-<abi>.apk`) stable.
 
 ### F-Droid
 
+Not before 25 January 2027: F-Droid's inclusion policy wants three months of
+active development (Quality, point 6), and the first commit is from 25
+October 2026. F-Droid has no generative-AI policy (November 2026); whether
+to mention the AI assistant in the merge request is the author's call.
+
 - Store text, icon, screenshots and per-version changelogs:
   `fastlane/metadata/android/<locale>/` (en-US, es-ES, ca; the other
   languages fall back to English). Add `changelogs/<versionCode>.txt` with
   every release (500 characters at most).
-- Build recipe: `packaging/fdroid/io.alvaroedo.HFPredict.yml`. F-Droid
-  brings its own JDK, SDK and NDK; the recipe runs
-  `HFP_EXTERNAL_SDK=1 android/build.sh rust` with them, then Gradle.
-- Submit: fork https://gitlab.com/fdroid/fdroiddata, copy the recipe to
-  `metadata/`, check it with `fdroid lint` and `fdroid build -v -l
-  io.alvaroedo.HFPredict` (their docker image), open a merge request.
-- Check the recipe's `ndk:` against the NDKs F-Droid's build server offers
-  (`fdroidserver`'s list); if r30 is not there yet, use the newest it has and
-  match `ndkVersion` in `android/app/build.gradle.kts`.
+- Build recipe: `packaging/fdroid/io.alvaroedo.HFPredict.yml`, in the form
+  `fdroid rewritemeta` writes (it drops comments, so the notes are here).
+  F-Droid brings its own JDK, SDK and NDK (r30 is in its list); the recipe
+  installs a C toolchain (`build-essential`: Rust builds `cargo-ndk` and the
+  crates' build scripts for the build machine), runs
+  `HFP_EXTERNAL_SDK=1 android/build.sh rust` with F-Droid's NDK, then
+  Gradle, and takes the universal APK.
+- Reproducible builds: F-Droid builds the release, copies the signature of
+  our APK (`Binaries:`) onto its own build and checks it verifies with the
+  certificate in `AllowedAPKSigningKeys:` (docs/verifying.md); if so it
+  ships our signed APK, so F-Droid and Forgejo/Obtainium installs update each
+  other. This only works if signing changes nothing else in the APK, so
+  `android/build.sh` signs Gradle's output as it is
+  (`apksigner sign --alignment-preserved true`, no zipalign). Releases up to
+  0.3.1 were zipaligned and cannot be verified: submit with a later one.
+  Checked in November 2026: F-Droid's build of v0.2.1 contained the same
+  files as ours, and our build of that tag, signed this way, passed
+  F-Droid's verification. It cannot be switched on after inclusion (the
+  APKs would already carry F-Droid's signature), so it has to work in the
+  submission.
+- Submit (in the fork of https://gitlab.com/fdroid/fdroiddata):
+  1. copy the recipe to `metadata/io.alvaroedo.HFPredict.yml`, with
+     `commit:` set to the full hash of the release's tag
+     (`git rev-parse vX.Y.Z^{commit}`; the merge request template refuses
+     tags; F-Droid's auto-update writes hashes itself afterwards);
+  2. in F-Droid's container (`registry.gitlab.com/fdroid/fdroidserver:buildserver`,
+     as in their Quick Start Guide; with podman add `--userns=keep-id`), run
+     `fdroid readmeta`, `fdroid rewritemeta io.alvaroedo.HFPredict`,
+     `fdroid lint io.alvaroedo.HFPredict` and
+     `fdroid build --verbose --on-server --no-tarball io.alvaroedo.HFPredict:<versionCode>`,
+     which must end in a verified build;
+  3. commit as "New App: io.alvaroedo.HFPredict", push, and open the merge
+     request titled "New app: HFPredict" from the template.
 - Expect the reviewer to ask about:
   - the Rust toolchain: `tools/rust.sh` installs rustup and the toolchain
     pinned in `rust-toolchain.toml` into `.tools/`, and cargo builds
     `cargo-ndk` and every crate from source (`Cargo.lock`, `--locked`);
   - the engine: a git dependency pinned by commit in `Cargo.toml`, fetched
     from `code.alvaroedo.io/alvaroemtnez/hfcast-engine` (Apache-2.0 upstream,
-    https://github.com/jonathanmcsweet/hfcast). That mirror must stay public;
+    https://github.com/jonathanmcsweet/hfcast). That mirror must stay public.
+    The template prefers external code as git submodules (their scanner
+    covers those), so this may come up;
   - JNA from Maven Central, whose AAR carries a prebuilt `libjnidispatch.so`
     (LGPL-2.1 / Apache-2.0, built by the JNA project). UniFFI's Kotlin
     bindings need it;
   - network use: NOAA SWPC (space weather), GIRO/LGDC FastChar (ionosonde
-    readings) and Open-Meteo geocoding (place search). All free to use and
-    none track the user; the forecasts themselves are computed on the phone.
-- Reproducible builds let F-Droid ship our signature instead of theirs, so an
-  F-Droid install and a Forgejo/Obtainium install can update each other. The
-  Rust core is built with its paths remapped (`android/build.sh`,
-  `setup_rust`) so it matches wherever the checkout lives. Once F-Droid's
-  build of a release matches ours, add to the recipe
-  `AllowedAPKSigningKeys:` with the certificate's SHA-256 from
-  docs/verifying.md, and `Binaries:` pointing at the universal APK
-  (`https://code.alvaroedo.io/alvaroemtnez/HFPredict/releases/download/v%v/HFPredict-%v-universal.apk`).
-  To check locally first: build the release twice from two different
-  checkout paths and compare the unsigned APKs.
+    readings) and Open-Meteo geocoding (place search). Optional, switchable
+    off, and none track the user; the forecasts are computed on the phone.
+    No update check on Android. A reviewer might still consider the
+    NonFreeNet anti-feature.
 - IzzyOnDroid, the other F-Droid repository, does not take apps written
   with generative AI.
 

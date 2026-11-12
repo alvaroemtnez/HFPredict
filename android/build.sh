@@ -254,14 +254,18 @@ build_release() {
             cp "$unsigned" "${out%.apk}-unsigned.apk"
             continue
         fi
-        local args=(sign --ks "$HFPREDICT_KEYSTORE" --out "$out")
+        # Gradle's packager already aligns the APK (4 bytes, 16 KB pages for
+        # the native libraries). Signing must keep its bytes exactly as they
+        # are, no zipalign and no realignment by apksigner, so the signature
+        # can be copied onto F-Droid's build of the same source: that is how
+        # F-Droid checks the build is reproducible and ships our signature.
+        local args=(sign --alignment-preserved true --ks "$HFPREDICT_KEYSTORE" --out "$out")
         [ -n "${HFPREDICT_KEY_ALIAS:-}" ] && args+=(--ks-key-alias "$HFPREDICT_KEY_ALIAS")
         # Passwords are read from the environment if set, otherwise apksigner asks.
         [ -n "${HFPREDICT_KEYSTORE_PASS:-}" ] && args+=(--ks-pass env:HFPREDICT_KEYSTORE_PASS)
         [ -n "${HFPREDICT_KEY_PASS:-}" ] && args+=(--key-pass env:HFPREDICT_KEY_PASS)
-        "$tools/zipalign" -f -p 4 "$unsigned" "$out.aligned"
-        "$tools/apksigner" "${args[@]}" "$out.aligned"
-        rm -f "$out.aligned" "$out.aligned.idsig" "$out.idsig"
+        "$tools/apksigner" "${args[@]}" "$unsigned"
+        rm -f "$out.idsig"
         "$tools/apksigner" verify "$out" >/dev/null
     done
     [ -z "${HFPREDICT_KEYSTORE:-}" ] && info "HFPREDICT_KEYSTORE not set: APKs left unsigned in $DIST_DIR"
