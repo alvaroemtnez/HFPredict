@@ -55,11 +55,11 @@ pub fn preferences(w: &Rc<Window>) {
     g.add(&theme);
 
     let mut langs: Vec<String> = vec![tr("preferences.language.system")];
-    langs.extend(i18n::LANGUAGES.iter().map(|(_, name)| name.to_string()));
+    langs.extend(i18n::languages().iter().map(|(_, name)| name.to_string()));
     let lang_index = settings
         .language
         .as_deref()
-        .and_then(|l| i18n::LANGUAGES.iter().position(|(c, _)| *c == l))
+        .and_then(|l| i18n::languages().iter().position(|(c, _)| *c == l))
         .map_or(0, |i| i + 1);
     let language = adw::ComboRow::builder()
         .title(tr("preferences.language"))
@@ -182,7 +182,7 @@ pub fn preferences(w: &Rc<Window>) {
             s.units = unit_values[units.selected() as usize % unit_values.len()];
             s.language = match language.selected() as usize {
                 0 => None,
-                i => i18n::LANGUAGES.get(i - 1).map(|(c, _)| c.to_string()),
+                i => i18n::languages().get(i - 1).map(|(c, _)| c.to_string()),
             };
             s.model = if truecast.is_active() {
                 Model::Truecast

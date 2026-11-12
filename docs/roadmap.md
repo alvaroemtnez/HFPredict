@@ -18,8 +18,10 @@ Android:
   opens and upload.
 
 Linux:
-- **Flathub**: the manifest must be written by hand (Flathub's AI policy;
-  docs/releasing.md, "Flathub"); the metainfo is ready.
+- **Flathub**: on hold for a few months of history and real-world use.
+  Before submitting: `https://alvaroedo.io` must answer over HTTPS, the
+  manifest and pull request are written by hand, and the build uses only
+  the reviewed languages (docs/releasing.md, "Flathub").
 
 ## Windows and macOS
 

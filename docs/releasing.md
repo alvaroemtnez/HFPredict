@@ -307,13 +307,43 @@ Keep the asset names (`HFPredict-<version>-<abi>.apk`) stable.
 
 ### Flathub
 
-- Flathub (October 2026) accepts AI-assisted apps with disclosure, but the
-  Flathub manifest itself must not be AI-generated or AI-assisted, and the
-  submission pull request, its description and the replies must be written
-  by a person. So the Flathub manifest is yours to write: use
-  `packaging/flatpak/io.alvaroedo.HFPredict.yml` only as a reference for what
-  the app needs (GNOME 51 runtime, Rust SDK extension, network and display
-  permissions), and list the cargo sources with `flatpak-cargo-generator`
-  instead of the local vendor step.
-- The metainfo (`desktop/data/io.alvaroedo.HFPredict.metainfo.xml`) with
-  screenshots and release notes, the desktop file and the icons are ready.
+On hold until the project has a few months of history (decided November
+2026). Read Flathub's requirements again before submitting: the AI policy
+changed three times in 2026. As of November 2026
+(https://docs.flathub.org/docs/for-app-authors/requirements):
+
+- **Generative AI policy.** Disclose the AI-generated material in the app
+  and its packaging, naming the parts and the approximate extent (the pull
+  request template has a field for it). For HFPredict that is nearly all of
+  it: code, documentation, translations and packaging scripts were written
+  with an AI assistant. The disclosure is judged at the reviewers'
+  discretion and does not guarantee acceptance.
+- **The Flathub manifest must not contain AI-generated or AI-assisted
+  content**, and disclosure does not exempt it.
+- **The pull request, its commit messages, description and replies** must
+  be written by a person, without AI tools or agents, and AI-agent reviews
+  must not be requested.
+- **Translations.** Flathub refuses machine-generated translations. English,
+  Spanish and Valencian were checked by the author; German, Japanese and
+  Arabic were generated and not reviewed. Build the desktop app with the
+  environment variable `HFPREDICT_LANGUAGES=en,es,ca` (`desktop/src/i18n.rs`):
+  it offers only those languages, and falls back to English for the rest.
+  Add a language to the list once someone who speaks it has reviewed it.
+  The desktop file carries only reviewed translations.
+- **Development history.** Flathub generally refuses apps that have existed
+  only briefly, and asks for evidence of real-world use and maintenance
+  (the first commit is from 25 October 2026).
+- **Domain.** The app ID `io.alvaroedo.HFPredict` makes Flathub check
+  `https://alvaroedo.io`, which must answer over HTTPS. In November 2026
+  the bare domain had no DNS record (only `code.alvaroedo.io` and others
+  did). Flathub may also ask for a token at
+  `https://alvaroedo.io/.well-known/org.flathub.VerifiedApps.txt`.
+
+What the app repository has ready: the metainfo
+(`desktop/data/io.alvaroedo.HFPredict.metainfo.xml`, screenshots and release
+notes), the desktop file and the icons. The metainfo passes
+`flatpak-builder-lint appstream` (from `org.flatpak.Builder`) and the desktop
+file `desktop-file-validate`. Linting a local build directory also reports
+`appstream-external-screenshot-url`; Flathub's own build mirrors the
+screenshots, so that one only shows locally. The self-updater does not
+exist in Linux builds, so the Flatpak never checks GitHub for updates.

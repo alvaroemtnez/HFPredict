@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 
 /// Languages with a table, in the order Preferences lists them, and their
-/// own names.
-pub const LANGUAGES: [(&str, &str); 6] = [
+/// own names. A build may offer fewer (`languages`).
+const ALL_LANGUAGES: [(&str, &str); 6] = [
     ("en", "English"),
     ("es", "Español"),
     ("ca", "Valencià"),
@@ -15,7 +15,30 @@ pub const LANGUAGES: [(&str, &str); 6] = [
     ("ar", "العربية"),
 ];
 
+/// The languages this build offers. `HFPREDICT_LANGUAGES=en,es,ca` at build
+/// time keeps only those, for a store that takes only translations someone
+/// who speaks the language has checked (Flathub); unset, all of them.
+/// English is always kept: it is the fallback.
+pub fn languages() -> Vec<(&'static str, &'static str)> {
+    ALL_LANGUAGES
+        .into_iter()
+        .filter(|(code, _)| offered(code))
+        .collect()
+}
+
+fn offered(code: &str) -> bool {
+    match option_env!("HFPREDICT_LANGUAGES") {
+        Some(list) if !list.trim().is_empty() => {
+            code == "en" || list.split(',').any(|c| c.trim() == code)
+        }
+        _ => true,
+    }
+}
+
 fn table(lang: &str) -> &'static str {
+    if !offered(lang) {
+        return include_str!("../../i18n/en.json");
+    }
     match lang {
         "es" => include_str!("../../i18n/es.json"),
         "ca" => include_str!("../../i18n/ca.json"),
@@ -41,13 +64,14 @@ fn parse(text: &str) -> HashMap<String, String> {
 /// The language to show: the saved choice, else the first of the system's
 /// preferred languages that has a table, else English.
 pub fn resolve(choice: Option<&str>) -> String {
-    if let Some(c) = choice.filter(|c| LANGUAGES.iter().any(|(code, _)| code == c)) {
+    let languages = languages();
+    if let Some(c) = choice.filter(|c| languages.iter().any(|(code, _)| code == c)) {
         return c.to_string();
     }
     for name in gtk::glib::language_names() {
         let code = name.split(['_', '.', '@', '-']).next().unwrap_or("");
         // Valencian is filed under Catalan in locales (ca_ES@valencia).
-        if let Some((code, _)) = LANGUAGES.iter().find(|(c, _)| *c == code) {
+        if let Some((code, _)) = languages.iter().find(|(c, _)| *c == code) {
             return code.to_string();
         }
     }
