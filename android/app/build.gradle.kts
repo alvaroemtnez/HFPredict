@@ -90,6 +90,13 @@ android {
     packaging {
         // The Rust library arrives stripped.
         jniLibs.keepDebugSymbols += "**/*.so"
+        // The Rust core is built for arm64-v8a, armeabi-v7a and x86_64 only
+        // (build.sh ALL_ABIS). JNA and AndroidX also ship libraries for
+        // other ABIs (x86, and JNA the obsolete armeabi, mips and mips64);
+        // left in, the universal APK and the app bundle's x86 split would
+        // install on such a device and crash without the core. Without
+        // them, such a device is simply not offered the app.
+        jniLibs.excludes += listOf("lib/x86/**", "lib/armeabi/**", "lib/mips/**", "lib/mips64/**")
     }
 
     lint {

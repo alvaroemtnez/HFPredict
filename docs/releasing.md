@@ -324,9 +324,24 @@ to mention the AI assistant in the merge request is the author's call.
   key (v2 and v3 signatures, one signer). Accrescent never takes a
   debug-signed app. The release workflow builds it too (when the keystore
   secret is set) and attaches it to the release.
-- Register in the developer console, then upload the `.apks`. The two
-  permissions (internet, coarse location) are both explained in the manifest
-  for the reviewer; location is one Accrescent reviews by hand.
+- Sign-up is closed (November 2026: only allowlisted GitHub accounts, no new
+  requests). When it opens: register, upload the `.apks` and a 512 x 512
+  PNG icon (`fastlane/metadata/android/en-US/images/icon.png`), and prove
+  the domain of the app ID with a DNS `TXT` record at
+  `_accverify.alvaroedo.io` holding the code the reviewer emails.
+- Checked against Accrescent's publishing requirements (November 2026,
+  https://accrescent.app/docs/guide/appendix/requirements/), on the 0.2.1
+  `.apks`: one signer, v2 and v3 signatures, not a debug certificate, target
+  SDK 37 (Accrescent follows Google Play's target SDK rules with no
+  extensions: API 36 for new apps and updates from 31 August 2026), not
+  debuggable, no self-updater on Android, no root or ADB use. Every 32-bit
+  ABI ships with its 64-bit one. After 0.3.1 the bundle carries no x86
+  split: only JNA's and AndroidX's libraries were in it, not the Rust core,
+  so `android/app/build.gradle.kts` excludes the ABIs the core is not built
+  for. Accrescent has no generative-AI policy.
+- The two permissions (internet, coarse location) are both explained in the
+  manifest for the reviewer; coarse location is on Accrescent's list of
+  permissions reviewed by hand.
 
 ### Flathub
 

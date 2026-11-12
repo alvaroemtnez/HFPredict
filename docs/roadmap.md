@@ -14,9 +14,10 @@ Android:
   build then verifies against ours, so it ships our signature. Recipe
   (with `Binaries:` and `AllowedAPKSigningKeys:`), store text, steps and
   reviewer notes: docs/releasing.md, "F-Droid".
-- **Accrescent**: the release attaches the signed APK set
-  (`HFPredict-<version>.apks`); register in the developer console when it
-  opens and upload.
+- **Accrescent**: sign-up is closed (November 2026). The release attaches
+  the signed APK set (`HFPredict-<version>.apks`), which meets the
+  publishing requirements; when sign-up opens, register, verify the domain
+  by DNS and upload (docs/releasing.md, "Accrescent").
 
 Linux:
 - **Flathub**: on hold for a few months of history and real-world use.
