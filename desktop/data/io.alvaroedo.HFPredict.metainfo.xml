@@ -75,6 +75,11 @@
     <keyword>shortwave</keyword>
   </keywords>
   <releases>
+    <release version="0.3.0" date="2026-11-12">
+      <description>
+        <p>On Windows and macOS, HFPredict offers new versions at start and installs them itself, after checking them against the release's signed checksums. The AppImage carries update information for Gear Lever and AppImageUpdate. On the map, the details of a tapped grid square wrap to stay inside a narrow map.</p>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-11-12">
       <description>
         <p>At its narrowest the window no longer cuts off the close button or the edge of the cards, and in a wide but short window the map no longer fills the whole height.</p>

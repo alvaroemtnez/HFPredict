@@ -15,6 +15,7 @@ write it for the people installing the app.
   find new versions by themselves.
 - Desktop: on the map, the details of a tapped grid square wrap to stay
   inside a narrow map instead of being cut off.
+- Android: nothing changes.
 
 ## 0.2.1
 
