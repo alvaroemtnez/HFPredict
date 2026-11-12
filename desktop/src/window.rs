@@ -29,6 +29,10 @@ pub struct Window {
     pub window: adw::ApplicationWindow,
     pub toasts: adw::ToastOverlay,
     stack: gtk::Stack,
+    /// The main menu's update entry (Windows and macOS; empty elsewhere).
+    pub update_section: gio::Menu,
+    /// The newer release, once a check found one.
+    pub update: std::cell::RefCell<Option<hfpredict_core::update::Update>>,
 }
 
 pub fn build(application: &adw::Application, app: &Rc<App>) -> Rc<Window> {
@@ -52,6 +56,8 @@ pub fn build(application: &adw::Application, app: &Rc<App>) -> Rc<Window> {
         window: window.clone(),
         toasts,
         stack: stack.clone(),
+        update_section: gio::Menu::new(),
+        update: Default::default(),
     });
 
     stack.add_named(&main_page(app, &w), Some("main"));
@@ -139,6 +145,11 @@ fn main_page(app: &Rc<App>, w: &Rc<Window>) -> gtk::Widget {
     section.append(Some(&tr("menu.help")), Some("app.help"));
     section.append(Some(&tr("menu.about")), Some("app.about"));
     menu.append_section(None, &section);
+    if crate::update::supported() {
+        w.update_section
+            .append(Some(&tr("update.menuCheck")), Some("app.update"));
+        menu.append_section(None, &w.update_section);
+    }
     let menu_button = gtk::MenuButton::builder()
         .icon_name("open-menu-symbolic")
         .menu_model(&menu)

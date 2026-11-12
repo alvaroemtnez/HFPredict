@@ -47,6 +47,12 @@ mkdir -p "$APPDIR/usr/share/icons"
 mkdir -p "$APPDIR/usr/share/icons/Adwaita"
 cp -r /usr/share/icons/Adwaita/symbolic /usr/share/icons/Adwaita/index.theme "$APPDIR/usr/share/icons/Adwaita/"
 
+# Update information (AppImage spec): Gear Lever, AppImageUpdate and the
+# like find the next version in the GitHub mirror's latest release, by the
+# .zsync file appimagetool writes beside the AppImage (the release uploads
+# both).
+export LDAI_UPDATE_INFORMATION="gh-releases-zsync|alvaroemtnez|HFPredict|latest|HFPredict-*-$ARCH.AppImage.zsync"
+
 # Screenshot URLs only resolve once pushed; metadata is validated offline
 # by desktop/build.sh test.
 export NO_APPSTREAM=1 APPIMAGE_EXTRACT_AND_RUN=1 DEPLOY_GTK_VERSION=4 ARCH="$ARCH" LINUXDEPLOY_OUTPUT_VERSION="$VERSION"
@@ -60,5 +66,8 @@ export PATH="$PWD/$TOOLS:$PATH"
 # libadwaita follows the dark/light preference through the portal itself.
 sed -i -e '/GDK_BACKEND/d' -e '/GTK_THEME/d' "$APPDIR"/apprun-hooks/*gtk*.sh
 (cd "$TOOLS" && "./linuxdeploy-$ARCH.AppImage" --appdir AppDir --output appimage)
-mv "$TOOLS"/HFPredict-*.AppImage "dist/HFPredict-$VERSION-$ARCH.AppImage"
-echo "==> dist/HFPredict-$VERSION-$ARCH.AppImage"
+# The .zsync names the AppImage it describes, so the two keep their names.
+OUT="HFPredict-$VERSION-$ARCH.AppImage"
+[ -f "$TOOLS/$OUT" ] && [ -f "$TOOLS/$OUT.zsync" ] || { echo "linuxdeploy did not write $OUT and $OUT.zsync" >&2; ls "$TOOLS" >&2; exit 1; }
+mv "$TOOLS/$OUT" "$TOOLS/$OUT.zsync" dist/
+echo "==> dist/$OUT (+ .zsync)"

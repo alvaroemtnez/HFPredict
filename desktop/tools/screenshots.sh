@@ -63,6 +63,8 @@ setup_landscape() { state "$1" dark null null; }
 setup_thinnest() { state "$1" light "$TOKYO" "${HFP_LANG:-null}"; }
 setup_fullscreen() { state "$1" dark "$TOKYO" null; }
 setup_probe() { state "$1" light null null; }
+setup_probe_narrow() { state "$1" dark null null; }
+setup_update() { state "$1" light "$TOKYO" null; }
 setup_firstrun_search() { mkdir -p "$1/data"; }
 setup_path_search() { state "$1" dark "$TOKYO" null; }
 setup_coarse() { state "$1" dark null null; }
@@ -91,6 +93,10 @@ EXTRA="HFPREDICT_ZOOM=3" shot landscape 940x700 true
 EXTRA="" shot thinnest 300x1000 true
 EXTRA="HFPREDICT_OPEN=fullscreen HFPREDICT_PROBE=0.62,0.38" shot fullscreen 1400x1000 true
 EXTRA="HFPREDICT_PROBE=0.55,0.42 HFPREDICT_ZOOM=2.5" shot probe 1400x1000 true
+# The probe's text wraps to stay on the map in the narrowest window.
+EXTRA="HFPREDICT_PROBE=0.55,0.42 HFPREDICT_ZOOM=2.5" shot probe_narrow 360x1300 true
+# The update offer (Windows and macOS), with a made-up version.
+EXTRA="HFPREDICT_OPEN=update" shot update 900x700 true
 EXTRA="HFPREDICT_SEARCH=Val" shot firstrun_search 420x900 true
 EXTRA="HFPREDICT_OPEN=path HFPREDICT_SEARCH=Tok" shot path_search 900x900 true
 # The smoothed coarse preview, caught before the fine map arrives.

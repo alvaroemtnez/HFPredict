@@ -15,6 +15,7 @@ mod palette;
 mod reach_card;
 mod station;
 mod sun_card;
+mod update;
 mod window;
 
 use std::cell::RefCell;
@@ -231,6 +232,9 @@ fn main() -> glib::ExitCode {
         app.refresh_readings();
         start_timers(&app);
         w.window.present();
+        if std::env::var_os("HFPREDICT_SCREENSHOT").is_none() {
+            update::check_at_start(&w);
+        }
         if std::env::var_os("HFPREDICT_DEBUG").is_some() {
             eprintln!(
                 "hfpredict: direction default={:?} window={:?} lang={}",
@@ -263,6 +267,9 @@ fn install_actions(application: &adw::Application, w: &Rc<Window>) {
     add("about", Box::new(dialogs::about));
     add("station", Box::new(station::open));
     add("path", Box::new(|w| location::open(w, location::End::From)));
+    if update::supported() {
+        add("update", Box::new(update::from_menu));
+    }
     let quit = gio::SimpleAction::new("quit", None);
     let app2 = application.clone();
     quit.connect_activate(move |_, _| app2.quit());
@@ -301,7 +308,7 @@ fn start_timers(app: &Rc<App>) {
 /// For UI tests: `HFPREDICT_SCREENSHOT=out.png` saves the window after
 /// `HFPREDICT_SCREENSHOT_DELAY` seconds (default 8) and quits.
 /// `HFPREDICT_SIZE=WxH` sizes the window, `HFPREDICT_OPEN=station|path|
-/// preferences|help|about|fullscreen` opens a dialog (or the full-screen
+/// preferences|help|about|fullscreen|update` opens a dialog (or the full-screen
 /// map) first, `HFPREDICT_BAND`, `HFPREDICT_HOUR`, `HFPREDICT_ZOOM` set
 /// the view and `HFPREDICT_PROBE=x,y` (fractions of the map) taps it.
 fn screenshot_hook(w: &Rc<Window>) {
@@ -373,6 +380,12 @@ fn screenshot_hook(w: &Rc<Window>) {
             "path" => {
                 if let Some(w) = weak.upgrade() {
                     location::open(&w, location::End::To);
+                }
+                return;
+            }
+            "update" => {
+                if let Some(w) = weak.upgrade() {
+                    update::sample(&w);
                 }
                 return;
             }

@@ -125,7 +125,15 @@ pub fn preferences(w: &Rc<Window>) {
         .build();
     let network = adw::SwitchRow::builder()
         .title(tr("preferences.network"))
-        .subtitle(tr("preferences.networkHint"))
+        .subtitle(if crate::update::supported() {
+            format!(
+                "{} {}",
+                tr("preferences.networkHint"),
+                tr("update.networkHint")
+            )
+        } else {
+            tr("preferences.networkHint")
+        })
         .active(settings.network)
         .build();
     g.add(&network);
@@ -298,7 +306,14 @@ pub fn help(w: &Rc<Window>) {
                 )],
             ),
         ),
-        ("help.privacy".into(), tr("help.privacy.body")),
+        (
+            "help.privacy".into(),
+            if crate::update::supported() {
+                format!("{}\n\n{}", tr("help.privacy.body"), tr("update.privacy"))
+            } else {
+                tr("help.privacy.body")
+            },
+        ),
     ];
     for (key, text) in sections {
         let h = gtk::Label::builder()

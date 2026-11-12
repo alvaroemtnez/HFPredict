@@ -151,6 +151,17 @@ GTK) is not used for releases: Fedora ships a development GTK there, and
 the 0.1.0 x64 installer built that way crashed at start-up on Windows 11.
 
 Either can also be started by hand: *Actions → macos/windows → Run workflow*.
+
+Both builds update themselves from the GitHub mirror's latest release
+(`core/src/update.rs`), and the AppImage's updaters read it too, so the job
+creates that release as a draft and publishes it only once every file is
+attached. Keep the asset names stable (`HFPredict-X.Y.Z-windows-<arch>-setup.exe`,
+`HFPredict-X.Y.Z-macos-<arch>.dmg`, `HFPredict-X.Y.Z-<arch>.AppImage.zsync`,
+`SHA256SUMS`): an installed copy finds its update by them. A release
+missing a platform's file (say the ARM64 installer, attached by hand later)
+is simply not offered there until it is up. The Windows installer runs as
+`setup.exe /S /RELAUNCH` for an update: it waits for the app to quit,
+installs and reopens it.
 Actions must be enabled on the mirror (*Settings → Actions → General*);
 public repositories get these runners for free.
 
@@ -194,7 +205,7 @@ may ask for the permission again after an update.
    builds) publishes:
    `HFPredict-X.Y.Z-{universal,arm64-v8a,armeabi-v7a,x86_64}.apk`,
    `HFPredict-X.Y.Z-{x86_64,aarch64}.flatpak`,
-   `HFPredict-X.Y.Z-{x86_64,aarch64}.AppImage`,
+   `HFPredict-X.Y.Z-{x86_64,aarch64}.AppImage` (each with its `.zsync`),
    `HFPredict-X.Y.Z-macos-{arm64,x86_64}.dmg`,
    `HFPredict-X.Y.Z-windows-{x86_64,arm64}-setup.exe`,
    `SHA256SUMS` and `SHA256SUMS.asc`, on Forgejo and GitHub.

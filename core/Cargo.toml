@@ -8,9 +8,10 @@ rust-version.workspace = true
 
 [features]
 default = ["net"]
-# The three optional online sources (NOAA, GIRO, Open-Meteo). Off, the core
+# The optional online sources (NOAA, GIRO, Open-Meteo) and the update check
+# (GitHub releases, Windows and macOS only). Off, the core
 # has no networking code at all.
-net = ["dep:ureq"]
+net = ["dep:ureq", "dep:sha2"]
 # UniFFI derives, for the Android bindings (crate `hfpredict-ffi`).
 ffi = ["dep:uniffi"]
 
@@ -21,6 +22,7 @@ serde_json = "1"
 tiny-skia = { version = "0.12", default-features = false, features = ["std", "simd"] }
 unicode-normalization = "0.1"
 ureq = { version = "3", optional = true }
+sha2 = { version = "0.10", optional = true }
 uniffi = { workspace = true, optional = true }
 thiserror = "2"
 # Local time at a place: the zone from its coordinates (boundaries from

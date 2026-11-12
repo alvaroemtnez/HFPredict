@@ -3,6 +3,18 @@
 Each release's entry becomes its release notes (tools/release-notes.sh), so
 write it for the people installing the app.
 
+## 0.3.0
+
+- Windows and macOS: HFPredict checks for a new version at start and
+  offers it. One click downloads it, checks it against the release's
+  checksums, installs it and opens the app again. "Don't remind me"
+  silences that version; *Main menu → Check for updates* is always there.
+  The check only runs with the network on in Preferences.
+- AppImage: carries update information, so Gear Lever and AppImageUpdate
+  find new versions by themselves.
+- Desktop: on the map, the details of a tapped grid square wrap to stay
+  inside a narrow map instead of being cut off.
+
 ## 0.2.1
 
 - Desktop: at its narrowest the window no longer cuts off the close button

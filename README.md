@@ -57,16 +57,20 @@ Spanish, Valencian, German, Japanese and Arabic.
   (`arm64-v8a` fits nearly every phone; `universal` fits all). No Google services needed:
   GrapheneOS, LineageOS and other de-Googled systems are first-class.
 - **Linux**: the `.flatpak` bundle (`flatpak install --user HFPredict-*.flatpak`) or the
-  `.AppImage` (make it executable and run it) from the releases. Flathub is planned. Any
+  `.AppImage` (make it executable and run it) from the releases; [Gear Lever](https://flathub.org/apps/it.mijorus.gearlever)
+  or AppImageUpdate keep the AppImage up to date. Flathub is planned. Any
   desktop works (GNOME, KDE Plasma, Xfce, Cinnamon, a tiling window manager…): the app is
   built with GTK 4 and libadwaita, so it looks most at home on GNOME and carries its own
   styling everywhere else.
 - **Windows 10 or later** (x64 or ARM64): the `-setup.exe` from the releases. It installs
   for your user only, with no administrator rights, and has an uninstaller. It is not
-  code-signed, so SmartScreen may warn: *More info → Run anyway*.
+  code-signed, so SmartScreen may warn: *More info → Run anyway*. Later versions install
+  themselves: HFPredict offers each one at start (or *Main menu → Check for updates*).
 - **macOS 15 or later** (Apple silicon `arm64` or Intel `x86_64`): the `.dmg` from the
   releases; drag HFPredict into Applications. It is not notarised by Apple, so the first
   launch is refused: open *System Settings → Privacy & Security* and choose *Open Anyway*.
+  Later versions install themselves, as on Windows, when HFPredict runs from a folder it can
+  write to (Applications is fine).
 
 "Use my location" asks the system: on Windows, turn on *Settings → Privacy & security →
 Location* (and "Let desktop apps access your location"); on macOS, allow HFPredict when asked.

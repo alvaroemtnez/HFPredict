@@ -25,6 +25,7 @@ use crate::render::{self, Palette, Scene};
 use crate::station::Station;
 use crate::store::{SavedState, Settings, Store};
 use crate::tiles::{TILE_PX, Tile};
+use crate::update::{self, Update};
 
 /// Room allowed for maps on disk.
 pub const MAP_BUDGET_BYTES: u64 = 128 * 1024 * 1024;
@@ -143,6 +144,33 @@ impl Core {
         drop(state);
         self.store.save(&snapshot)?;
         Ok(snapshot)
+    }
+
+    // ---- Updates (Windows and macOS; not exported to Android) ---------
+
+    /// The latest release, if it is newer than this build and has this
+    /// platform's file. `None` where the app does not update itself; refused
+    /// while network use is switched off.
+    pub fn check_update(&self) -> Result<Option<Update>, Error> {
+        let Some(platform) = update::platform_file() else {
+            return Ok(None);
+        };
+        if !lock(&self.state).settings.network {
+            return Err(Error::Offline);
+        }
+        update::check(platform)
+    }
+
+    /// Whether to bring the update up at start: not if its reminder was
+    /// turned off.
+    pub fn should_remind(&self, u: &Update) -> bool {
+        lock(&self.state).skipped_update.as_deref() != Some(u.version.as_str())
+    }
+
+    /// No reminder at start for this update; a later one reminds again.
+    pub fn skip_update(&self, u: &Update) -> Result<SavedState, Error> {
+        let version = u.version.clone();
+        self.update(|s| s.skipped_update = Some(version))
     }
 
     /// The run context for today (UTC) and where the path starts.

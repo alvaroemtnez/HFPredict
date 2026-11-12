@@ -28,17 +28,25 @@ forgejo() {
     done
 }
 
+# A draft until every file is up: the apps' update checks (Windows, macOS)
+# and the AppImage updaters read the latest release, and must not find it
+# half uploaded.
 github() {
-    local id
+    local id draft
+    draft=$(python3 -c 'import json,sys; b=json.loads(sys.argv[1]); b["draft"]=True; print(json.dumps(b))' "$BODY")
     id=$(curl -fsS -X POST "https://api.github.com/repos/$GITHUB_REPO/releases" \
         -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
-        -d "$BODY" | json_field id)
+        -d "$draft" | json_field id)
     for f in "$DIR"/*; do
         echo "github: $(basename "$f")"
         curl -fsS -X POST "https://uploads.github.com/repos/$GITHUB_REPO/releases/$id/assets?name=$(basename "$f")" \
             -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" \
             --data-binary "@$f" >/dev/null
     done
+    curl -fsS -X PATCH "https://api.github.com/repos/$GITHUB_REPO/releases/$id" \
+        -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+        -d '{"draft": false, "make_latest": "true"}' >/dev/null
+    echo "github: published"
 }
 
 forgejo

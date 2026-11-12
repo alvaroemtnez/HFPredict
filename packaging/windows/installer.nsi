@@ -7,6 +7,11 @@
 ; %LOCALAPPDATA%\Programs\HFPredict, with a Start menu shortcut and an entry
 ; in Settings -> Apps to uninstall it. The installer's own texts are NSIS's
 ; translations, picked from the Windows display language.
+;
+; The app updates itself by running this installer as
+;   setup.exe /S /RELAUNCH
+; silently over the installed copy: it waits for the app to quit, installs,
+; then opens it again (desktop/src/update.rs).
 
 Unicode true
 SetCompressor /SOLID lzma
@@ -16,6 +21,7 @@ RequestExecutionLevel user
 !include "LogicLib.nsh"
 !include "WinVer.nsh"
 !include "x64.nsh"
+!include "FileFunc.nsh"
 
 !define APP_ID "io.alvaroedo.HFPredict"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_ID}"
@@ -76,6 +82,21 @@ Section "HFPredict"
     ; An update replaces the previous files, so no stale library stays
     ; behind; only where HFPredict is installed already.
     ${If} ${FileExists} "$INSTDIR\bin\hfpredict.exe"
+        ; The app that started this update is still quitting: wait (up to
+        ; 30 s) until its program can be removed.
+        StrCpy $0 0
+        ${Do}
+            ClearErrors
+            Delete "$INSTDIR\bin\hfpredict.exe"
+            ${IfNot} ${Errors}
+                ${Break}
+            ${EndIf}
+            IntOp $0 $0 + 1
+            ${If} $0 >= 60
+                ${Break}
+            ${EndIf}
+            Sleep 500
+        ${Loop}
         RMDir /r "$INSTDIR\bin"
         RMDir /r "$INSTDIR\lib"
         RMDir /r "$INSTDIR\share"
@@ -95,6 +116,14 @@ Section "HFPredict"
     WriteRegStr HKCU "${UNINSTALL_KEY}" "UninstallString" '"$INSTDIR\uninstall.exe"'
     WriteRegDWORD HKCU "${UNINSTALL_KEY}" "NoModify" 1
     WriteRegDWORD HKCU "${UNINSTALL_KEY}" "NoRepair" 1
+
+    ; An update from the app itself: open it again.
+    ${GetParameters} $1
+    ClearErrors
+    ${GetOptions} $1 "/RELAUNCH" $2
+    ${IfNot} ${Errors}
+        Exec '"$INSTDIR\bin\hfpredict.exe"'
+    ${EndIf}
 SectionEnd
 
 Section "Uninstall"

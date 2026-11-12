@@ -6,7 +6,7 @@
             │  forecast.rs  path + survey      maps.rs  coarse / fine / patch      │
             │  correct.rs   WSPR-fitted swing and spread correction (from HFcast)  │
             │  render.rs    the map, drawn to RGBA with tiny-skia                  │
-            │  places.rs  online.rs  store.rs  cache.rs                            │
+            │  places.rs  online.rs  store.rs  cache.rs  update.rs                 │
             │  app.rs  `Core`: the one object both apps call, thread-safe          │
             └───────────────┬───────────────────────────────────┬──────────────────┘
                             │ Rust                              │ UniFFI (ffi/)
@@ -35,6 +35,19 @@ platforms or neither, and a number can never differ between them.
 from any thread; the apps call them off the UI thread (coroutines on Android,
 `gio::spawn_blocking` on GNOME) and apply results on the UI thread, discarding
 any that a newer request has overtaken.
+
+### Updates
+
+Android updates through its store or Obtainium, the Flatpak through its
+repository. The AppImage embeds update information (`gh-releases-zsync`, the
+AppImage spec's), so Gear Lever or AppImageUpdate find the next version in the
+GitHub mirror's latest release by its `.zsync` file. The Windows and macOS
+builds update themselves: `core/src/update.rs` reads the mirror's latest
+release, offers it only once it has the platform's file and `SHA256SUMS`, and
+downloads and checks the file; `desktop/src/update.rs` asks the reader at
+start (unless they turned that version's reminder off), then runs the
+installer silently (Windows) or swaps the .app (macOS) and reopens the app.
+With the network off in Preferences there is no check.
 
 ## The engine
 

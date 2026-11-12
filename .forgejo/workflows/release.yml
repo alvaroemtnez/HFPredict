@@ -73,7 +73,9 @@ jobs:
       - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
           name: appimage
-          path: dist/*.AppImage
+          path: |
+            dist/*.AppImage
+            dist/*.AppImage.zsync
 
   # arm64 builds, emulated on the x86 runner (docs/releasing.md, "ARM
   # builds"). This job registers QEMU for arm64 in the runner host's kernel
@@ -141,7 +143,9 @@ jobs:
       - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
           name: appimage-arm64
-          path: dist/*.AppImage
+          path: |
+            dist/*.AppImage
+            dist/*.AppImage.zsync
 
   publish:
     needs: [android, flatpak, appimage, flatpak-arm64, appimage-arm64]
@@ -162,7 +166,7 @@ jobs:
       - name: Collect the builds
         run: |
           mkdir -p release
-          find artifacts -type f \( -name '*.apk' -o -name '*.apks' -o -name '*.flatpak' -o -name '*.AppImage' -o -name '*-setup.exe' \) -exec cp {} release/ \;
+          find artifacts -type f \( -name '*.apk' -o -name '*.apks' -o -name '*.flatpak' -o -name '*.AppImage' -o -name '*.AppImage.zsync' -o -name '*-setup.exe' \) -exec cp {} release/ \;
       # macOS and Windows, from the GitHub mirror's runs for this tag. Usually
       # done by now; it waits up to two hours, then publishes without them.
       - name: GitHub builds

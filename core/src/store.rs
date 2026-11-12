@@ -100,6 +100,9 @@ pub struct SavedState {
     pub recent: Vec<Place>,
     pub space_weather: Option<SpaceWeather>,
     pub sounding: Option<Sounding>,
+    /// The update version whose reminder was turned off (Windows, macOS);
+    /// a later one reminds again.
+    pub skipped_update: Option<String>,
 }
 
 impl Default for SavedState {
@@ -115,6 +118,7 @@ impl Default for SavedState {
             recent: vec![],
             space_weather: None,
             sounding: None,
+            skipped_update: None,
         }
     }
 }
