@@ -34,12 +34,12 @@ Linux stays first; these are by-products of the same code.
   symlinks, so this build alone patches a private copy of it
   (`packaging/windows/hfcast-engine-windows.patch`: a copy where there are
   no Unix symlinks, identical on Unix); worth offering upstream, after which
-  the patch goes. "Use my location" says it is unavailable (no portal).
-  Neither installer has run on a real Windows machine yet.
+  the patch goes. "Use my location" uses Windows' location service
+  (`windows` crate), not yet tried on a real machine.
 - **macOS**: `.github/workflows/macos.yml` on the GitHub mirror builds
   .dmg files for Apple silicon and Intel with `packaging/macos/build.sh`
   (Homebrew's GTK bundled into the .app, ad-hoc signed); untested on a real
-  Mac. To open without warnings it would need an Apple Developer ID and notarising.
+  Mac, and so is "Use my location" there (CoreLocation, `objc2-core-location`). To open without warnings it would need an Apple Developer ID and notarising.
 - The Forgejo release job fetches both from the mirror's runs
   (`tools/fetch-github-builds.sh`) and signs them in `SHA256SUMS`.
 

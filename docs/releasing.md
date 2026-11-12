@@ -170,7 +170,8 @@ notarisation), so the first time, macOS asks: right-click the app, *Open*,
 then *Open* again (or *System Settings → Privacy & Security → Open Anyway*).
 It needs the macOS version the runner had (macOS 15) or newer, because
 Homebrew builds its libraries for the system they are installed on. "Use my
-location" says it is unavailable, as on Windows.
+location" goes through CoreLocation; with only an ad-hoc signature, macOS
+may ask for the permission again after an update.
 
 ## Each release
 

@@ -121,6 +121,8 @@ cat >"$C/Info.plist" <<EOF
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key><true/>
+    <key>NSLocationUsageDescription</key><string>HFPredict sets where you transmit from to your location. It stays on this Mac.</string>
+    <key>NSLocationWhenInUseUsageDescription</key><string>HFPredict sets where you transmit from to your location. It stays on this Mac.</string>
     <key>NSHumanReadableCopyright</key><string>© 2026 Álvaro Edo Martínez · GPL-3.0-or-later</string>
 </dict>
 </plist>

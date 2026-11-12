@@ -68,8 +68,8 @@ Spanish, Valencian, German, Japanese and Arabic.
   releases; drag HFPredict into Applications. It is not notarised by Apple, so the first
   launch is refused: open *System Settings → Privacy & Security* and choose *Open Anyway*.
 
-On Windows and macOS, "Use my location" is not available (it relies on the Linux location
-portal): search for your place or type your locator instead.
+"Use my location" asks the system: on Windows, turn on *Settings → Privacy & security →
+Location* (and "Let desktop apps access your location"); on macOS, allow HFPredict when asked.
 
 Every release carries a `SHA256SUMS` file, signed (`SHA256SUMS.asc`); the APKs are signed with
 the same key on every release. See [docs/verifying.md](docs/verifying.md).

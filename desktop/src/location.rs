@@ -18,42 +18,15 @@ pub enum End {
     To,
 }
 
-/// Asks the desktop for the device's position (the XDG location portal,
-/// GeoClue behind it). `Err` carries a reason to show.
-#[cfg(not(all(unix, not(target_os = "macos"))))]
+/// Asks the system for the device's position: the XDG location portal
+/// (GeoClue behind it) on Linux, the Windows location service, CoreLocation
+/// on macOS. Each asks the user's permission the system's own way. `Err`
+/// carries a reason, for the log.
 pub async fn device_position() -> Result<(f64, f64), String> {
-    Err("no location portal on this system".to_string())
-}
-
-/// Asks the desktop for the device's position (the XDG location portal,
-/// GeoClue behind it). `Err` carries a reason to show.
-#[cfg(all(unix, not(target_os = "macos")))]
-pub async fn device_position() -> Result<(f64, f64), String> {
-    use ashpd::desktop::location::{Accuracy, CreateSessionOptions, LocationProxy};
-    let work = async {
-        let proxy = LocationProxy::new().await.map_err(|e| e.to_string())?;
-        let session = proxy
-            .create_session(CreateSessionOptions::default().set_accuracy(Accuracy::Exact))
-            .await
-            .map_err(|e| e.to_string())?;
-        let mut updates = proxy
-            .receive_location_updated()
-            .await
-            .map_err(|e| e.to_string())?;
-        proxy
-            .start(&session, None, Default::default())
-            .await
-            .map_err(|e| e.to_string())?;
-        use futures_util::StreamExt;
-        let location = updates
-            .next()
-            .await
-            .ok_or_else(|| "no position".to_string())?;
-        let _ = session.close().await;
-        Ok((location.latitude(), location.longitude()))
-    };
+    let work = platform_position();
+    // Long enough to answer the system's permission prompt.
     let timeout = async {
-        glib::timeout_future(Duration::from_secs(30)).await;
+        glib::timeout_future(Duration::from_secs(60)).await;
         Err("timed out".to_string())
     };
     futures_util::pin_mut!(work);
@@ -61,6 +34,174 @@ pub async fn device_position() -> Result<(f64, f64), String> {
     match futures_util::future::select(work, timeout).await {
         futures_util::future::Either::Left((r, _))
         | futures_util::future::Either::Right((r, _)) => r,
+    }
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+async fn platform_position() -> Result<(f64, f64), String> {
+    use ashpd::desktop::location::{Accuracy, CreateSessionOptions, LocationProxy};
+    let proxy = LocationProxy::new().await.map_err(|e| e.to_string())?;
+    let session = proxy
+        .create_session(CreateSessionOptions::default().set_accuracy(Accuracy::Exact))
+        .await
+        .map_err(|e| e.to_string())?;
+    let mut updates = proxy
+        .receive_location_updated()
+        .await
+        .map_err(|e| e.to_string())?;
+    proxy
+        .start(&session, None, Default::default())
+        .await
+        .map_err(|e| e.to_string())?;
+    use futures_util::StreamExt;
+    let location = updates
+        .next()
+        .await
+        .ok_or_else(|| "no position".to_string())?;
+    let _ = session.close().await;
+    Ok((location.latitude(), location.longitude()))
+}
+
+/// Windows' location service (Settings, Privacy, Location: on, and on for
+/// desktop apps).
+#[cfg(windows)]
+async fn platform_position() -> Result<(f64, f64), String> {
+    use windows::Devices::Geolocation::{GeolocationAccessStatus, Geolocator};
+    use windows::Foundation::TimeSpan;
+    let err = |e: windows::core::Error| e.to_string();
+    let access = Geolocator::RequestAccessAsync()
+        .map_err(err)?
+        .await
+        .map_err(err)?;
+    if access != GeolocationAccessStatus::Allowed {
+        return Err("location is off or denied in Windows' settings".to_string());
+    }
+    // TimeSpan counts 100 ns: a position up to ten minutes old will do.
+    let seconds = |s: i64| TimeSpan {
+        Duration: s * 10_000_000,
+    };
+    let position = Geolocator::new()
+        .map_err(err)?
+        .GetGeopositionAsyncWithAgeAndTimeout(seconds(600), seconds(50))
+        .map_err(err)?
+        .await
+        .map_err(err)?;
+    let p = position
+        .Coordinate()
+        .and_then(|c| c.Point())
+        .and_then(|p| p.Position())
+        .map_err(err)?;
+    Ok((p.Latitude, p.Longitude))
+}
+
+#[cfg(target_os = "macos")]
+async fn platform_position() -> Result<(f64, f64), String> {
+    macos::position().await
+}
+
+#[cfg(not(any(unix, windows)))]
+async fn platform_position() -> Result<(f64, f64), String> {
+    Err("no location service on this system".to_string())
+}
+
+/// CoreLocation: a manager and its delegate on the main thread, which
+/// GTK's main loop runs; the delegate answers once, through a channel.
+#[cfg(target_os = "macos")]
+mod macos {
+    use std::cell::RefCell;
+
+    use futures_channel::oneshot;
+    use objc2::rc::Retained;
+    use objc2::runtime::ProtocolObject;
+    use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send};
+    use objc2_core_location::{
+        CLAuthorizationStatus, CLLocation, CLLocationManager, CLLocationManagerDelegate,
+        kCLLocationAccuracyKilometer,
+    };
+    use objc2_foundation::{NSArray, NSError, NSObject, NSObjectProtocol};
+
+    type Reply = Result<(f64, f64), String>;
+
+    pub struct Ivars {
+        reply: RefCell<Option<oneshot::Sender<Reply>>>,
+    }
+
+    define_class!(
+        #[unsafe(super(NSObject))]
+        #[thread_kind = MainThreadOnly]
+        #[name = "HfpLocationDelegate"]
+        #[ivars = Ivars]
+        struct Delegate;
+
+        unsafe impl NSObjectProtocol for Delegate {}
+
+        unsafe impl CLLocationManagerDelegate for Delegate {
+            #[unsafe(method(locationManagerDidChangeAuthorization:))]
+            fn did_change_authorization(&self, manager: &CLLocationManager) {
+                self.act(manager);
+            }
+
+            #[unsafe(method(locationManager:didUpdateLocations:))]
+            fn did_update_locations(
+                &self,
+                _manager: &CLLocationManager,
+                locations: &NSArray<CLLocation>,
+            ) {
+                if let Some(l) = locations.lastObject() {
+                    let c = unsafe { l.coordinate() };
+                    self.reply(Ok((c.latitude, c.longitude)));
+                }
+            }
+
+            #[unsafe(method(locationManager:didFailWithError:))]
+            fn did_fail(&self, _manager: &CLLocationManager, error: &NSError) {
+                self.reply(Err(error.localizedDescription().to_string()));
+            }
+        }
+    );
+
+    impl Delegate {
+        fn new(mtm: MainThreadMarker, reply: oneshot::Sender<Reply>) -> Retained<Self> {
+            let this = Self::alloc(mtm).set_ivars(Ivars {
+                reply: RefCell::new(Some(reply)),
+            });
+            unsafe { msg_send![super(this), init] }
+        }
+
+        /// Asks for permission, or for a position once allowed.
+        fn act(&self, manager: &CLLocationManager) {
+            let status = unsafe { manager.authorizationStatus() };
+            if status == CLAuthorizationStatus::NotDetermined {
+                unsafe { manager.requestWhenInUseAuthorization() };
+            } else if status == CLAuthorizationStatus::AuthorizedAlways
+                || status == CLAuthorizationStatus::AuthorizedWhenInUse
+            {
+                unsafe { manager.requestLocation() };
+            } else {
+                self.reply(Err("location denied in System Settings".to_string()));
+            }
+        }
+
+        fn reply(&self, r: Reply) {
+            if let Some(tx) = self.ivars().reply.borrow_mut().take() {
+                let _ = tx.send(r);
+            }
+        }
+    }
+
+    pub async fn position() -> Reply {
+        let mtm = MainThreadMarker::new().ok_or("not on the main thread")?;
+        let (tx, rx) = oneshot::channel();
+        let delegate = Delegate::new(mtm, tx);
+        let manager = unsafe { CLLocationManager::new() };
+        unsafe {
+            manager.setDesiredAccuracy(kCLLocationAccuracyKilometer);
+            manager.setDelegate(Some(ProtocolObject::from_ref(&*delegate)));
+        }
+        delegate.act(&manager);
+        let r = rx.await.unwrap_or_else(|_| Err("no answer".to_string()));
+        unsafe { manager.setDelegate(None) };
+        r
     }
 }
 
