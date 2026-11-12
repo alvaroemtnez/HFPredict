@@ -3,6 +3,14 @@
 Each release's entry becomes its release notes (tools/release-notes.sh), so
 write it for the people installing the app.
 
+## 0.2.1
+
+- Desktop: at its narrowest the window no longer cuts off the close button
+  and the right edge of the cards, in any language.
+- Desktop: with the cards stacked in a wide, short window, the map keeps to
+  part of the window's height instead of filling it.
+- Android: nothing changes.
+
 ## 0.2.0
 
 - Desktop: the map fills its card. Beside the bands it is a wide rectangle,
