@@ -282,6 +282,21 @@ fn main_page(app: &Rc<App>, w: &Rc<Window>) -> gtk::Widget {
         Some(&gtk::Orientation::Horizontal.to_value()),
     );
     breakpoint.add_setter(&columns, "homogeneous", Some(&true.to_value()));
+    // The map's shape follows: landscape beside the bands, square above.
+    {
+        let r = Rc::downgrade(&reach);
+        breakpoint.connect_apply(move |_| {
+            if let Some(r) = r.upgrade() {
+                r.set_wide(true);
+            }
+        });
+        let r = Rc::downgrade(&reach);
+        breakpoint.connect_unapply(move |_| {
+            if let Some(r) = r.upgrade() {
+                r.set_wide(false);
+            }
+        });
+    }
     w.window.add_breakpoint(breakpoint);
 
     // Actions on the window.

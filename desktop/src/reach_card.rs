@@ -45,21 +45,24 @@ fn zoom_at(app: &App, view: MapView, factor: f64, x: f64, y: f64) -> MapView {
 /// Marks the map canvas while enlarged.
 const ENLARGED: &str = "hfp-map-enlarged";
 
-/// The map's square on the canvas: its side and top-left corner. The
-/// shorter side in the card, the longer one enlarged (the rest is cut off).
+/// The whole globe's square on the canvas, centred: its side and top-left
+/// corner. The shorter side in the card (the globe fits, and zoomed in the
+/// map fills the rest), the longer one enlarged (the rest is cut off).
 fn square(c: &Canvas) -> (f64, f64, f64) {
     let full = c.has_css_class(ENLARGED);
     let (w, h) = (f64::from(c.width().max(1)), f64::from(c.height().max(1)));
     let side = if full { w.max(h) } else { w.min(h) };
-    (
-        side,
-        (w - side) / 2.0,
-        if full { (h - side) / 2.0 } else { 0.0 },
-    )
+    (side, (w - side) / 2.0, (h - side) / 2.0)
 }
 
-/// Largest the map is drawn, logical pixels.
-const MAP_MAX: i32 = 720;
+/// The map's natural width, logical pixels.
+const MAP_WIDTH: i32 = 720;
+
+/// The map's height in the card for a width: a square as wide as the card
+/// in one column (as on a phone), a landscape 4:3 beside the other cards.
+fn card_height(wide: bool, width: i32) -> i32 {
+    if wide { width * 3 / 4 } else { width }
+}
 
 pub struct ReachCard {
     pub root: gtk::Box,
@@ -75,10 +78,10 @@ pub struct ReachCard {
     legend: gtk::Box,
     scale: gtk::Scale,
     local_label: gtk::Label,
-    /// The map's frame: square, as large as the room it is given.
-    frame: gtk::AspectFrame,
-    /// Holds the square frame, or the bare map when enlarged.
+    /// Holds the map and what floats over it.
     holder: gtk::Box,
+    /// Two columns: the map is a landscape rectangle, not a square.
+    wide: Cell<bool>,
     overlay: gtk::Overlay,
     /// The hour slider and its labels: under the map, or floating on it.
     hours: gtk::Box,
@@ -131,8 +134,8 @@ impl ReachCard {
         root.append(&top);
 
         let map = Canvas::new();
-        map.set_widths(200, MAP_MAX);
-        map.set_height_for_width(|w| w.min(MAP_MAX));
+        map.set_widths(200, MAP_WIDTH);
+        map.set_height_for_width(|w| card_height(false, w));
         map.set_focusable(true);
         map.add_css_class("hfp-map");
         let overlay = gtk::Overlay::new();
@@ -185,10 +188,8 @@ impl ReachCard {
         spinner.set_size_request(24, 24);
         overlay.add_overlay(&spinner);
 
-        let frame = gtk::AspectFrame::new(0.5, 0.0, 1.0, false);
-        frame.set_child(Some(&overlay));
         let holder = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        holder.append(&frame);
+        holder.append(&overlay);
         root.append(&holder);
 
         let detail = label(&["dim-label", "caption"]);
@@ -227,8 +228,8 @@ impl ReachCard {
             legend,
             scale,
             local_label,
-            frame,
             holder,
+            wide: Cell::new(false),
             overlay,
             hours,
             fullscreen,
@@ -254,20 +255,12 @@ impl ReachCard {
         // gesture only moves textures.
         let a = Rc::downgrade(app);
         let me = Rc::downgrade(self);
-        self.map.set_draw(move |c, s, w, h| {
+        self.map.set_draw(move |_, s, w, h| {
             let (Some(app), Some(me)) = (a.upgrade(), me.upgrade()) else {
                 return;
             };
             let full = me.expanded.get();
-            let (side, x0, y0) = square(c);
-            let (side, x0) = (side as f32, x0 as f32);
-            let _ = y0;
-            // The square in the card; the whole area when enlarged.
-            let clip = if full {
-                canvas::rect(0.0, 0.0, w, h)
-            } else {
-                canvas::rect(x0, 0.0, side, side)
-            };
+            let clip = canvas::rect(0.0, 0.0, w, h);
             s.push_rounded_clip(&gtk::gsk::RoundedRect::from_rect(clip, 12.0));
             if full {
                 let disc = app.view.borrow().colors.map.disc;
@@ -777,6 +770,14 @@ impl ReachCard {
         self.expanded.get()
     }
 
+    /// One column or two: the map's shape in the card follows.
+    pub fn set_wide(&self, wide: bool) {
+        self.wide.set(wide);
+        if !self.expanded.get() {
+            self.map.set_height_for_width(move |w| card_height(wide, w));
+        }
+    }
+
     pub fn set_expanded(&self, on: bool) {
         if on == self.expanded.get() {
             return;
@@ -788,11 +789,8 @@ impl ReachCard {
             self.map.remove_css_class(ENLARGED);
         }
         if on {
-            // The map leaves its square frame and takes the card's room;
-            // the hour slider floats over its foot.
-            self.frame.set_child(None::<&gtk::Widget>);
-            self.holder.remove(&self.frame);
-            self.holder.append(&self.overlay);
+            // The map takes the card's room; the hour slider floats over
+            // its foot.
             self.map.set_widths(120, 120);
             self.map.set_height_for_width(|_| 120);
             self.root.remove(&self.hours);
@@ -814,11 +812,9 @@ impl ReachCard {
             self.hours.set_margin_end(0);
             self.hours.set_margin_bottom(0);
             self.root.append(&self.hours);
-            self.holder.remove(&self.overlay);
-            self.frame.set_child(Some(&self.overlay));
-            self.holder.append(&self.frame);
-            self.map.set_widths(200, MAP_MAX);
-            self.map.set_height_for_width(|w| w.min(MAP_MAX));
+            self.map.set_widths(200, MAP_WIDTH);
+            let wide = self.wide.get();
+            self.map.set_height_for_width(move |w| card_height(wide, w));
             self.probe.set_margin_bottom(8);
             self.spinner.set_margin_bottom(14);
         }
