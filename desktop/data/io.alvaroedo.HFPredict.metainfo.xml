@@ -77,7 +77,7 @@
   <releases>
     <release version="0.1.1" date="2026-11-12">
       <description>
-        <p>Fixes on Android; nothing changes on the desktop.</p>
+        <p>Fixes on Android; nothing changes on Linux.</p>
       </description>
     </release>
     <release version="0.1.0" date="2026-11-11">
