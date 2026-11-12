@@ -248,6 +248,15 @@ fn main_page(app: &Rc<App>, w: &Rc<Window>) -> gtk::Widget {
         .vexpand(true)
         .build();
     view.set_content(Some(&scroll));
+    // The map's height in its card follows the room the page shows.
+    {
+        let r = Rc::downgrade(&reach);
+        scroll.vadjustment().connect_page_size_notify(move |adj| {
+            if let Some(r) = r.upgrade() {
+                r.set_room(adj.page_size());
+            }
+        });
+    }
 
     // The enlarged map hides everything else on the page; the window
     // stays as it is.

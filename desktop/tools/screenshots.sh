@@ -59,6 +59,8 @@ setup_help() { state "$1" light "$TOKYO" null; }
 setup_about() { state "$1" dark "$TOKYO" null; }
 setup_zoom() { state "$1" dark null null; }
 setup_narrow() { state "$1" light null null; }
+setup_landscape() { state "$1" dark null null; }
+setup_thinnest() { state "$1" light "$TOKYO" "${HFP_LANG:-null}"; }
 setup_fullscreen() { state "$1" dark "$TOKYO" null; }
 setup_probe() { state "$1" light null null; }
 setup_firstrun_search() { mkdir -p "$1/data"; }
@@ -82,6 +84,11 @@ EXTRA="HFPREDICT_OPEN=about" shot about 900x900 true
 EXTRA="HFPREDICT_BAND=40m HFPREDICT_ZOOM=5" shot zoom 1400x1000 true
 # One column (narrower than the 960sp breakpoint), zoomed in.
 EXTRA="HFPREDICT_ZOOM=3" shot narrow 900x1500 true
+# One column in a landscape window: the map's height is capped.
+EXTRA="HFPREDICT_ZOOM=3" shot landscape 940x700 true
+# The window at its smallest width: nothing may be cut off (HFP_LANG="\"de\"" for
+# the longest words; the log warns if anything is wider than the window).
+EXTRA="" shot thinnest 300x1000 true
 EXTRA="HFPREDICT_OPEN=fullscreen HFPREDICT_PROBE=0.62,0.38" shot fullscreen 1400x1000 true
 EXTRA="HFPREDICT_PROBE=0.55,0.42 HFPREDICT_ZOOM=2.5" shot probe 1400x1000 true
 EXTRA="HFPREDICT_SEARCH=Val" shot firstrun_search 420x900 true

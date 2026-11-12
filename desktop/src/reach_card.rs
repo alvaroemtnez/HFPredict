@@ -59,10 +59,18 @@ fn square(c: &Canvas) -> (f64, f64, f64) {
 const MAP_WIDTH: i32 = 720;
 
 /// The map's height in the card for a width: a square as wide as the card
-/// in one column (as on a phone), a landscape 4:3 beside the other cards.
-fn card_height(wide: bool, width: i32) -> i32 {
-    if wide { width * 3 / 4 } else { width }
+/// in one column (as on a phone), a landscape 4:3 beside the other cards;
+/// never taller than `max`, so in a landscape window it stays a band as
+/// wide as the card instead of filling the window.
+fn card_height(wide: bool, width: i32, max: i32) -> i32 {
+    let shape = if wide { width * 3 / 4 } else { width };
+    shape.min(max)
 }
+
+/// Share of the page's visible height the map may take in the card.
+const ROOM_SHARE: f64 = 0.7;
+/// The map is never capped below this height, logical pixels.
+const MIN_CAP: i32 = 240;
 
 pub struct ReachCard {
     pub root: gtk::Box,
@@ -75,13 +83,15 @@ pub struct ReachCard {
     probe_text: gtk::Label,
     detail: gtk::Label,
     reach_line: gtk::Label,
-    legend: gtk::Box,
+    legend: adw::WrapBox,
     scale: gtk::Scale,
     local_label: gtk::Label,
     /// Holds the map and what floats over it.
     holder: gtk::Box,
     /// Two columns: the map is a landscape rectangle, not a square.
     wide: Cell<bool>,
+    /// Tallest the map may be in the card (from the page's visible height).
+    max_height: Rc<Cell<i32>>,
     overlay: gtk::Overlay,
     /// The hour slider and its labels: under the map, or floating on it.
     hours: gtk::Box,
@@ -135,7 +145,11 @@ impl ReachCard {
 
         let map = Canvas::new();
         map.set_widths(200, MAP_WIDTH);
-        map.set_height_for_width(|w| card_height(false, w));
+        let max_height = Rc::new(Cell::new(i32::MAX));
+        {
+            let max = max_height.clone();
+            map.set_height_for_width(move |w| card_height(false, w, max.get()));
+        }
         map.set_focusable(true);
         map.add_css_class("hfp-map");
         let overlay = gtk::Overlay::new();
@@ -193,7 +207,10 @@ impl ReachCard {
         root.append(&holder);
 
         let detail = label(&["dim-label", "caption"]);
-        let legend = gtk::Box::new(gtk::Orientation::Horizontal, 16);
+        // Wraps onto a second line in a narrow window.
+        let legend = adw::WrapBox::new();
+        legend.set_child_spacing(16);
+        legend.set_line_spacing(4);
         legend.add_css_class("caption");
         let reach_line = label(&["dim-label"]);
         root.append(&detail);
@@ -230,6 +247,7 @@ impl ReachCard {
             local_label,
             holder,
             wide: Cell::new(false),
+            max_height,
             overlay,
             hours,
             fullscreen,
@@ -774,8 +792,25 @@ impl ReachCard {
     pub fn set_wide(&self, wide: bool) {
         self.wide.set(wide);
         if !self.expanded.get() {
-            self.map.set_height_for_width(move |w| card_height(wide, w));
+            self.set_card_shape();
         }
+    }
+
+    /// The page's visible height changed: caps the map's height in the card.
+    pub fn set_room(&self, visible_height: f64) {
+        let cap = ((visible_height * ROOM_SHARE) as i32).max(MIN_CAP);
+        if cap != self.max_height.get() {
+            self.max_height.set(cap);
+            if !self.expanded.get() {
+                self.map.queue_resize();
+            }
+        }
+    }
+
+    fn set_card_shape(&self) {
+        let (wide, max) = (self.wide.get(), self.max_height.clone());
+        self.map
+            .set_height_for_width(move |w| card_height(wide, w, max.get()));
     }
 
     pub fn set_expanded(&self, on: bool) {
@@ -813,8 +848,7 @@ impl ReachCard {
             self.hours.set_margin_bottom(0);
             self.root.append(&self.hours);
             self.map.set_widths(200, MAP_WIDTH);
-            let wide = self.wide.get();
-            self.map.set_height_for_width(move |w| card_height(wide, w));
+            self.set_card_shape();
             self.probe.set_margin_bottom(8);
             self.spinner.set_margin_bottom(14);
         }
@@ -900,6 +934,7 @@ impl ReachCard {
             ));
         }
         self.legend
+            .upcast_ref::<gtk::Widget>()
             .update_property(&[gtk::accessible::Property::Label(&tr("a11y.mapLegend"))]);
     }
 }

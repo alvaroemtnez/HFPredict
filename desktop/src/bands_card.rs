@@ -29,10 +29,22 @@ pub struct BandsCard {
     grid: Canvas,
     table: gtk::Grid,
     table_scroll: gtk::ScrolledWindow,
-    legend: gtk::Box,
+    legend: adw::WrapBox,
     note: gtk::Label,
     footnote: gtk::Label,
     hover: Cell<Option<(Band, u32)>>,
+}
+
+/// A row that puts its second child under the first when both do not fit,
+/// at the far end otherwise.
+fn spread_row() -> adw::WrapBox {
+    let row = adw::WrapBox::new();
+    row.set_child_spacing(8);
+    row.set_line_spacing(2);
+    row.set_justify(adw::JustifyMode::Spread);
+    // A single line is also the last one.
+    row.set_justify_last_line(true);
+    row
 }
 
 fn label(classes: &[&str]) -> gtk::Label {
@@ -67,10 +79,11 @@ impl BandsCard {
 
         let rail_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
         rail_box.add_css_class("hfp-inset");
-        let rail_head = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        // Rows of a title and a value (or a button) put the second under
+        // the first when the window is too narrow for both.
+        let rail_head = spread_row();
         let rail_title = label(&["caption-heading", "dim-label"]);
         rail_title.set_text(&tr("window.label"));
-        rail_title.set_hexpand(true);
         let rail_label = gtk::Label::new(None);
         rail_label.add_css_class("caption");
         rail_head.append(&rail_title);
@@ -81,10 +94,9 @@ impl BandsCard {
         rail_box.append(&rail);
         root.append(&rail_box);
 
-        let unit_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        let unit_row = spread_row();
         unit_row.set_margin_top(6);
         let unit = label(&["caption-heading", "dim-label"]);
-        unit.set_hexpand(true);
         unit.set_valign(gtk::Align::Center);
         let toggle = gtk::Button::with_label(&tr("grid.showAsTable"));
         toggle.add_css_class("flat");
@@ -94,7 +106,8 @@ impl BandsCard {
         root.append(&unit_row);
 
         let grid = Canvas::new();
-        grid.set_widths(320, 640);
+        // 24 hours after the band names: 10 px an hour at the least.
+        grid.set_widths(280, 640);
         grid.set_height_for_width(|_| (10.0 * ROW_H + AXIS_H) as i32);
         grid.set_focusable(true);
         root.append(&grid);
@@ -112,7 +125,9 @@ impl BandsCard {
             .build();
         root.append(&table_scroll);
 
-        let legend = gtk::Box::new(gtk::Orientation::Horizontal, 14);
+        let legend = adw::WrapBox::new();
+        legend.set_child_spacing(14);
+        legend.set_line_spacing(4);
         legend.add_css_class("caption");
         root.append(&legend);
         let note = label(&["heading"]);
