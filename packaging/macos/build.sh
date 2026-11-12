@@ -36,7 +36,9 @@ APP="$OUT/HFPredict.app"
 C="$APP/Contents"
 rm -rf "$OUT"
 mkdir -p "$C/MacOS" "$C/Frameworks" "$C/Resources/share/icons" "$C/Resources/share/glib-2.0/schemas" "$C/Resources/lib"
-cp target/release/hfpredict "$C/MacOS/hfpredict"
+# Not "hfpredict": macOS file systems are case-insensitive by default, and
+# the launcher below is "HFPredict" (it would overwrite the program).
+cp target/release/hfpredict "$C/MacOS/hfpredict-bin"
 
 # The icon: the desktop SVG rendered at every size iconutil wants.
 ICONSET="$OUT/HFPredict.iconset"
@@ -77,7 +79,7 @@ fi
 
 # Every Homebrew library the program and the loaders need, copied into
 # Frameworks with their references rewritten.
-dylibbundler -of -b -cd -x "$C/MacOS/hfpredict" "${LOADERS[@]}" -s "$BREW/lib" \
+dylibbundler -of -b -cd -x "$C/MacOS/hfpredict-bin" "${LOADERS[@]}" -s "$BREW/lib" \
     -d "$C/Frameworks" -p @executable_path/../Frameworks/ </dev/null >/dev/null
 
 # The launcher: points GTK at the bundled data, follows the system language.
@@ -98,9 +100,10 @@ if [ -z "${LANG:-}" ]; then
     LOCALE="$(defaults read -g AppleLocale 2>/dev/null | sed 's/@.*//')"
     [ -n "$LOCALE" ] && export LANG="$LOCALE.UTF-8"
 fi
-exec "$HERE/hfpredict" "$@"
+exec "$HERE/hfpredict-bin" "$@"
 EOF
 chmod +x "$C/MacOS/HFPredict"
+file "$C/MacOS/hfpredict-bin" | grep -q Mach-O || { echo "the program is missing from the bundle" >&2; exit 1; }
 
 cat >"$C/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
