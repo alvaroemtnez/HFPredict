@@ -48,6 +48,7 @@ shot() { # $1 name, $2 size, then env assignments
 ONLY="${*:-}"
 setup_wide_dark() { state "$1" dark "$TOKYO" null; }
 setup_wide_light() { state "$1" light "$TOKYO" null; }
+setup_wide_sun() { state "$1" dark null null; }
 setup_phone_dark() { state "$1" dark null null; }
 setup_phone_light() { state "$1" light "$TOKYO" null; }
 setup_lowlight() { state "$1" lowLight null null; }
@@ -74,6 +75,8 @@ setup_valencian_station() { state "$1" light "$TOKYO" '"ca"'; }
 
 EXTRA="" shot wide_dark 1400x1000 true
 EXTRA="" shot wide_light 1400x1000 true
+# "The sun today" unfolded: the map stretches to end level with it.
+EXTRA="HFPREDICT_SUN=open" shot wide_sun 1400x1400 true
 EXTRA="" shot phone_dark 400x1700 true
 EXTRA="" shot phone_light 400x1700 true
 EXTRA="" shot lowlight 400x1200 true

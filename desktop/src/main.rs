@@ -47,6 +47,9 @@ togglebutton.hfp-chip-toggle { border-radius: 999px; padding: 4px 14px; }
 togglebutton.hfp-band:checked, togglebutton.hfp-chip-toggle:checked { background: var(--accent-bg-color); color: var(--accent-fg-color); }
 .hfp-inset { padding: 10px 12px; border-radius: 12px; background: alpha(currentColor, 0.05); }
 .hfp-probe { padding: 4px 10px; border-radius: 8px; font-feature-settings: "tnum"; }
+.hfp-probe button.suggested-action { background-color: var(--accent-bg-color); color: var(--accent-fg-color); }
+.hfp-probe button.suggested-action:hover { background-image: image(alpha(currentColor, 0.1)); }
+.hfp-probe button.suggested-action:active { background-image: image(alpha(black, 0.2)); }
 .hfp-title-button { padding: 2px 12px; }
 .hfp-floating { border-radius: 18px; padding: 8px 14px 6px 14px; }
 scale.hfp-hours marks label { font-size: 0.85em; font-feature-settings: "tnum"; }
@@ -310,7 +313,8 @@ fn start_timers(app: &Rc<App>) {
 /// `HFPREDICT_SIZE=WxH` sizes the window, `HFPREDICT_OPEN=station|path|
 /// preferences|help|about|fullscreen|update` opens a dialog (or the full-screen
 /// map) first, `HFPREDICT_BAND`, `HFPREDICT_HOUR`, `HFPREDICT_ZOOM` set
-/// the view and `HFPREDICT_PROBE=x,y` (fractions of the map) taps it.
+/// the view, `HFPREDICT_PROBE=x,y` (fractions of the map) taps it and
+/// `HFPREDICT_SUN=open` unfolds "The sun today".
 fn screenshot_hook(w: &Rc<Window>) {
     let Ok(path) = std::env::var("HFPREDICT_SCREENSHOT") else {
         return;
@@ -395,6 +399,28 @@ fn screenshot_hook(w: &Rc<Window>) {
             a.activate_action(action, None);
         }
     });
+    // `HFPREDICT_SUN=open` unfolds "The sun today".
+    if std::env::var("HFPREDICT_SUN").as_deref() == Ok("open") {
+        let window = w.window.clone();
+        glib::timeout_add_local_once(Duration::from_millis(1500), move || {
+            fn find(w: &gtk::Widget) -> Option<adw::ExpanderRow> {
+                if let Some(e) = w.downcast_ref::<adw::ExpanderRow>() {
+                    return Some(e.clone());
+                }
+                let mut child = w.first_child();
+                while let Some(c) = child {
+                    if let Some(e) = find(&c) {
+                        return Some(e);
+                    }
+                    child = c.next_sibling();
+                }
+                None
+            }
+            if let Some(e) = find(window.upcast_ref()) {
+                e.set_expanded(true);
+            }
+        });
+    }
     // `HFPREDICT_SEARCH=text` types into the first search box on screen
     // (first run or the path dialog), as a reader would.
     if let Ok(text) = std::env::var("HFPREDICT_SEARCH") {

@@ -200,7 +200,9 @@ impl ReachCard {
             .build();
         probe.append(&probe_text);
         let to_here = gtk::Button::with_label(&tr("map.setDestination"));
-        to_here.add_css_class("flat");
+        // The one action on the bubble: in the accent colour, so it reads as
+        // a button and not as more of the text.
+        to_here.add_css_class("suggested-action");
         to_here.add_css_class("hfp-chip");
         {
             let a = Rc::downgrade(app);
@@ -844,6 +846,21 @@ impl ReachCard {
         let (wide, max) = (self.wide.get(), self.max_height.clone());
         self.map
             .set_height_for_width(move |w| card_height(wide, w, max.get()));
+        self.set_stretch();
+    }
+
+    /// Beside the bands, the map also takes whatever height the row has
+    /// beyond its own shape, so the card ends level with the second column
+    /// (the bands and the sun, usually the taller) instead of leaving a gap
+    /// under it. Stacked, it keeps its shape.
+    fn set_stretch(&self) {
+        let stretch = self.wide.get();
+        self.overlay.set_vexpand(stretch);
+        self.holder.set_vexpand(stretch);
+        // Set, not left to propagate: the card takes the row's height
+        // anyway, and the page must not expand, or the map would also grow
+        // to fill a tall window.
+        self.root.set_vexpand(false);
     }
 
     pub fn set_expanded(&self, on: bool) {
@@ -885,9 +902,13 @@ impl ReachCard {
             self.probe.set_margin_bottom(8);
             self.spinner.set_margin_bottom(14);
         }
-        self.overlay.set_vexpand(on);
-        self.holder.set_vexpand(on);
-        self.root.set_vexpand(on);
+        if on {
+            self.overlay.set_vexpand(true);
+            self.holder.set_vexpand(true);
+            self.root.set_vexpand(true);
+        } else {
+            self.set_stretch();
+        }
         for w in [
             self.detail.upcast_ref::<gtk::Widget>(),
             self.legend.upcast_ref(),
