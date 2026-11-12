@@ -75,6 +75,11 @@
     <keyword>shortwave</keyword>
   </keywords>
   <releases>
+    <release version="0.3.2" date="2026-11-12">
+      <description>
+        <p>Some app menus no longer list HFPredict twice. On Android, the app is no longer offered to devices it cannot run on, and release builds are ready for F-Droid.</p>
+      </description>
+    </release>
     <release version="0.3.1" date="2026-11-12">
       <description>
         <p>With the cards side by side, the map grows to end level with the cards beside it instead of leaving an empty space under it, and "Set as destination" on a tapped grid square stands out as a button.</p>

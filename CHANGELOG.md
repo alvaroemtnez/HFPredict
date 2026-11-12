@@ -3,6 +3,16 @@
 Each release's entry becomes its release notes (tools/release-notes.sh), so
 write it for the people installing the app.
 
+## 0.3.2
+
+- Android: HFPredict is no longer offered to devices it cannot run on. The
+  app's forecast engine is built for 64-bit and 32-bit ARM phones and for
+  x86_64; an x86 or older device could install it and then close at start.
+  The download is a little smaller too.
+- Android: release APKs are signed so that F-Droid can check its own build
+  of the same source matches ours, ahead of the app joining F-Droid.
+- Desktop: some app menus no longer list HFPredict twice.
+
 ## 0.3.1
 
 - Desktop: with the cards side by side, the map grows to end level with

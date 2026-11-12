@@ -15,9 +15,9 @@ Binaries:
   https://code.alvaroedo.io/alvaroemtnez/HFPredict/releases/download/v%v/HFPredict-%v-universal.apk
 
 Builds:
-  - versionName: 0.3.1
-    versionCode: 301
-    commit: v0.3.1
+  - versionName: 0.3.2
+    versionCode: 302
+    commit: v0.3.2
     subdir: android/app
     sudo:
       - apt-get update
@@ -34,5 +34,5 @@ AllowedAPKSigningKeys: ea8dcfd94198f4e72a86705679fe096cd2319c6efabf3c9d7d50f8a52
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
-CurrentVersion: 0.3.1
-CurrentVersionCode: 301
+CurrentVersion: 0.3.2
+CurrentVersionCode: 302
