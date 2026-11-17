@@ -61,6 +61,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -136,8 +137,11 @@ fun ReachCard(
             Text(
                 if (nvis != null) tr(R.string.reach_reachAndNvis, "band" to band, "percent" to fmt.percent(reach), "distance" to fmt.distance(ctx, nvis))
                 else tr(R.string.reach_reachLine, "band" to band, "percent" to fmt.percent(reach)),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                // One line whatever the hour: a second would take height from the map.
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
 

@@ -52,8 +52,8 @@
     <string name="reach_answerAnywhere">يصل {band} في الساعة {hour} بالتوقيت العالمي إلى نحو {percent} من الاتجاهات المفحوصة.</string>
     <string name="reach_mapLoading">جارٍ حساب مدى وصول هذا النطاق</string>
     <string name="reach_mapUnavailable">تعذّر حساب خريطة التغطية.</string>
-    <string name="reach_reachLine">يصل {band} إلى نحو {percent} من العالم في هذه الساعة.</string>
-    <string name="reach_reachAndNvis">يصل {band} إلى نحو {percent} من العالم في هذه الساعة وحتى نحو {distance} بلا منطقة صامتة.</string>
+    <string name="reach_reachLine">يصل {band} إلى نحو {percent} من العالم.</string>
+    <string name="reach_reachAndNvis">يصل {band} إلى نحو {percent} من العالم وحتى {distance} بلا منطقة صامتة.</string>
     <string name="reach_nvisReach">يصل {band} حتى نحو {distance} بلا منطقة صامتة.</string>
     <string name="reach_legendReach">الوصول</string>
     <string name="reach_legendNight">الليل</string>
@@ -239,6 +239,9 @@
     <string name="preferences_language">اللغة</string>
     <string name="preferences_language_system">حسب النظام</string>
     <string name="preferences_languageRestart">تظهر اللغة الجديدة بعد إعادة تشغيل HFPredict.</string>
+    <string name="preferences_languageRestartTitle">إعادة تشغيل HFPredict؟</string>
+    <string name="preferences_restartLater">لاحقًا</string>
+    <string name="preferences_restartNow">إعادة التشغيل</string>
     <string name="preferences_units">الوحدات</string>
     <string name="preferences_units_auto">حسب النظام</string>
     <string name="preferences_units_metric">متري</string>

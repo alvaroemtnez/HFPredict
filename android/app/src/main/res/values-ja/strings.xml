@@ -52,8 +52,8 @@
     <string name="reach_answerAnywhere">{hour} UTC の {band} は、調べた方向の約 {percent} に届きます。</string>
     <string name="reach_mapLoading">このバンドの届く範囲を計算しています</string>
     <string name="reach_mapUnavailable">カバレッジマップを計算できませんでした。</string>
-    <string name="reach_reachLine">この時刻、{band} は世界の約 {percent} に届きます。</string>
-    <string name="reach_reachAndNvis">この時刻、{band} は世界の約 {percent} に届き、スキップゾーンなしで約 {distance} まで届きます。</string>
+    <string name="reach_reachLine">{band} は世界の約 {percent} に届きます。</string>
+    <string name="reach_reachAndNvis">{band} は世界の約 {percent} に届き、スキップゾーンなしで {distance} まで届きます。</string>
     <string name="reach_nvisReach">{band} はスキップゾーンなしで約 {distance} まで届きます。</string>
     <string name="reach_legendReach">到達範囲</string>
     <string name="reach_legendNight">夜</string>
@@ -239,6 +239,9 @@
     <string name="preferences_language">言語</string>
     <string name="preferences_language_system">システムに合わせる</string>
     <string name="preferences_languageRestart">新しい言語は HFPredict の再起動後に表示されます。</string>
+    <string name="preferences_languageRestartTitle">HFPredict を再起動しますか？</string>
+    <string name="preferences_restartLater">後で</string>
+    <string name="preferences_restartNow">再起動</string>
     <string name="preferences_units">単位</string>
     <string name="preferences_units_auto">システムに合わせる</string>
     <string name="preferences_units_metric">メートル法</string>

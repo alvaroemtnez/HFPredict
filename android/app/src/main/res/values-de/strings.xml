@@ -52,8 +52,8 @@
     <string name="reach_answerAnywhere">{band} erreicht um {hour} UTC etwa {percent} der geprüften Richtungen.</string>
     <string name="reach_mapLoading">Die Reichweite dieses Bands wird berechnet</string>
     <string name="reach_mapUnavailable">Die Abdeckungskarte konnte nicht berechnet werden.</string>
-    <string name="reach_reachLine">{band} erreicht zu dieser Stunde etwa {percent} der Welt.</string>
-    <string name="reach_reachAndNvis">{band} erreicht zu dieser Stunde etwa {percent} der Welt und bis etwa {distance} ohne tote Zone.</string>
+    <string name="reach_reachLine">{band} erreicht etwa {percent} der Welt.</string>
+    <string name="reach_reachAndNvis">{band} erreicht etwa {percent} der Welt und bis {distance} ohne tote Zone.</string>
     <string name="reach_nvisReach">{band} reicht bis etwa {distance} ohne tote Zone.</string>
     <string name="reach_legendReach">Reichweite</string>
     <string name="reach_legendNight">Nacht</string>
@@ -239,6 +239,9 @@
     <string name="preferences_language">Sprache</string>
     <string name="preferences_language_system">Wie das System</string>
     <string name="preferences_languageRestart">Die neue Sprache erscheint nach einem Neustart von HFPredict.</string>
+    <string name="preferences_languageRestartTitle">HFPredict neu starten?</string>
+    <string name="preferences_restartLater">Später</string>
+    <string name="preferences_restartNow">Neu starten</string>
     <string name="preferences_units">Einheiten</string>
     <string name="preferences_units_auto">Wie das System</string>
     <string name="preferences_units_metric">Metrisch</string>

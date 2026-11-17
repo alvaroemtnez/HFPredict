@@ -13,6 +13,7 @@ mod i18n;
 mod location;
 mod palette;
 mod reach_card;
+mod restart;
 mod station;
 mod sun_card;
 mod update;
@@ -180,6 +181,7 @@ fn dirs() -> (PathBuf, PathBuf) {
 }
 
 fn main() -> glib::ExitCode {
+    restart::wait_for_old_copy(APP_ID);
     let (data, cache) = dirs();
     let core = Arc::new(Core::open(data, cache));
     // The time-zone map takes a moment to load: load it before it is needed.
@@ -249,7 +251,10 @@ fn main() -> glib::ExitCode {
         screenshot_hook(&w);
         drop(w);
     });
-    application.run()
+    let code = application.run();
+    drop(application);
+    restart::relaunch_if_requested();
+    code
 }
 
 type WindowAction = Box<dyn Fn(&Rc<Window>)>;

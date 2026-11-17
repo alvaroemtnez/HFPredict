@@ -202,7 +202,7 @@ pub fn preferences(w: &Rc<Window>) {
                 app.refresh_readings();
             }
             if language_changed && let Some(w) = w.upgrade() {
-                w.toast(&tr("preferences.languageRestart"));
+                offer_restart(&w);
             }
         }
     };
@@ -236,6 +236,26 @@ pub fn preferences(w: &Rc<Window>) {
 
 /// Light, dark, or the desktop's choice. Low light is dark plus the red
 /// stylesheet (see main.rs).
+/// A language change shows after a restart: say so, and offer one.
+fn offer_restart(w: &Rc<Window>) {
+    let dialog = adw::AlertDialog::new(
+        Some(&tr("preferences.languageRestartTitle")),
+        Some(&tr("preferences.languageRestart")),
+    );
+    dialog.add_responses(&[
+        ("later", &tr("preferences.restartLater")),
+        ("restart", &tr("preferences.restartNow")),
+    ]);
+    dialog.set_response_appearance("restart", adw::ResponseAppearance::Suggested);
+    dialog.set_default_response(Some("restart"));
+    dialog.set_close_response("later");
+    let window = w.window.clone();
+    dialog.connect_response(Some("restart"), move |_, _| {
+        crate::restart::request(window.upcast_ref());
+    });
+    dialog.present(Some(&w.window));
+}
+
 pub fn apply_theme(theme: Theme) {
     let sm = adw::StyleManager::default();
     sm.set_color_scheme(match theme {

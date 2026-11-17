@@ -53,8 +53,8 @@
     <string name="reach_answerAnywhere">{band} at {hour} UTC reaches about {percent} of the directions sampled.</string>
     <string name="reach_mapLoading">Working out where this band reaches</string>
     <string name="reach_mapUnavailable">The coverage map could not be worked out.</string>
-    <string name="reach_reachLine">{band} reaches about {percent} of the world at this hour.</string>
-    <string name="reach_reachAndNvis">{band} reaches about {percent} of the world at this hour and out to about {distance} with no skip zone.</string>
+    <string name="reach_reachLine">{band} reaches about {percent} of the world.</string>
+    <string name="reach_reachAndNvis">{band} reaches about {percent} of the world and out to {distance} with no skip zone.</string>
     <string name="reach_nvisReach">{band} reaches out to about {distance} with no skip zone.</string>
     <string name="reach_legendReach">Reach</string>
     <string name="reach_legendNight">Night</string>
@@ -240,6 +240,9 @@
     <string name="preferences_language">Language</string>
     <string name="preferences_language_system">Follow the system</string>
     <string name="preferences_languageRestart">The new language shows after HFPredict restarts.</string>
+    <string name="preferences_languageRestartTitle">Restart HFPredict?</string>
+    <string name="preferences_restartLater">Later</string>
+    <string name="preferences_restartNow">Restart</string>
     <string name="preferences_units">Units</string>
     <string name="preferences_units_auto">Follow the system</string>
     <string name="preferences_units_metric">Metric</string>

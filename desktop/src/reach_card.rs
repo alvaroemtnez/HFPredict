@@ -247,7 +247,12 @@ impl ReachCard {
         legend.set_child_spacing(16);
         legend.set_line_spacing(4);
         legend.add_css_class("caption");
-        let reach_line = label(&["dim-label"]);
+        // One line under the map, whatever the hour: a second line would
+        // take height from the map as the slider moves.
+        let reach_line = label(&["dim-label", "caption"]);
+        reach_line.set_wrap(false);
+        reach_line.set_single_line_mode(true);
+        reach_line.set_ellipsize(gtk::pango::EllipsizeMode::End);
         root.append(&detail);
         root.append(&legend);
         root.append(&reach_line);
@@ -712,6 +717,8 @@ impl ReachCard {
             (None, _) => String::new(),
         };
         self.reach_line.set_text(&line);
+        self.reach_line
+            .set_tooltip_text((!line.is_empty()).then_some(line.as_str()));
         self.reach_line
             .set_visible(!line.is_empty() && !self.expanded.get());
         if let Some(r) = reach {

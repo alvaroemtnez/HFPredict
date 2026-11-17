@@ -52,8 +52,8 @@
     <string name="reach_answerAnywhere">{band} a les {hour} UTC arriba a un {percent} de les direccions mostrejades.</string>
     <string name="reach_mapLoading">Calculant fins on arriba esta banda</string>
     <string name="reach_mapUnavailable">No s\'ha pogut calcular el mapa de cobertura.</string>
-    <string name="reach_reachLine">{band} arriba a un {percent} del món a esta hora.</string>
-    <string name="reach_reachAndNvis">{band} arriba a un {percent} del món a esta hora i fins a uns {distance} sense zona de salt.</string>
+    <string name="reach_reachLine">{band} arriba a un {percent} del món.</string>
+    <string name="reach_reachAndNvis">{band} arriba a un {percent} del món i fins a {distance} sense zona de salt.</string>
     <string name="reach_nvisReach">{band} arriba fins a uns {distance} sense zona de salt.</string>
     <string name="reach_legendReach">Abast</string>
     <string name="reach_legendNight">Nit</string>
@@ -239,6 +239,9 @@
     <string name="preferences_language">Llengua</string>
     <string name="preferences_language_system">Segueix el sistema</string>
     <string name="preferences_languageRestart">La nova llengua apareixerà quan reinicies HFPredict.</string>
+    <string name="preferences_languageRestartTitle">Voleu reiniciar HFPredict?</string>
+    <string name="preferences_restartLater">Més tard</string>
+    <string name="preferences_restartNow">Reinicia</string>
     <string name="preferences_units">Unitats</string>
     <string name="preferences_units_auto">Segueix el sistema</string>
     <string name="preferences_units_metric">Mètriques</string>
