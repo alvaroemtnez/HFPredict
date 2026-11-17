@@ -1,0 +1,1 @@
+La primera versió estable. La línia davall del mapa que resumix la cobertura d'una banda és més menuda i sempre cap en una sola línia, així que el mapa ja no canvia de grandària en recórrer les hores.

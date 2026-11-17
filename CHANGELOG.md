@@ -3,6 +3,17 @@
 Each release's entry becomes its release notes (tools/release-notes.sh), so
 write it for the people installing the app.
 
+## 1.0.0
+
+The first stable release.
+
+- The line under the map that sums up a band's coverage is smaller and
+  always fits on one line, so the map no longer changes size as you move
+  through the hours.
+- Desktop: after choosing another language in Preferences, HFPredict asks
+  whether to restart now, with a button that does it, instead of a brief
+  note at the bottom of the window.
+
 ## 0.3.2
 
 - Android: HFPredict is no longer offered to devices it cannot run on. The

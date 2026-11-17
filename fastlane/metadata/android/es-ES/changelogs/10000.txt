@@ -1,0 +1,1 @@
+La primera versión estable. La línea bajo el mapa que resume la cobertura de una banda es más pequeña y siempre cabe en una sola línea, así que el mapa ya no cambia de tamaño al recorrer las horas.

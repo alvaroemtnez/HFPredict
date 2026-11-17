@@ -75,6 +75,11 @@
     <keyword>shortwave</keyword>
   </keywords>
   <releases>
+    <release version="1.0.0" date="2026-11-17">
+      <description>
+        <p>The first stable release. The line under the map that sums up a band's coverage always fits on one line, so the map no longer changes size as you move through the hours. After choosing another language, HFPredict offers to restart.</p>
+      </description>
+    </release>
     <release version="0.3.2" date="2026-11-12">
       <description>
         <p>Some app menus no longer list HFPredict twice. On Android, the app is no longer offered to devices it cannot run on, and release builds are ready for F-Droid.</p>
